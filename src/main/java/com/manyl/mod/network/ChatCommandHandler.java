@@ -117,6 +117,30 @@ public final class ChatCommandHandler {
                 }
             }
 
+            case "quarry", "карьер" -> {
+                if ("stop".equalsIgnoreCase(arg) || "pause".equalsIgnoreCase(arg) || "стоп".equalsIgnoreCase(arg)) {
+                    settings.setQuarryActive(false);
+                    data.setDirty();
+                    reply(player, "§6[Карьер]§r Режим размеченного карьера остановлен.");
+                } else if ("clear".equalsIgnoreCase(arg) || "сброс".equalsIgnoreCase(arg)) {
+                    settings.setQuarryPos1(null);
+                    settings.setQuarryPos2(null);
+                    settings.setQuarryActive(false);
+                    data.setDirty();
+                    reply(player, "§6[Карьер]§r Разметка карьера сброшена.");
+                } else if ("start".equalsIgnoreCase(arg) || "старт".equalsIgnoreCase(arg)) {
+                    if (!settings.hasQuarryBounds()) {
+                        reply(player, "§c[Карьер]§r Сначала выделите 2 точки Посохом разметки карьера!");
+                    } else {
+                        settings.setQuarryActive(true);
+                        data.setDirty();
+                        reply(player, "§a[Карьер]§r Карьер запущен!");
+                    }
+                } else {
+                    reply(player, "§6[Карьер]§r Используйте Посох разметки карьера (2 точки ПКМ) или §b!quarry <start|stop|clear>");
+                }
+            }
+
             // --- Фермеры ---
             case "crop", "урожай", "ферма" -> {
                 if (arg.isEmpty()) {

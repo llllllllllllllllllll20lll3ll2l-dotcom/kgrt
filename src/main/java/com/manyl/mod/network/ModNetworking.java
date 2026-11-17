@@ -11,6 +11,7 @@ import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -26,7 +27,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 
 /**
- * Сетевые пакеты (C2S и S2C) для работы кругового меню и окна настройки копания.
+ * Сетевые пакеты (C2S и S2C) для работы кругового меню, окна настройки копания и меню карьера.
  */
 public final class ModNetworking {
 
@@ -112,6 +113,62 @@ public final class ModNetworking {
         }
     }
 
+    public record OpenQuarryConfigPayload(
+            int minX, int maxX, int minZ, int maxZ, int topY,
+            int quarryDepth, boolean quarryStairs, int digModeOrdinal,
+            String extractFilter, boolean dropTrash, boolean quarryActive
+    ) implements CustomPacketPayload {
+        public static final Type<OpenQuarryConfigPayload> TYPE = new Type<>(ManylMod.id("open_quarry_config"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, OpenQuarryConfigPayload> CODEC = StreamCodec.of(
+                (buf, p) -> {
+                    buf.writeInt(p.minX);
+                    buf.writeInt(p.maxX);
+                    buf.writeInt(p.minZ);
+                    buf.writeInt(p.maxZ);
+                    buf.writeInt(p.topY);
+                    buf.writeVarInt(p.quarryDepth);
+                    buf.writeBoolean(p.quarryStairs);
+                    buf.writeVarInt(p.digModeOrdinal);
+                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
+                    buf.writeBoolean(p.dropTrash);
+                    buf.writeBoolean(p.quarryActive);
+                },
+                buf -> new OpenQuarryConfigPayload(
+                        buf.readInt(), buf.readInt(), buf.readInt(), buf.readInt(), buf.readInt(),
+                        buf.readVarInt(), buf.readBoolean(), buf.readVarInt(),
+                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean()
+                )
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record SaveQuarryConfigPayload(
+            int quarryDepth, boolean quarryStairs, int digModeOrdinal,
+            String extractFilter, boolean dropTrash, boolean quarryActive, boolean clearSelection
+    ) implements CustomPacketPayload {
+        public static final Type<SaveQuarryConfigPayload> TYPE = new Type<>(ManylMod.id("save_quarry_config"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SaveQuarryConfigPayload> CODEC = StreamCodec.of(
+                (buf, p) -> {
+                    buf.writeVarInt(p.quarryDepth);
+                    buf.writeBoolean(p.quarryStairs);
+                    buf.writeVarInt(p.digModeOrdinal);
+                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
+                    buf.writeBoolean(p.dropTrash);
+                    buf.writeBoolean(p.quarryActive);
+                    buf.writeBoolean(p.clearSelection);
+                },
+                buf -> new SaveQuarryConfigPayload(
+                        buf.readVarInt(), buf.readBoolean(), buf.readVarInt(),
+                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean(), buf.readBoolean()
+                )
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
     public record SummonGolemPayload(int roleOrdinal) implements CustomPacketPayload {
         public static final Type<SummonGolemPayload> TYPE = new Type<>(ManylMod.id("summon_golem"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SummonGolemPayload> CODEC =
@@ -167,11 +224,13 @@ public final class ModNetworking {
     public static void registerPayloads() {
         PayloadTypeRegistry.playS2C().register(OpenStaffMenuPayload.TYPE, OpenStaffMenuPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncGolemStatePayload.TYPE, SyncGolemStatePayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(OpenQuarryConfigPayload.TYPE, OpenQuarryConfigPayload.CODEC);
 
         PayloadTypeRegistry.playC2S().register(SummonGolemPayload.TYPE, SummonGolemPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(RecallGolemsPayload.TYPE, RecallGolemsPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(UpdateDiggerSettingsPayload.TYPE, UpdateDiggerSettingsPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(RequestOpenManagementPayload.TYPE, RequestOpenManagementPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(SaveQuarryConfigPayload.TYPE, SaveQuarryConfigPayload.CODEC);
     }
 
     public static void registerServerReceivers() {
@@ -205,10 +264,62 @@ public final class ModNetworking {
             });
         });
 
+        ServerPlayNetworking.registerGlobalReceiver(SaveQuarryConfigPayload.TYPE, (payload, ctx) -> {
+            ServerPlayer player = ctx.player();
+            ctx.server().execute(() -> {
+                MinecraftServer server = ((ServerLevel) player.level()).getServer();
+                ManylSavedData data = ManylSavedData.get(server);
+                PlayerGolemSettings s = data.getSettings(player.getUUID());
+
+                if (payload.clearSelection()) {
+                    s.setQuarryPos1(null);
+                    s.setQuarryPos2(null);
+                    s.setQuarryActive(false);
+                    data.setDirty();
+                    player.displayClientMessage(Component.translatable("msg.manyl_mod.quarry_cleared"), true);
+                    sendStateSync(player);
+                    return;
+                }
+
+                s.setQuarryDepth(payload.quarryDepth());
+                s.setQuarryStairs(payload.quarryStairs());
+                s.setDigMode(DigMode.byOrdinal(payload.digModeOrdinal()));
+                s.setExtractFilter(payload.extractFilter());
+                s.setDiggerDropTrash(payload.dropTrash());
+                s.setQuarryActive(payload.quarryActive() && s.hasQuarryBounds());
+                if (s.isQuarryActive() && s.hasQuarryBounds()) {
+                    // Устанавливаем центр карьера для ориентира копателей
+                    int cx = (s.getQuarryMinX() + s.getQuarryMaxX()) / 2;
+                    int cz = (s.getQuarryMinZ() + s.getQuarryMaxZ()) / 2;
+                    s.setHomePos(new BlockPos(cx, s.getQuarryTopY(), cz));
+                    player.displayClientMessage(Component.translatable("msg.manyl_mod.quarry_started",
+                            s.getQuarryMaxX() - s.getQuarryMinX() + 1,
+                            s.getQuarryMaxZ() - s.getQuarryMinZ() + 1,
+                            s.getQuarryDepth()), false);
+                } else {
+                    player.displayClientMessage(Component.translatable("msg.manyl_mod.quarry_paused"), true);
+                }
+                data.setDirty();
+                ManylSavedData.applySettingsToActiveGolems(player, s);
+                sendStateSync(player);
+            });
+        });
+
         ServerPlayNetworking.registerGlobalReceiver(RequestOpenManagementPayload.TYPE, (payload, ctx) -> {
             ServerPlayer player = ctx.player();
             ctx.server().execute(() -> sendOpenStaffMenu(player, true));
         });
+    }
+
+    public static void sendOpenQuarryConfig(ServerPlayer player) {
+        MinecraftServer server = ((ServerLevel) player.level()).getServer();
+        PlayerGolemSettings s = ManylSavedData.get(server).getSettings(player.getUUID());
+        if (!s.hasQuarryBounds()) return;
+        ServerPlayNetworking.send(player, new OpenQuarryConfigPayload(
+                s.getQuarryMinX(), s.getQuarryMaxX(), s.getQuarryMinZ(), s.getQuarryMaxZ(), s.getQuarryTopY(),
+                s.getQuarryDepth(), s.isQuarryStairs(), s.getDigMode().ordinal(),
+                s.getExtractFilter(), s.isDiggerDropTrash(), s.isQuarryActive()
+        ));
     }
 
     public static void sendOpenStaffMenu(ServerPlayer player, boolean openManagement) {

@@ -53,5 +53,18 @@
   "gui.manyl_mod.preset.diamond": "Алмазы",
   "gui.manyl_mod.preset.gold": "Золото",
   "gui.manyl_mod.preset.coal": "Уголь",
-  "gui.manyl_mod.preset.debris": "Незерит"
+  "gui.manyl_mod.preset.debris": "Незерит",
+  "item.manyl_mod.quarry_staff": "Посох разметки карьера",
+  "screen.manyl_mod.quarry_config": "Настройки размеченного карьера",
+  "gui.manyl_mod.quarry_stairs": "Каменная лестница по кругу:",
+  "gui.manyl_mod.quarry_start": "Запустить карьер",
+  "gui.manyl_mod.quarry_clear": "Сбросить",
+  "gui.manyl_mod.quarry_min_stair_warn": "Для лестницы по кругу лучше зона >= 3×3",
+  "msg.manyl_mod.quarry_pos1": "§6[Карьер]§r Точка #1 установлена (%s, %s, %s). Выделите вторую точку ПКМ!",
+  "msg.manyl_mod.quarry_pos2": "§6[Карьер]§r Точка #2 установлена (%s, %s, %s) — зона %s×%s.",
+  "msg.manyl_mod.quarry_too_large": "§c[Карьер]§r Слишком большая зона (%s×%s)! Максимум 24×24 блока.",
+  "msg.manyl_mod.quarry_started": "§a[Карьер]§r Карьер %s×%s на глубину %s бл. запущен! Копатели приступают к работе.",
+  "msg.manyl_mod.quarry_paused": "§e[Карьер]§r Разметка сохранена, карьер на паузе.",
+  "msg.manyl_mod.quarry_cleared": "Разметка карьера сброшена.",
+  "msg.manyl_mod.quarry_hint": "Нажмите ПКМ по двум блокам, чтобы выделить карьер (Shift+ПКМ — сброс)"
 }

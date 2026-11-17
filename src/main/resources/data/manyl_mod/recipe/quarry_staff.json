@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " IG",
+    " SI",
+    "S  "
+  ],
+  "key": {
+    "S": "minecraft:stick",
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:gold_ingot"
+  },
+  "result": {
+    "id": "manyl_mod:quarry_staff",
+    "count": 1
+  }
+}

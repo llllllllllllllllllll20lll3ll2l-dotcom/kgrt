@@ -43,7 +43,7 @@ public class ManylMod implements ModInitializer {
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, MAIN_TAB, FabricItemGroup.builder()
                 .title(Component.translatable("itemGroup.manyl_mod.main"))
                 .icon(() -> new ItemStack(ModItems.SUMMON_STAFF))
-                .displayItems((ctx, entries) -> entries.accept(ModItems.SUMMON_STAFF))
+                .displayItems((ctx, entries) -> { entries.accept(ModItems.SUMMON_STAFF); entries.accept(ModItems.QUARRY_STAFF); })
                 .build());
 
         LOGGER.info("Manyl_mod 1.1 успешно загружен!");

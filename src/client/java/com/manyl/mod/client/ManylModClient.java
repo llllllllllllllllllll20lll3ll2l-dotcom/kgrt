@@ -6,6 +6,7 @@ import com.manyl.mod.client.renderer.GolemRenderer;
 import com.manyl.mod.client.screen.GolemInventoryScreen;
 import com.manyl.mod.client.screen.DiggerSettingsScreen;
 import com.manyl.mod.client.screen.GolemManagementScreen;
+import com.manyl.mod.client.screen.QuarryConfigScreen;
 import com.manyl.mod.client.screen.RadialMenuScreen;
 import com.manyl.mod.network.ModNetworking;
 import com.manyl.mod.registry.ModEntities;
@@ -49,6 +50,10 @@ public class ManylModClient implements ClientModInitializer {
                         ctx.client().setScreen(new RadialMenuScreen(payload));
                     }
                 }));
+
+
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.OpenQuarryConfigPayload.TYPE, (payload, ctx) ->
+                ctx.client().execute(() -> ctx.client().setScreen(new QuarryConfigScreen(payload))));
 
         ClientPlayNetworking.registerGlobalReceiver(ModNetworking.SyncGolemStatePayload.TYPE, (payload, ctx) ->
                 ctx.client().execute(() -> {
