@@ -1,0 +1,560 @@
+{
+  "meta": {
+    "format_version": "4.10",
+    "model_format": "modded_entity",
+    "box_uv": true
+  },
+  "name": "warrior_golem",
+  "model_identifier": "manyl_mod:warrior_golem",
+  "visible_box": [
+    1,
+    1,
+    0
+  ],
+  "variable_placeholders": "",
+  "variable_placeholder_buttons": [],
+  "bedrock_animation_mode": false,
+  "timeline_setups": [],
+  "unhandled_root_fields": {},
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "right_leg",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4,
+        0,
+        -2
+      ],
+      "to": [
+        0,
+        3,
+        2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        -2,
+        3,
+        0
+      ],
+      "uv_offset": [
+        0,
+        34
+      ],
+      "type": "cube",
+      "uuid": "1674125a-2409-543c-8279-7c01ac9fa5e6"
+    },
+    {
+      "name": "left_leg",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        0,
+        0,
+        -2
+      ],
+      "to": [
+        4,
+        3,
+        2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        2,
+        3,
+        0
+      ],
+      "uv_offset": [
+        17,
+        34
+      ],
+      "type": "cube",
+      "uuid": "0f04133e-dbf6-5248-b73c-6e82c5ebdf5d"
+    },
+    {
+      "name": "torso",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4,
+        3,
+        -3
+      ],
+      "to": [
+        4,
+        8,
+        3
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        3,
+        0
+      ],
+      "uv_offset": [
+        0,
+        12
+      ],
+      "type": "cube",
+      "uuid": "8d392567-78d5-5c04-a715-0ddb6bc5ec19"
+    },
+    {
+      "name": "backpack",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -3,
+        3.5,
+        3
+      ],
+      "to": [
+        3,
+        7.5,
+        6
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        5.5,
+        3
+      ],
+      "uv_offset": [
+        32,
+        12
+      ],
+      "type": "cube",
+      "uuid": "b62f4aab-a221-5ae6-b165-e863cd3408dd"
+    },
+    {
+      "name": "head_cube",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -3,
+        8,
+        -3
+      ],
+      "to": [
+        3,
+        13,
+        3
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        8,
+        0
+      ],
+      "uv_offset": [
+        0,
+        0
+      ],
+      "type": "cube",
+      "uuid": "55aefa06-1a35-57f7-865d-0f45093de52a"
+    },
+    {
+      "name": "head_accessory",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4,
+        11.5,
+        -4
+      ],
+      "to": [
+        4,
+        14.5,
+        4
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        13,
+        0
+      ],
+      "uv_offset": [
+        32,
+        0
+      ],
+      "type": "cube",
+      "uuid": "f002e027-bfca-54dc-93b4-f1afa15990d8",
+      "inflate": 0.2
+    },
+    {
+      "name": "crest",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -1,
+        14.2,
+        -1
+      ],
+      "to": [
+        1,
+        17.2,
+        1
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        14.2,
+        0
+      ],
+      "uv_offset": [
+        34,
+        34
+      ],
+      "type": "cube",
+      "uuid": "c235a31b-1de4-579a-aeaa-3a161cc14055"
+    },
+    {
+      "name": "right_arm_cube",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -7,
+        2,
+        -1.5
+      ],
+      "to": [
+        -4,
+        8,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        -4,
+        7.5,
+        0
+      ],
+      "uv_offset": [
+        0,
+        24
+      ],
+      "type": "cube",
+      "uuid": "0523903f-3483-55b5-aa50-56d467843099"
+    },
+    {
+      "name": "shoulder_pad_r",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -7.5,
+        6.5,
+        -2
+      ],
+      "to": [
+        -3.5,
+        8.5,
+        2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        -4,
+        7.5,
+        0
+      ],
+      "uv_offset": [
+        32,
+        20
+      ],
+      "type": "cube",
+      "uuid": "1cb63945-ee7e-5f32-9a65-6a04d4542bcc",
+      "inflate": 0.25
+    },
+    {
+      "name": "left_arm_cube",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        4,
+        2,
+        -1.5
+      ],
+      "to": [
+        7,
+        8,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        4,
+        7.5,
+        0
+      ],
+      "uv_offset": [
+        13,
+        24
+      ],
+      "type": "cube",
+      "uuid": "a870b0e3-78d1-5c2e-afc8-7d3dcfc663d2"
+    },
+    {
+      "name": "shoulder_pad_l",
+      "box_uv": true,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        3.5,
+        6.5,
+        -2
+      ],
+      "to": [
+        7.5,
+        8.5,
+        2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        4,
+        7.5,
+        0
+      ],
+      "uv_offset": [
+        48,
+        20
+      ],
+      "type": "cube",
+      "uuid": "565efa12-e342-57ac-9c07-4e25ebc1cc50",
+      "inflate": 0.25
+    }
+  ],
+  "outliner": [
+    {
+      "name": "root",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "59095b2d-163f-53fc-93ad-ee1fa362097e",
+      "export": true,
+      "mirror_uv": false,
+      "isOpen": true,
+      "locked": false,
+      "visibility": true,
+      "autouv": 0,
+      "children": [
+        {
+          "name": "right_leg",
+          "origin": [
+            -2,
+            3,
+            0
+          ],
+          "color": 0,
+          "uuid": "f0ae0d4a-8bd3-58ed-92dd-88f9b34cadfc",
+          "export": true,
+          "mirror_uv": false,
+          "isOpen": true,
+          "locked": false,
+          "visibility": true,
+          "autouv": 0,
+          "children": [
+            "1674125a-2409-543c-8279-7c01ac9fa5e6"
+          ]
+        },
+        {
+          "name": "left_leg",
+          "origin": [
+            2,
+            3,
+            0
+          ],
+          "color": 0,
+          "uuid": "9b1a44a8-fa3a-5a1b-8dda-71718ec929ed",
+          "export": true,
+          "mirror_uv": false,
+          "isOpen": true,
+          "locked": false,
+          "visibility": true,
+          "autouv": 0,
+          "children": [
+            "0f04133e-dbf6-5248-b73c-6e82c5ebdf5d"
+          ]
+        },
+        {
+          "name": "body",
+          "origin": [
+            0,
+            3,
+            0
+          ],
+          "color": 0,
+          "uuid": "86bb5022-f161-58fe-9f02-aeaf1dbf5279",
+          "export": true,
+          "mirror_uv": false,
+          "isOpen": true,
+          "locked": false,
+          "visibility": true,
+          "autouv": 0,
+          "children": [
+            "8d392567-78d5-5c04-a715-0ddb6bc5ec19",
+            {
+              "name": "backpack",
+              "origin": [
+                0,
+                5.5,
+                3
+              ],
+              "color": 0,
+              "uuid": "88ff1999-ad9b-5cc4-aabb-fd2d78216de3",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "locked": false,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "b62f4aab-a221-5ae6-b165-e863cd3408dd"
+              ]
+            },
+            {
+              "name": "head",
+              "origin": [
+                0,
+                8,
+                0
+              ],
+              "color": 0,
+              "uuid": "b41c7d39-2449-57d3-9341-2e5ff5e32d5d",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "locked": false,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "55aefa06-1a35-57f7-865d-0f45093de52a",
+                "f002e027-bfca-54dc-93b4-f1afa15990d8",
+                "c235a31b-1de4-579a-aeaa-3a161cc14055"
+              ]
+            },
+            {
+              "name": "right_arm",
+              "origin": [
+                -4,
+                7.5,
+                0
+              ],
+              "color": 0,
+              "uuid": "c4b25b16-13d2-5f45-8f74-8b5bececa0dd",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "locked": false,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "0523903f-3483-55b5-aa50-56d467843099",
+                "1cb63945-ee7e-5f32-9a65-6a04d4542bcc"
+              ]
+            },
+            {
+              "name": "left_arm",
+              "origin": [
+                4,
+                7.5,
+                0
+              ],
+              "color": 0,
+              "uuid": "3fde8226-6af9-5280-9b5d-e76038a93b54",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "locked": false,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "a870b0e3-78d1-5c2e-afc8-7d3dcfc663d2",
+                "565efa12-e342-57ac-9c07-4e25ebc1cc50"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "path": "../../textures/entity/golem/warrior_golem.png",
+      "name": "warrior_golem.png",
+      "folder": "entity/golem",
+      "namespace": "manyl_mod",
+      "id": "0",
+      "group": "",
+      "width": 64,
+      "height": 64,
+      "uv_width": 64,
+      "uv_height": 64,
+      "particle": true,
+      "use_as_default": true,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "saved": true,
+      "uuid": "b686c6a5-35f6-57b8-8295-be0035263318",
+      "relative_path": "../../textures/entity/golem/warrior_golem.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAC/klEQVR42u1aPU7sQAzOCSgpkKBCW1Ahiq0oXrGiQhSIkgMgKspXvRNQcArqdwBEySGouEmQI32S17In45mdJLvyJ1k7mWT+PnsytrNdZ2B9fdM/vfzr8Yvyyen58MuF6rpG4OPzefCxreuqeVEHD4/Pg6CMTlcXV1vSmgDMQ4o1n53MSxtYG3AKCyghYKcWYA1I1wdrAbTX5IBUtw9bYCeKkS86/hLEiwblOQjg86myAHpQds7rPt4uB7G0IJ+X9VMQAMGi3QRIbXMWQYA0Me15lDHpXRGQEk6AZp1VBPSbTf/n5n4QKmsEYKGwAtlPiQVyC+L3v/9vBrHuj7XX7nVSc5wAWjiYpPIYARqRJQrQ5kECAnAtx9UUoK1va37WC8QrnAguOQSk5H21SkrtvLuAwweXfrj2QqrxwF7Pzvqfu7stobrbo6PhlwvVNSfA44DwuhoCvtbrHr8o02Kfjo+3ZBICNG9wzAWtcYygXWiea1uTRVlAqWtM2iRNQ7PQPITX8zJOBNTvNQGkZSxOvuVRz5+hMghAfRMCvB5YSWwwOwGat5R7/mpxwJj3pRHgEZg8CEB9FQGWB0UDkDb7z7+DK0xlqsuJCWR9rmc4OVILgStMiwcB0gWVwQ8ntCQ2kD6HN8eXymGq7XMI4GLFBCkL8BAgc5He8NZqDyKyfXG+7+R+I7FigLE97F0AJ7aGgNaZq2anj/d0qWovU185+66kjXUKyRMkdS0j0dTzqf5V8/Hk+7RvBiUEzCWm+XgI8LZZ3DFomZd0dMCYdc9KkuwVAdo5Lx0ZeS+nzaIJ8C4m1Ub7QHFwBHBPb+8tYCzokVLaZtEW4D02IvN66NlgzbuDeDPK3ohO5gFnIaA2mEhFZIsnAJlg+fnZ4+GVRHRW5Nks6dkqGrPyiWN91IbR1Z6gFi1x809FU7KO2uVEdLyPWQmQKS18fQUBVsZHOkb8rynoA/3K/x14skRt93yCdVpIjmZK2k2i3UAgEAgEAoFAIBAIBAKBQCAQCAQCHL+chG9QZ5AFowAAAABJRU5ErkJggg=="
+    },
+    {
+      "path": "../../textures/entity/golem/warrior_golem_glow.png",
+      "name": "warrior_golem_glow.png",
+      "folder": "entity/golem",
+      "namespace": "manyl_mod",
+      "id": "1",
+      "group": "",
+      "width": 64,
+      "height": 64,
+      "uv_width": 64,
+      "uv_height": 64,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "render_mode": "emissive",
+      "render_sides": "auto",
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": false,
+      "saved": true,
+      "uuid": "9d676a20-b950-5c2f-9d42-b90b55388580",
+      "relative_path": "../../textures/entity/golem/warrior_golem_glow.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAP0lEQVR42u3XMREAMAgDQMQhqupqjV53DHD8T1mzJREAAI3KrC4DAMCWSXxPrZ7Cv7wvAAAAAAAAAAAAAACjPF5ND9Pc0K+qAAAAAElFTkSuQmCC"
+    }
+  ]
+}

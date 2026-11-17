@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "manyl_mod",
+	"version": "${version}",
+	"name": "Manyl_mod",
+	"description": "Мод на прислужников-големов (копатели, фермеры, сортировщики, воины) с собственными текстурами, анимациями, звуками, голодом и круговым меню управления.",
+	"authors": [
+		"Manyl"
+	],
+	"license": "MIT",
+	"icon": "assets/manyl_mod/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.manyl.mod.ManylMod"
+		],
+		"client": [
+			"com.manyl.mod.client.ManylModClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.20.1",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

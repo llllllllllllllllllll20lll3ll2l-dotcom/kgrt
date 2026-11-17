@@ -1,0 +1,68 @@
+{
+  "golem_summon": {
+    "subtitle": "subtitles.manyl_mod.golem_summon",
+    "sounds": [
+      "manyl_mod:golem_summon"
+    ]
+  },
+  "golem_recall": {
+    "subtitle": "subtitles.manyl_mod.golem_recall",
+    "sounds": [
+      "manyl_mod:golem_recall"
+    ]
+  },
+  "golem_step": {
+    "subtitle": "subtitles.manyl_mod.golem_step",
+    "sounds": [
+      "manyl_mod:golem_step"
+    ]
+  },
+  "golem_work_dig": {
+    "subtitle": "subtitles.manyl_mod.golem_work_dig",
+    "sounds": [
+      "manyl_mod:golem_work_dig"
+    ]
+  },
+  "golem_work_farm": {
+    "subtitle": "subtitles.manyl_mod.golem_work_farm",
+    "sounds": [
+      "manyl_mod:golem_work_farm"
+    ]
+  },
+  "golem_work_sort": {
+    "subtitle": "subtitles.manyl_mod.golem_work_sort",
+    "sounds": [
+      "manyl_mod:golem_work_sort"
+    ]
+  },
+  "golem_attack": {
+    "subtitle": "subtitles.manyl_mod.golem_attack",
+    "sounds": [
+      "manyl_mod:golem_attack"
+    ]
+  },
+  "golem_hurt": {
+    "subtitle": "subtitles.manyl_mod.golem_hurt",
+    "sounds": [
+      "manyl_mod:golem_hurt"
+    ]
+  },
+  "golem_death": {
+    "subtitle": "subtitles.manyl_mod.golem_death",
+    "sounds": [
+      "manyl_mod:golem_death"
+    ]
+  },
+  "golem_eat": {
+    "subtitle": "subtitles.manyl_mod.golem_eat",
+    "sounds": [
+      "manyl_mod:golem_eat"
+    ]
+  },
+  "golem_hungry": {
+    "subtitle": "subtitles.manyl_mod.golem_hungry",
+    "sounds": [
+      "manyl_mod:golem_hungry"
+    ]
+  }
+}
