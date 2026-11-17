@@ -13,20 +13,21 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * Полноценное окно управления прислужниками (открывается через «Управление» в круговом меню):
- * - Индивидуальный призыв / отзыв для каждого типа (Копатель, Фермер, Сортировщик, Воин);
- * - Счётчики активных прислужников против лимита (4 / 2 / 6 / 5);
- * - Настройки копателей: радиус копки (2..8), режим (Карьер / Туннель / Только руды) и следование за игроком.
+ * Полноценное окно управления прислужниками (открывается через «Управление» в круговом меню).
  */
 public class GolemManagementScreen extends Screen {
     private static final Identifier PANEL_TEX = ManylMod.id("textures/gui/management_panel.png");
     private static final int PANEL_W = 228;
-    private static final int PANEL_H = 198;
+    private static final int PANEL_H = 216;
 
     private final int[] counts = new int[GolemRole.values().length];
     private int diggerRadius;
+    private int diggerDepth;
     private DigMode digMode;
     private boolean followOwner;
+    private String extractFilter;
+    private boolean diggerDropTrash;
+    private boolean diggerTunnelToOre;
 
     private Button modeButton;
     private Button followButton;
@@ -37,8 +38,12 @@ public class GolemManagementScreen extends Screen {
             counts[role.ordinal()] = payload.countFor(role);
         }
         this.diggerRadius = payload.diggerRadius();
+        this.diggerDepth = payload.diggerDepth();
         this.digMode = DigMode.byOrdinal(payload.digModeOrdinal());
         this.followOwner = payload.followOwner();
+        this.extractFilter = payload.extractFilter();
+        this.diggerDropTrash = payload.diggerDropTrash();
+        this.diggerTunnelToOre = payload.diggerTunnelToOre();
     }
 
     public void updateState(ModNetworking.SyncGolemStatePayload payload) {
@@ -46,8 +51,12 @@ public class GolemManagementScreen extends Screen {
             counts[role.ordinal()] = payload.countFor(role);
         }
         this.diggerRadius = payload.diggerRadius();
+        this.diggerDepth = payload.diggerDepth();
         this.digMode = DigMode.byOrdinal(payload.digModeOrdinal());
         this.followOwner = payload.followOwner();
+        this.extractFilter = payload.extractFilter();
+        this.diggerDropTrash = payload.diggerDropTrash();
+        this.diggerTunnelToOre = payload.diggerTunnelToOre();
         if (modeButton != null) {
             modeButton.setMessage(Component.translatable(digMode.getTranslationKey()));
         }
@@ -66,7 +75,6 @@ public class GolemManagementScreen extends Screen {
         int left = (this.width - PANEL_W) / 2;
         int top = (this.height - PANEL_H) / 2;
 
-        // 4 строки для ролей големов: кнопки [+ Призвать] и [- Отозвать]
         for (int i = 0; i < GolemRole.values().length; i++) {
             final int roleIdx = i;
             int ry = top + 34 + i * 27;
@@ -83,7 +91,6 @@ public class GolemManagementScreen extends Screen {
                     .build());
         }
 
-        // Настройки копателей (внизу панели)
         int cfgY = top + 148;
         this.addRenderableWidget(Button.builder(Component.literal("<"), b -> {
             diggerRadius = Math.max(2, diggerRadius - 1);
@@ -91,7 +98,7 @@ public class GolemManagementScreen extends Screen {
         }).pos(left + 12, cfgY).size(18, 18).build());
 
         this.addRenderableWidget(Button.builder(Component.literal(">"), b -> {
-            diggerRadius = Math.min(8, diggerRadius + 1);
+            diggerRadius = Math.min(10, diggerRadius + 1);
             sendSettings();
         }).pos(left + 64, cfgY).size(18, 18).build());
 
@@ -108,7 +115,16 @@ public class GolemManagementScreen extends Screen {
                     sendSettings();
                 }).pos(left + 160, cfgY).size(56, 18).build());
 
-        // Кнопка закрытия
+        // Кнопка расширенной настройки копания у копателей
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.manyl_mod.open_digger_settings"), b ->
+                this.minecraft.setScreen(new DiggerSettingsScreen(
+                        this, diggerRadius, diggerDepth, digMode, followOwner,
+                        extractFilter, diggerDropTrash, diggerTunnelToOre
+                )))
+                .pos(left + 12, top + 174)
+                .size(PANEL_W - 24, 20)
+                .build());
+
         this.addRenderableWidget(Button.builder(Component.literal("✕"), b -> this.onClose())
                 .pos(left + PANEL_W - 24, top + 6)
                 .size(16, 16)
@@ -116,7 +132,10 @@ public class GolemManagementScreen extends Screen {
     }
 
     private void sendSettings() {
-        ClientPlayNetworking.send(new ModNetworking.UpdateDiggerSettingsPayload(diggerRadius, digMode.ordinal(), followOwner));
+        ClientPlayNetworking.send(new ModNetworking.UpdateDiggerSettingsPayload(
+                diggerRadius, diggerDepth, digMode.ordinal(), followOwner,
+                extractFilter, diggerDropTrash, diggerTunnelToOre
+        ));
     }
 
     @Override
@@ -124,14 +143,12 @@ public class GolemManagementScreen extends Screen {
         int left = (this.width - PANEL_W) / 2;
         int top = (this.height - PANEL_H) / 2;
 
-        // Фон панели (верхняя часть и нижняя рамка из management_panel.png + тёмная подложка под настройки)
         graphics.blit(RenderPipelines.GUI_TEXTURED, PANEL_TEX, left, top, 0, 0, PANEL_W, 172, 256, 256);
         graphics.fill(left + 1, top + 170, left + PANEL_W - 1, top + PANEL_H - 1, 0xFF363A44);
         graphics.fill(left, top + PANEL_H - 1, left + PANEL_W, top + PANEL_H, 0xFF12141A);
 
         graphics.drawString(this.font, this.title, left + 10, top + 10, 0xFFE8C87A, false);
 
-        // Иконки, названия и счётчики для каждого из 4 типов големов
         for (int i = 0; i < GolemRole.values().length; i++) {
             GolemRole role = GolemRole.byOrdinal(i);
             int ry = top + 34 + i * 27;
@@ -142,7 +159,6 @@ public class GolemManagementScreen extends Screen {
             graphics.drawString(this.font, countLabel, left + 124, ry + 5, role.getAccentColor(), false);
         }
 
-        // Подписи настроек копателей
         graphics.drawString(this.font, Component.translatable("gui.manyl_mod.digger_settings"), left + 12, top + 137, 0xFFE59D3B, false);
         graphics.drawCenteredString(this.font, String.valueOf(diggerRadius), left + 47, top + 153, 0xFFFFFFFF);
 

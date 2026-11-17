@@ -26,14 +26,15 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 
 /**
- * Сетевые пакеты (C2S и S2C) для работы кругового меню и окна управления прислужниками.
+ * Сетевые пакеты (C2S и S2C) для работы кругового меню и окна настройки копания.
  */
 public final class ModNetworking {
 
-    // S2C: открытие кругового меню или панели управления с актуальными счётчиками и настройками
     public record OpenStaffMenuPayload(
             int diggerCount, int farmerCount, int sorterCount, int warriorCount,
-            int diggerRadius, int digModeOrdinal, boolean followOwner, boolean openManagement
+            int diggerRadius, int diggerDepth, int digModeOrdinal, boolean followOwner,
+            String extractFilter, boolean diggerDropTrash, boolean diggerTunnelToOre,
+            boolean openManagement
     ) implements CustomPacketPayload {
         public static final Type<OpenStaffMenuPayload> TYPE = new Type<>(ManylMod.id("open_staff_menu"));
         public static final StreamCodec<RegistryFriendlyByteBuf, OpenStaffMenuPayload> CODEC = StreamCodec.of(
@@ -43,13 +44,18 @@ public final class ModNetworking {
                     buf.writeVarInt(p.sorterCount);
                     buf.writeVarInt(p.warriorCount);
                     buf.writeVarInt(p.diggerRadius);
+                    buf.writeVarInt(p.diggerDepth);
                     buf.writeVarInt(p.digModeOrdinal);
                     buf.writeBoolean(p.followOwner);
+                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
+                    buf.writeBoolean(p.diggerDropTrash);
+                    buf.writeBoolean(p.diggerTunnelToOre);
                     buf.writeBoolean(p.openManagement);
                 },
                 buf -> new OpenStaffMenuPayload(
                         buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                        buf.readVarInt(), buf.readVarInt(), buf.readBoolean(), buf.readBoolean()
+                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean(),
+                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean(), buf.readBoolean()
                 )
         );
 
@@ -66,10 +72,10 @@ public final class ModNetworking {
         }
     }
 
-    // S2C: обновление живых счётчиков и настроек без переоткрытия окна
     public record SyncGolemStatePayload(
             int diggerCount, int farmerCount, int sorterCount, int warriorCount,
-            int diggerRadius, int digModeOrdinal, boolean followOwner
+            int diggerRadius, int diggerDepth, int digModeOrdinal, boolean followOwner,
+            String extractFilter, boolean diggerDropTrash, boolean diggerTunnelToOre
     ) implements CustomPacketPayload {
         public static final Type<SyncGolemStatePayload> TYPE = new Type<>(ManylMod.id("sync_golem_state"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SyncGolemStatePayload> CODEC = StreamCodec.of(
@@ -79,12 +85,17 @@ public final class ModNetworking {
                     buf.writeVarInt(p.sorterCount);
                     buf.writeVarInt(p.warriorCount);
                     buf.writeVarInt(p.diggerRadius);
+                    buf.writeVarInt(p.diggerDepth);
                     buf.writeVarInt(p.digModeOrdinal);
                     buf.writeBoolean(p.followOwner);
+                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
+                    buf.writeBoolean(p.diggerDropTrash);
+                    buf.writeBoolean(p.diggerTunnelToOre);
                 },
                 buf -> new SyncGolemStatePayload(
                         buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                        buf.readVarInt(), buf.readVarInt(), buf.readBoolean()
+                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean(),
+                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean()
                 )
         );
 
@@ -101,7 +112,6 @@ public final class ModNetworking {
         }
     }
 
-    // C2S: запрос призыва прислужника определённой роли
     public record SummonGolemPayload(int roleOrdinal) implements CustomPacketPayload {
         public static final Type<SummonGolemPayload> TYPE = new Type<>(ManylMod.id("summon_golem"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SummonGolemPayload> CODEC =
@@ -111,7 +121,6 @@ public final class ModNetworking {
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    // C2S: запрос отзыва (-1 = всех прислужников, иначе конкретная роль)
     public record RecallGolemsPayload(int roleOrdinal) implements CustomPacketPayload {
         public static final Type<RecallGolemsPayload> TYPE = new Type<>(ManylMod.id("recall_golems"));
         public static final StreamCodec<RegistryFriendlyByteBuf, RecallGolemsPayload> CODEC =
@@ -121,23 +130,31 @@ public final class ModNetworking {
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    // C2S: изменение настроек копателей и режима следования
-    public record UpdateDiggerSettingsPayload(int diggerRadius, int digModeOrdinal, boolean followOwner) implements CustomPacketPayload {
+    public record UpdateDiggerSettingsPayload(
+            int diggerRadius, int diggerDepth, int digModeOrdinal, boolean followOwner,
+            String extractFilter, boolean diggerDropTrash, boolean diggerTunnelToOre
+    ) implements CustomPacketPayload {
         public static final Type<UpdateDiggerSettingsPayload> TYPE = new Type<>(ManylMod.id("update_digger_settings"));
         public static final StreamCodec<RegistryFriendlyByteBuf, UpdateDiggerSettingsPayload> CODEC = StreamCodec.of(
                 (buf, p) -> {
                     buf.writeVarInt(p.diggerRadius);
+                    buf.writeVarInt(p.diggerDepth);
                     buf.writeVarInt(p.digModeOrdinal);
                     buf.writeBoolean(p.followOwner);
+                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
+                    buf.writeBoolean(p.diggerDropTrash);
+                    buf.writeBoolean(p.diggerTunnelToOre);
                 },
-                buf -> new UpdateDiggerSettingsPayload(buf.readVarInt(), buf.readVarInt(), buf.readBoolean())
+                buf -> new UpdateDiggerSettingsPayload(
+                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean(),
+                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean()
+                )
         );
 
         @Override
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    // C2S: открыть панель управления из кругового меню
     public record RequestOpenManagementPayload() implements CustomPacketPayload {
         public static final Type<RequestOpenManagementPayload> TYPE = new Type<>(ManylMod.id("request_open_management"));
         public static final StreamCodec<RegistryFriendlyByteBuf, RequestOpenManagementPayload> CODEC =
@@ -173,7 +190,16 @@ public final class ModNetworking {
             ctx.server().execute(() -> {
                 MinecraftServer server = ((ServerLevel) player.level()).getServer();
                 ManylSavedData data = ManylSavedData.get(server);
-                data.updateSettings(player.getUUID(), payload.diggerRadius(), DigMode.byOrdinal(payload.digModeOrdinal()), payload.followOwner());
+                data.updateDiggerSettings(
+                        player.getUUID(),
+                        payload.diggerRadius(),
+                        payload.diggerDepth(),
+                        DigMode.byOrdinal(payload.digModeOrdinal()),
+                        payload.followOwner(),
+                        payload.extractFilter(),
+                        payload.diggerDropTrash(),
+                        payload.diggerTunnelToOre()
+                );
                 ManylSavedData.applySettingsToActiveGolems(player, data.getSettings(player.getUUID()));
                 sendStateSync(player);
             });
@@ -188,20 +214,23 @@ public final class ModNetworking {
     public static void sendOpenStaffMenu(ServerPlayer player, boolean openManagement) {
         MinecraftServer server = ((ServerLevel) player.level()).getServer();
         int[] counts = ManylSavedData.getRoleCounts(server, player.getUUID());
-        PlayerGolemSettings settings = ManylSavedData.get(server).getSettings(player.getUUID());
+        PlayerGolemSettings s = ManylSavedData.get(server).getSettings(player.getUUID());
         ServerPlayNetworking.send(player, new OpenStaffMenuPayload(
                 counts[0], counts[1], counts[2], counts[3],
-                settings.getDiggerRadius(), settings.getDigMode().ordinal(), settings.isFollowOwner(), openManagement
+                s.getDiggerRadius(), s.getDiggerDepth(), s.getDigMode().ordinal(), s.isFollowOwner(),
+                s.getExtractFilter(), s.isDiggerDropTrash(), s.isDiggerTunnelToOre(),
+                openManagement
         ));
     }
 
     public static void sendStateSync(ServerPlayer player) {
         MinecraftServer server = ((ServerLevel) player.level()).getServer();
         int[] counts = ManylSavedData.getRoleCounts(server, player.getUUID());
-        PlayerGolemSettings settings = ManylSavedData.get(server).getSettings(player.getUUID());
+        PlayerGolemSettings s = ManylSavedData.get(server).getSettings(player.getUUID());
         ServerPlayNetworking.send(player, new SyncGolemStatePayload(
                 counts[0], counts[1], counts[2], counts[3],
-                settings.getDiggerRadius(), settings.getDigMode().ordinal(), settings.isFollowOwner()
+                s.getDiggerRadius(), s.getDiggerDepth(), s.getDigMode().ordinal(), s.isFollowOwner(),
+                s.getExtractFilter(), s.isDiggerDropTrash(), s.isDiggerTunnelToOre()
         ));
     }
 
@@ -232,7 +261,7 @@ public final class ModNetworking {
             golem.setSummonTicks(24);
             level.addFreshEntity(golem);
 
-            level.playSound(null, sx, sy, sz, ModSounds.GOLEM_SUMMON, player.getSoundSource(), 1.0F, 1.0F);
+            level.playSound(null, sx, sy, sz, ModSounds.GOLEM_SUMMON, player.getSoundSource(), 0.7F, 1.0F);
             level.sendParticles(ModParticles.SUMMON_RUNE, sx, sy + 0.5D, sz, 14, 0.35D, 0.4D, 0.35D, 0.04D);
 
             player.displayClientMessage(Component.translatable("msg.manyl_mod.summoned",
@@ -250,7 +279,6 @@ public final class ModNetworking {
         for (BaseGolemEntity golem : golems) {
             if (roleOrdinal >= 0 && golem.getRole().ordinal() != roleOrdinal) continue;
 
-            // Сохраняем предметы из инвентаря голема при отзыве: передаём игроку или бросаем у ног
             for (int i = 0; i < BaseGolemEntity.INVENTORY_SIZE; i++) {
                 ItemStack stack = golem.getGolemInventory().getItem(i);
                 if (!stack.isEmpty()) {
@@ -269,7 +297,7 @@ public final class ModNetworking {
         }
 
         if (recalled > 0) {
-            level.playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.GOLEM_RECALL, player.getSoundSource(), 0.9F, 1.0F);
+            level.playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.GOLEM_RECALL, player.getSoundSource(), 0.65F, 1.0F);
             player.displayClientMessage(Component.translatable("msg.manyl_mod.recalled", recalled), true);
         }
         sendStateSync(player);

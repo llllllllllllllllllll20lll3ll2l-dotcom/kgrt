@@ -165,7 +165,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
         if (getHunger() > 0 && getHunger() <= 20) {
             if (hungrySoundCooldown <= 0) {
-                playSound(ModSounds.GOLEM_HUNGRY, 0.7F, 1.0F);
+                playSound(ModSounds.GOLEM_HUNGRY, 0.35F, 1.0F);
                 hungrySoundCooldown = 140;
                 if (level() instanceof ServerLevel serverLevel) {
                     serverLevel.sendParticles(ModParticles.GOLEM_SPARK,
@@ -225,7 +225,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         inventory.setChanged();
 
         setEatTicks(18);
-        playSound(ModSounds.GOLEM_EAT, 0.9F, 0.95F + random.nextFloat() * 0.15F);
+        playSound(ModSounds.GOLEM_EAT, 0.45F, 0.95F + random.nextFloat() * 0.15F);
         if (level() instanceof ServerLevel serverLevel) {
             serverLevel.sendParticles(ModParticles.CORE_HEART,
                     getX(), getY() + 0.7D, getZ(), 5, 0.25D, 0.25D, 0.25D, 0.03D);
@@ -350,7 +350,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         if (!level().isClientSide()) {
             if (player.isShiftKeyDown()) {
                 setSitting(!isSitting());
-                playSound(ModSounds.GOLEM_STEP, 0.8F, isSitting() ? 0.8F : 1.2F);
+                playSound(ModSounds.GOLEM_STEP, 0.16F, isSitting() ? 0.8F : 1.2F);
                 return InteractionResult.SUCCESS;
             }
             FoodProperties food = held.get(DataComponents.FOOD);
@@ -362,7 +362,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
                     held.shrink(1);
                 }
                 setEatTicks(18);
-                playSound(ModSounds.GOLEM_EAT, 1.0F, 1.0F);
+                playSound(ModSounds.GOLEM_EAT, 0.50F, 1.0F);
                 if (level() instanceof ServerLevel sl) {
                     sl.sendParticles(ModParticles.CORE_HEART,
                             getX(), getY() + 0.7D, getZ(), 6, 0.25D, 0.25D, 0.25D, 0.04D);
@@ -410,7 +410,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     @Override
     public boolean doHurtTarget(ServerLevel level, Entity target) {
         setAttackTicks(12);
-        playSound(ModSounds.GOLEM_ATTACK, 0.9F, 0.95F + random.nextFloat() * 0.15F);
+        playSound(ModSounds.GOLEM_ATTACK, 0.50F, 0.95F + random.nextFloat() * 0.15F);
         level.sendParticles(ModParticles.GOLEM_SPARK,
                 target.getX(), target.getY() + target.getBbHeight() * 0.5D, target.getZ(),
                 6, 0.2D, 0.2D, 0.2D, 0.05D);
@@ -437,7 +437,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
     @Override
     protected void playStepSound(BlockPos pos, BlockState state) {
-        playSound(ModSounds.GOLEM_STEP, 0.35F, 0.9F + random.nextFloat() * 0.2F);
+        playSound(ModSounds.GOLEM_STEP, 0.16F, 0.9F + random.nextFloat() * 0.2F);
     }
 
     @Override

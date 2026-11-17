@@ -37,5 +37,21 @@
   "subtitles.manyl_mod.golem_hurt": "Голем ранен",
   "subtitles.manyl_mod.golem_death": "Голем разрушен",
   "subtitles.manyl_mod.golem_eat": "Голем подкрепился",
-  "subtitles.manyl_mod.golem_hungry": "Голем проголодался"
+  "subtitles.manyl_mod.golem_hungry": "Голем проголодался",
+  "screen.manyl_mod.digger_settings": "Настройка копания (Копатели)",
+  "gui.manyl_mod.open_digger_settings": "⚙ Настройка копания копателей",
+  "gui.manyl_mod.depth": "Глубина копки",
+  "gui.manyl_mod.extract_filter": "Цель добычи (руда/блок):",
+  "gui.manyl_mod.extract_hint": "например: diamond, iron или пусто",
+  "gui.manyl_mod.apply": "Применить",
+  "gui.manyl_mod.tunnel_to_ore": "Копаться вниз к руде:",
+  "gui.manyl_mod.drop_trash": "Сброс лишних стройблоков:",
+  "gui.manyl_mod.on": "ВКЛ",
+  "gui.manyl_mod.off": "ВЫКЛ",
+  "gui.manyl_mod.preset.all": "Всё",
+  "gui.manyl_mod.preset.iron": "Железо",
+  "gui.manyl_mod.preset.diamond": "Алмазы",
+  "gui.manyl_mod.preset.gold": "Золото",
+  "gui.manyl_mod.preset.coal": "Уголь",
+  "gui.manyl_mod.preset.debris": "Незерит"
 }

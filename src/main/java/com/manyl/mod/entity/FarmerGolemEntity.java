@@ -111,7 +111,7 @@ public class FarmerGolemEntity extends BaseGolemEntity {
                     golem.getNavigation().stop();
                     BlockEntity be = golem.level().getBlockEntity(depositChestPos);
                     if (be instanceof Container c && golem.depositCargoIntoContainer(c)) {
-                        golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.7F, 1.1F);
+                        golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.35F, 1.1F);
                     }
                     depositChestPos = null;
                 }
@@ -134,7 +134,7 @@ public class FarmerGolemEntity extends BaseGolemEntity {
             workTicks++;
 
             if (workTicks == 1) {
-                golem.playSound(ModSounds.GOLEM_WORK_FARM, 0.75F, 1.0F);
+                golem.playSound(ModSounds.GOLEM_WORK_FARM, 0.35F, 1.0F);
                 if (golem.level() instanceof ServerLevel sl) {
                     sl.sendParticles(ModParticles.GOLEM_SPARK,
                             targetCrop.getX() + 0.5D, targetCrop.getY() + 0.4D, targetCrop.getZ() + 0.5D,

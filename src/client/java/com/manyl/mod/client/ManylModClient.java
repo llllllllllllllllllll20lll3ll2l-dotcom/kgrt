@@ -4,6 +4,7 @@ import com.manyl.mod.client.model.GolemModel;
 import com.manyl.mod.client.particle.ManylParticles;
 import com.manyl.mod.client.renderer.GolemRenderer;
 import com.manyl.mod.client.screen.GolemInventoryScreen;
+import com.manyl.mod.client.screen.DiggerSettingsScreen;
 import com.manyl.mod.client.screen.GolemManagementScreen;
 import com.manyl.mod.client.screen.RadialMenuScreen;
 import com.manyl.mod.network.ModNetworking;
@@ -55,6 +56,8 @@ public class ManylModClient implements ClientModInitializer {
                         radial.updateCounts(payload);
                     } else if (ctx.client().screen instanceof GolemManagementScreen mgmt) {
                         mgmt.updateState(payload);
+                    } else if (ctx.client().screen instanceof DiggerSettingsScreen digCfg) {
+                        digCfg.syncFromServer(payload);
                     }
                 }));
     }

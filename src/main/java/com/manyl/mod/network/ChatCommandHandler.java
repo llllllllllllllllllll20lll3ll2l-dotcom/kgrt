@@ -101,7 +101,19 @@ public final class ChatCommandHandler {
                     ModNetworking.sendStateSync(player);
                     reply(player, "§6[Копатель]§r Радиус копки установлен: §a" + settings.getDiggerRadius());
                 } catch (NumberFormatException e) {
-                    reply(player, "§6[Копатель]§r Укажите число от 2 до 8. Пример: §b!radius 6");
+                    reply(player, "§6[Копатель]§r Укажите число от 2 до 10. Пример: §b!radius 6");
+                }
+            }
+
+            case "depth", "глубина" -> {
+                try {
+                    int d = Integer.parseInt(arg);
+                    settings.setDiggerDepth(d);
+                    data.setDirty();
+                    ModNetworking.sendStateSync(player);
+                    reply(player, "§6[Копатель]§r Глубина копания установлена: §a" + settings.getDiggerDepth() + " бл.");
+                } catch (NumberFormatException e) {
+                    reply(player, "§6[Копатель]§r Укажите число от 2 до 12. Пример: §b!depth 6");
                 }
             }
 
@@ -187,7 +199,7 @@ public final class ChatCommandHandler {
         player.displayClientMessage(Component.literal("§e!help §7— показать этот список команд"), false);
         player.displayClientMessage(Component.literal("§6[Копатель] §b!extract <руда/блок|all> §7— добывать только указанную руду/блок (железо, алмаз, золото, уголь, медь...)"), false);
         player.displayClientMessage(Component.literal("§6[Копатель] §b!digmode <quarry|tunnel|ores> §7— режим (карьер/туннель/руды)"), false);
-        player.displayClientMessage(Component.literal("§6[Копатель] §b!radius <2..8> §7— радиус копки"), false);
+        player.displayClientMessage(Component.literal("§6[Копатель] §b!radius <2..10> §7| §b!depth <2..12> §7— радиус и глубина копки"), false);
         player.displayClientMessage(Component.literal("§a[Фермер]   §b!crop <культура|all> §7— собирать только нужную культуру (пшеница, морковь, картофель, свекла, нарост)"), false);
         player.displayClientMessage(Component.literal("§b[Сортир.]  §b!sort <all|ground|chests> §7— откуда брать вещи (всё/земля/сундук)"), false);
         player.displayClientMessage(Component.literal("§b[Сортир.]  §b!find <предмет> §7— найти предмет в сундуках рядом (радиус 16)"), false);
@@ -247,7 +259,7 @@ public final class ChatCommandHandler {
         }
         if (count > 0) {
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                    ModSounds.GOLEM_RECALL, player.getSoundSource(), 0.9F, 1.0F);
+                    ModSounds.GOLEM_RECALL, player.getSoundSource(), 0.6F, 1.0F);
         }
         ModNetworking.sendStateSync(player);
         reply(player, "§dОтозвано прислужников: §f" + count);

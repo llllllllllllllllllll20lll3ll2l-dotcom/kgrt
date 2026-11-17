@@ -37,5 +37,21 @@
   "subtitles.manyl_mod.golem_hurt": "Golem hurts",
   "subtitles.manyl_mod.golem_death": "Golem crumbles",
   "subtitles.manyl_mod.golem_eat": "Golem eats",
-  "subtitles.manyl_mod.golem_hungry": "Golem is hungry"
+  "subtitles.manyl_mod.golem_hungry": "Golem is hungry",
+  "screen.manyl_mod.digger_settings": "Digger Mining Settings",
+  "gui.manyl_mod.open_digger_settings": "⚙ Digger Mining Settings",
+  "gui.manyl_mod.depth": "Dig Depth",
+  "gui.manyl_mod.extract_filter": "Target Ore / Block:",
+  "gui.manyl_mod.extract_hint": "e.g. diamond, iron or empty",
+  "gui.manyl_mod.apply": "Apply",
+  "gui.manyl_mod.tunnel_to_ore": "Tunnel down to ore:",
+  "gui.manyl_mod.drop_trash": "Drop excess filler blocks:",
+  "gui.manyl_mod.on": "ON",
+  "gui.manyl_mod.off": "OFF",
+  "gui.manyl_mod.preset.all": "All",
+  "gui.manyl_mod.preset.iron": "Iron",
+  "gui.manyl_mod.preset.diamond": "Diamond",
+  "gui.manyl_mod.preset.gold": "Gold",
+  "gui.manyl_mod.preset.coal": "Coal",
+  "gui.manyl_mod.preset.debris": "Netherite"
 }

@@ -17,9 +17,7 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 import java.util.*;
 
 /**
- * Серверное хранилище данных Manyl_mod:
- * сохраняет настройки копателей/прислужников для каждого игрока между перезапусками мира
- * и управляет подсчётом, призывом и отзывом големов с учётом лимитов (4 / 2 / 6 / 5).
+ * Серверное хранилище данных Manyl_mod.
  */
 public class ManylSavedData extends SavedData {
     private static final Codec<ManylSavedData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -55,11 +53,16 @@ public class ManylSavedData extends SavedData {
         });
     }
 
-    public void updateSettings(UUID playerUuid, int radius, DigMode mode, boolean followOwner) {
+    public void updateDiggerSettings(UUID playerUuid, int radius, int depth, DigMode mode, boolean followOwner,
+                                     String extractFilter, boolean dropTrash, boolean tunnelToOre) {
         PlayerGolemSettings s = getSettings(playerUuid);
         s.setDiggerRadius(radius);
+        s.setDiggerDepth(depth);
         s.setDigMode(mode);
         s.setFollowOwner(followOwner);
+        s.setExtractFilter(extractFilter);
+        s.setDiggerDropTrash(dropTrash);
+        s.setDiggerTunnelToOre(tunnelToOre);
         setDirty();
     }
 
@@ -69,9 +72,6 @@ public class ManylSavedData extends SavedData {
         setDirty();
     }
 
-    /**
-     * Собирает всех живых прислужников игрока во всех загруженных измерениях сервера.
-     */
     public static List<BaseGolemEntity> getPlayerGolems(MinecraftServer server, UUID ownerUuid) {
         List<BaseGolemEntity> result = new ArrayList<>();
         for (ServerLevel level : server.getAllLevels()) {
@@ -84,9 +84,6 @@ public class ManylSavedData extends SavedData {
         return result;
     }
 
-    /**
-     * Возвращает количество активных големов каждой роли у игрока.
-     */
     public static int[] getRoleCounts(MinecraftServer server, UUID ownerUuid) {
         int[] counts = new int[GolemRole.values().length];
         for (BaseGolemEntity golem : getPlayerGolems(server, ownerUuid)) {
@@ -95,9 +92,6 @@ public class ManylSavedData extends SavedData {
         return counts;
     }
 
-    /**
-     * Применяет обновлённые настройки следования и точки дома ко всем големам игрока.
-     */
     public static void applySettingsToActiveGolems(ServerPlayer player, PlayerGolemSettings settings) {
         MinecraftServer server = ((ServerLevel) player.level()).getServer();
         for (BaseGolemEntity golem : getPlayerGolems(server, player.getUUID())) {

@@ -109,7 +109,7 @@ public class SorterGolemEntity extends BaseGolemEntity {
                     ItemStack leftover = golem.addToCargo(stack);
                     if (leftover.isEmpty()) targetItem.discard();
                     else targetItem.setItem(leftover);
-                    golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.65F, 1.25F);
+                    golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.32F, 1.25F);
                     targetItem = null;
                 }
                 return;
@@ -137,7 +137,7 @@ public class SorterGolemEntity extends BaseGolemEntity {
         }
 
         private void fx(BlockPos pos) {
-            golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.8F, 1.0F);
+            golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.38F, 1.0F);
             if (golem.level() instanceof ServerLevel sl) {
                 sl.sendParticles(ModParticles.GOLEM_SPARK,
                         pos.getX() + 0.5D, pos.getY() + 0.9D, pos.getZ() + 0.5D,

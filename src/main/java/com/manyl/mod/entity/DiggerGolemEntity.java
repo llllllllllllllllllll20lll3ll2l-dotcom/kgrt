@@ -71,6 +71,7 @@ public class DiggerGolemEntity extends BaseGolemEntity {
      */
     public boolean pruneExcessBuildingBlocks() {
         if (level().isClientSide()) return false;
+        if (!getOwnerSettings().isDiggerDropTrash()) return false;
         if (!isCargoFull()) return false;
 
         int keepSlot = -1;
@@ -291,7 +292,7 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                     golem.getNavigation().stop();
                     BlockEntity be = golem.level().getBlockEntity(depositChestPos);
                     if (be instanceof Container container && golem.depositCargoIntoContainer(container)) {
-                        golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.7F, 1.0F);
+                        golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.35F, 1.0F);
                     }
                     depositChestPos = null;
                 }
@@ -307,7 +308,7 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                     targetPos.getX() + 0.5D, targetPos.getY() + 0.5D, targetPos.getZ() + 0.5D);
 
             // Проверяем, не закрыта ли руда землёй (под нами или за стенкой)
-            if (tunnelBlockPos == null && (distToTarget > 6.25D || !hasLineOfSightToBlock(targetPos))) {
+            if (golem.getOwnerSettings().isDiggerTunnelToOre() && tunnelBlockPos == null && (distToTarget > 6.25D || !hasLineOfSightToBlock(targetPos))) {
                 if (distToTarget <= 6.25D && !hasLineOfSightToBlock(targetPos)) {
                     // Руда рядом под землёй, но перекрыта блоком — пробиваем верхний/передний слой!
                     tunnelBlockPos = findBlockingStepToward(targetPos);
@@ -352,8 +353,8 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             golem.setWorking(true);
 
             digProgress++;
-            if (digProgress % 8 == 1) {
-                golem.playSound(ModSounds.GOLEM_WORK_DIG, 0.7F, 0.9F + golem.getRandom().nextFloat() * 0.2F);
+            if (digProgress % 14 == 1) {
+                golem.playSound(ModSounds.GOLEM_WORK_DIG, 0.32F, 0.9F + golem.getRandom().nextFloat() * 0.2F);
                 if (golem.level() instanceof ServerLevel sl) {
                     sl.sendParticles(ModParticles.GOLEM_SPARK,
                             activeDigPos.getX() + 0.5D, activeDigPos.getY() + 0.5D, activeDigPos.getZ() + 0.5D,
@@ -456,7 +457,7 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 if (scaffold != null && sl.getBlockState(pos).isAir()) {
                     golem.setPos(pos.getX() + 0.5D, pos.getY() + 1.05D, pos.getZ() + 0.5D);
                     sl.setBlock(pos, scaffold, 3);
-                    golem.playSound(ModSounds.GOLEM_STEP, 0.7F, 1.0F);
+                    golem.playSound(ModSounds.GOLEM_STEP, 0.25F, 1.0F);
                 } else {
                     // Запасной мягкий прыжок-подъём к краю ямы
                     golem.getJumpControl().jump();
@@ -547,7 +548,8 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 center = (settings.isFollowOwner() && owner != null) ? owner.blockPosition() : golem.blockPosition();
             }
 
-            int minY = mode == DigMode.TUNNEL ? center.getY() : center.getY() - 4;
+            int depth = settings.getDiggerDepth();
+            int minY = mode == DigMode.TUNNEL ? center.getY() : center.getY() - depth;
             int maxY = mode == DigMode.TUNNEL ? center.getY() + 1 : center.getY() + 3;
 
             // Собираем всех союзных копателей рядом для распределения целей
