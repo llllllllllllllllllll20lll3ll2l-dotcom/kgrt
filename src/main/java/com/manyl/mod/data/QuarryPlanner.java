@@ -100,9 +100,6 @@ public final class QuarryPlanner {
         // На глубине (topY - y) % p == idx лежит сама ступенька / угловая площадка
         if (y <= topY && y >= bottomY && Math.floorMod(topY - y, p) == idx) {
             PerimeterCell cell = perimeter.get(idx);
-            if (cell.corner() || idx == 0) {
-                return Blocks.STONE_BRICKS.defaultBlockState();
-            }
             return Blocks.STONE_STAIRS.defaultBlockState()
                     .setValue(StairBlock.FACING, cell.climbDirection())
                     .setValue(StairBlock.HALF, Half.BOTTOM)
