@@ -24,8 +24,7 @@ import java.util.List;
 
 /**
  * Голем-копатель (макс. 4 на игрока).
- * Добывает блоки в настроенном радиусе и режиме (Карьер / Туннель / Только руды),
- * складывает добычу в груз и выгружает в ближайший или привязанный сундук.
+ * Поддерживает режимы (Карьер / Туннель / Только руды) и фильтр !extract <руда/блок>.
  */
 public class DiggerGolemEntity extends BaseGolemEntity {
     public DiggerGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
@@ -85,13 +84,12 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             if (depositChestPos != null) {
                 return golem.hasCargo() && golem.level().getBlockEntity(depositChestPos) instanceof Container;
             }
-            return targetPos != null && isValidDigTarget(targetPos, golem.getOwnerSettings().getDigMode());
+            PlayerGolemSettings s = golem.getOwnerSettings();
+            return targetPos != null && isValidDigTarget(targetPos, s.getDigMode(), s.getExtractFilter());
         }
 
         @Override
-        public void start() {
-            digProgress = 0;
-        }
+        public void start() { digProgress = 0; }
 
         @Override
         public void stop() {
@@ -113,10 +111,8 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 } else {
                     golem.getNavigation().stop();
                     BlockEntity be = golem.level().getBlockEntity(depositChestPos);
-                    if (be instanceof Container container) {
-                        if (golem.depositCargoIntoContainer(container)) {
-                            golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.7F, 1.0F);
-                        }
+                    if (be instanceof Container container && golem.depositCargoIntoContainer(container)) {
+                        golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.7F, 1.0F);
                     }
                     depositChestPos = null;
                 }
@@ -169,6 +165,7 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             PlayerGolemSettings settings = golem.getOwnerSettings();
             int radius = settings.getDiggerRadius();
             DigMode mode = settings.getDigMode();
+            String extractFilter = settings.getExtractFilter();
 
             BlockPos center = golem.getHomePos();
             if (center == null) {
@@ -176,8 +173,8 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 center = (settings.isFollowOwner() && owner != null) ? owner.blockPosition() : golem.blockPosition();
             }
 
-            int minY = mode == DigMode.TUNNEL ? center.getY() : center.getY() - 2;
-            int maxY = mode == DigMode.TUNNEL ? center.getY() + 1 : center.getY() + 2;
+            int minY = mode == DigMode.TUNNEL ? center.getY() : center.getY() - 3;
+            int maxY = mode == DigMode.TUNNEL ? center.getY() + 1 : center.getY() + 3;
 
             BlockPos best = null;
             double bestScore = Double.MAX_VALUE;
@@ -185,9 +182,8 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 for (int dx = -radius; dx <= radius; dx++) {
                     for (int dz = -radius; dz <= radius; dz++) {
                         BlockPos pos = new BlockPos(center.getX() + dx, y, center.getZ() + dz);
-                        if (isValidDigTarget(pos, mode)) {
+                        if (isValidDigTarget(pos, mode, extractFilter)) {
                             double d = pos.distSqr(golem.blockPosition());
-                            // В режиме карьера предпочитаем верхние слои сначала
                             double score = d + (maxY - y) * 8.0D;
                             if (score < bestScore) {
                                 bestScore = score;
@@ -200,7 +196,7 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             return best;
         }
 
-        private boolean isValidDigTarget(BlockPos pos, DigMode mode) {
+        private boolean isValidDigTarget(BlockPos pos, DigMode mode, String extractFilter) {
             BlockState state = golem.level().getBlockState(pos);
             if (state.isAir() || state.liquid()) return false;
             float speed = state.getDestroySpeed(golem.level(), pos);
@@ -210,14 +206,40 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                     || state.is(Blocks.FARMLAND) || state.is(Blocks.TORCH)) {
                 return false;
             }
+            if (pos.equals(golem.blockPosition().below())) return false;
+
+            String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+            String fullId = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+
+            // Если задана команда !extract <цель> — добываем только указанную руду/блок
+            if (extractFilter != null && !extractFilter.isEmpty()) {
+                return matchesExtractFilter(path, fullId, extractFilter);
+            }
 
             if (mode == DigMode.ORES_ONLY) {
-                String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
-                return path.contains("_ore") || state.is(Blocks.ANCIENT_DEBRIS) || state.is(Blocks.RAW_IRON_BLOCK) || state.is(Blocks.RAW_COPPER_BLOCK) || state.is(Blocks.RAW_GOLD_BLOCK);
+                return path.contains("_ore") || state.is(Blocks.ANCIENT_DEBRIS)
+                        || state.is(Blocks.RAW_IRON_BLOCK) || state.is(Blocks.RAW_COPPER_BLOCK) || state.is(Blocks.RAW_GOLD_BLOCK);
             }
-            // Не копаем блок прямо под ногами самого голема
-            if (pos.equals(golem.blockPosition().below())) return false;
             return true;
+        }
+
+        private boolean matchesExtractFilter(String path, String fullId, String filter) {
+            String f = filter.toLowerCase();
+            if (fullId.equalsIgnoreCase(f) || path.equals(f)) return true;
+            return switch (f) {
+                case "iron" -> path.contains("iron_ore") || path.equals("raw_iron_block");
+                case "gold" -> path.contains("gold_ore") || path.equals("raw_gold_block");
+                case "copper" -> path.contains("copper_ore") || path.equals("raw_copper_block");
+                case "coal" -> path.contains("coal_ore");
+                case "diamond" -> path.contains("diamond_ore");
+                case "emerald" -> path.contains("emerald_ore");
+                case "lapis" -> path.contains("lapis_ore");
+                case "redstone" -> path.contains("redstone_ore");
+                case "quartz" -> path.contains("quartz_ore");
+                case "debris", "netherite" -> path.equals("ancient_debris");
+                case "ores" -> path.contains("_ore") || path.equals("ancient_debris");
+                default -> path.contains(f);
+            };
         }
     }
 }

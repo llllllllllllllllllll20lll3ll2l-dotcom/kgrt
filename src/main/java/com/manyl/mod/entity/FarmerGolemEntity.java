@@ -4,6 +4,7 @@ import com.manyl.mod.entity.ai.FollowOwnerGoal;
 import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EntityType;
@@ -23,7 +24,7 @@ import java.util.List;
 
 /**
  * Голем-фермер (макс. 2 на игрока).
- * Собирает созревший урожай, автоматически досаживает семена и складывает урожай в сундук.
+ * Поддерживает фильтр культур через команду !crop <культура|all>.
  */
 public class FarmerGolemEntity extends BaseGolemEntity {
     public FarmerGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
@@ -83,13 +84,11 @@ public class FarmerGolemEntity extends BaseGolemEntity {
             if (depositChestPos != null) {
                 return golem.hasCargo() && golem.level().getBlockEntity(depositChestPos) instanceof Container;
             }
-            return targetCrop != null && isMature(golem.level().getBlockState(targetCrop));
+            return targetCrop != null && isMatureAndAllowed(golem.level().getBlockState(targetCrop));
         }
 
         @Override
-        public void start() {
-            workTicks = 0;
-        }
+        public void start() { workTicks = 0; }
 
         @Override
         public void stop() {
@@ -175,7 +174,7 @@ public class FarmerGolemEntity extends BaseGolemEntity {
             BlockPos best = null;
             double bestDist = Double.MAX_VALUE;
             for (BlockPos pos : BlockPos.betweenClosed(center.offset(-8, -2, -8), center.offset(8, 2, 8))) {
-                if (isMature(golem.level().getBlockState(pos))) {
+                if (isMatureAndAllowed(golem.level().getBlockState(pos))) {
                     double d = pos.distSqr(golem.blockPosition());
                     if (d < bestDist) {
                         bestDist = d;
@@ -186,14 +185,19 @@ public class FarmerGolemEntity extends BaseGolemEntity {
             return best;
         }
 
-        private boolean isMature(BlockState state) {
+        private boolean isMatureAndAllowed(BlockState state) {
+            boolean mature = false;
             if (state.getBlock() instanceof CropBlock crop) {
-                return crop.isMaxAge(state);
+                mature = crop.isMaxAge(state);
+            } else if (state.getBlock() instanceof NetherWartBlock) {
+                mature = state.getValue(NetherWartBlock.AGE) >= 3;
             }
-            if (state.getBlock() instanceof NetherWartBlock) {
-                return state.getValue(NetherWartBlock.AGE) >= 3;
-            }
-            return false;
+            if (!mature) return false;
+
+            String cropFilter = golem.getOwnerSettings().getCropFilter();
+            if (cropFilter == null || cropFilter.isEmpty()) return true;
+            String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+            return path.contains(cropFilter.toLowerCase());
         }
     }
 }

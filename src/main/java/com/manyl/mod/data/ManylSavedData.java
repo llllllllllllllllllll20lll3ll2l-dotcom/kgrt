@@ -3,6 +3,7 @@ package com.manyl.mod.data;
 import com.manyl.mod.entity.BaseGolemEntity;
 import com.manyl.mod.entity.DigMode;
 import com.manyl.mod.entity.GolemRole;
+import com.manyl.mod.entity.WarriorGolemEntity;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
@@ -100,7 +101,19 @@ public class ManylSavedData extends SavedData {
     public static void applySettingsToActiveGolems(ServerPlayer player, PlayerGolemSettings settings) {
         MinecraftServer server = ((ServerLevel) player.level()).getServer();
         for (BaseGolemEntity golem : getPlayerGolems(server, player.getUUID())) {
-            golem.setSitting(!settings.isFollowOwner());
+            if (golem instanceof WarriorGolemEntity) {
+                String guard = settings.getGuardMode();
+                if ("stay".equals(guard)) {
+                    golem.setSitting(true);
+                } else {
+                    golem.setSitting(false);
+                    if ("patrol".equals(guard) && golem.getHomePos() == null) {
+                        golem.setHomePos(player.blockPosition());
+                    }
+                }
+            } else if (settings.isFollowOwner()) {
+                golem.setSitting(false);
+            }
             if (settings.getHomePos() != null) {
                 golem.setHomePos(settings.getHomePos());
             }

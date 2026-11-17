@@ -1,5 +1,6 @@
 package com.manyl.mod;
 
+import com.manyl.mod.network.ChatCommandHandler;
 import com.manyl.mod.network.ModNetworking;
 import com.manyl.mod.registry.*;
 import net.fabricmc.api.ModInitializer;
@@ -16,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Главный класс инициализации мода Manyl_mod (сервер + общая логика).
+ * Главный класс инициализации мода Manyl_mod v1.1 (сервер + общая логика).
  */
 public class ManylMod implements ModInitializer {
     public static final String MOD_ID = "manyl_mod";
@@ -27,7 +28,7 @@ public class ManylMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        LOGGER.info("Инициализация мода Manyl_mod...");
+        LOGGER.info("Инициализация мода Manyl_mod 1.1...");
 
         ModSounds.init();
         ModParticles.init();
@@ -37,6 +38,7 @@ public class ManylMod implements ModInitializer {
 
         ModNetworking.registerPayloads();
         ModNetworking.registerServerReceivers();
+        ChatCommandHandler.init();
 
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, MAIN_TAB, FabricItemGroup.builder()
                 .title(Component.translatable("itemGroup.manyl_mod.main"))
@@ -44,7 +46,7 @@ public class ManylMod implements ModInitializer {
                 .displayItems((ctx, entries) -> entries.accept(ModItems.SUMMON_STAFF))
                 .build());
 
-        LOGGER.info("Manyl_mod успешно загружен!");
+        LOGGER.info("Manyl_mod 1.1 успешно загружен!");
     }
 
     public static Identifier id(String path) {

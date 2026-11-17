@@ -19,8 +19,7 @@ import java.util.List;
 
 /**
  * Голем-сортировщик (макс. 6 на игрока).
- * Подбирает предметы с земли (или берёт из привязанного сундука) и раскладывает
- * по сундукам, где уже хранятся совпадающие типы предметов.
+ * Поддерживает режимы !sort <all|ground|chests>.
  */
 public class SorterGolemEntity extends BaseGolemEntity {
     public SorterGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
@@ -59,7 +58,11 @@ public class SorterGolemEntity extends BaseGolemEntity {
             }
             scanCooldown = 12;
 
-            if (!golem.isCargoFull()) {
+            String sortMode = golem.getOwnerSettings().getSortMode();
+            boolean allowGround = !"chests".equals(sortMode);
+            boolean allowChests = !"ground".equals(sortMode);
+
+            if (allowGround && !golem.isCargoFull()) {
                 targetItem = findNearestItemEntity();
                 if (targetItem != null) return true;
             }
@@ -67,12 +70,13 @@ public class SorterGolemEntity extends BaseGolemEntity {
                 targetChest = findBestDestinationChest();
                 return targetChest != null;
             }
-            // Если привязан входной сундук homePos — пробуем взять из него предмет и рассортировать в другой сундук
-            BlockPos home = golem.getHomePos();
-            if (home != null && golem.level().getBlockEntity(home) instanceof Container homeContainer) {
-                if (hasAnyNonEmptyStack(homeContainer) && findNonHomeContainer() != null) {
-                    targetChest = home;
-                    return true;
+            if (allowChests) {
+                BlockPos home = golem.getHomePos();
+                if (home != null && golem.level().getBlockEntity(home) instanceof Container homeContainer) {
+                    if (hasAnyNonEmptyStack(homeContainer) && findNonHomeContainer() != null) {
+                        targetChest = home;
+                        return true;
+                    }
                 }
             }
             return false;
@@ -81,9 +85,7 @@ public class SorterGolemEntity extends BaseGolemEntity {
         @Override
         public boolean canContinueToUse() {
             if (golem.isSitting() || golem.getHunger() <= 5) return false;
-            if (targetItem != null) {
-                return targetItem.isAlive() && !golem.isCargoFull();
-            }
+            if (targetItem != null) return targetItem.isAlive() && !golem.isCargoFull();
             return targetChest != null && golem.level().getBlockEntity(targetChest) instanceof Container;
         }
 
@@ -98,21 +100,15 @@ public class SorterGolemEntity extends BaseGolemEntity {
         @Override
         public void tick() {
             if (targetItem != null) {
-                if (!targetItem.isAlive()) {
-                    targetItem = null;
-                    return;
-                }
+                if (!targetItem.isAlive()) { targetItem = null; return; }
                 double d = golem.distanceToSqr(targetItem);
                 if (d > 2.5D) {
                     golem.getNavigation().moveTo(targetItem, 1.15D);
                 } else {
                     ItemStack stack = targetItem.getItem();
                     ItemStack leftover = golem.addToCargo(stack);
-                    if (leftover.isEmpty()) {
-                        targetItem.discard();
-                    } else {
-                        targetItem.setItem(leftover);
-                    }
+                    if (leftover.isEmpty()) targetItem.discard();
+                    else targetItem.setItem(leftover);
                     golem.playSound(ModSounds.GOLEM_WORK_SORT, 0.65F, 1.25F);
                     targetItem = null;
                 }
@@ -129,9 +125,7 @@ public class SorterGolemEntity extends BaseGolemEntity {
                     BlockEntity be = golem.level().getBlockEntity(targetChest);
                     if (be instanceof Container c) {
                         if (golem.hasCargo()) {
-                            if (golem.depositCargoIntoContainer(c)) {
-                                fx(targetChest);
-                            }
+                            if (golem.depositCargoIntoContainer(c)) fx(targetChest);
                         } else if (targetChest.equals(golem.getHomePos())) {
                             pullFromInputChest(c);
                             fx(targetChest);
@@ -173,10 +167,7 @@ public class SorterGolemEntity extends BaseGolemEntity {
             double bestD = Double.MAX_VALUE;
             for (ItemEntity item : items) {
                 double d = golem.distanceToSqr(item);
-                if (d < bestD) {
-                    bestD = d;
-                    best = item;
-                }
+                if (d < bestD) { bestD = d; best = item; }
             }
             return best;
         }
@@ -194,15 +185,9 @@ public class SorterGolemEntity extends BaseGolemEntity {
                 double d = pos.distSqr(origin);
 
                 if (containsMatchingCargo(c) && hasSpaceForCargo(c)) {
-                    if (d < matchingDist) {
-                        matchingDist = d;
-                        matching = pos.immutable();
-                    }
+                    if (d < matchingDist) { matchingDist = d; matching = pos.immutable(); }
                 } else if (hasSpaceForCargo(c) && !pos.equals(golem.getHomePos())) {
-                    if (d < fallbackDist) {
-                        fallbackDist = d;
-                        fallback = pos.immutable();
-                    }
+                    if (d < fallbackDist) { fallbackDist = d; fallback = pos.immutable(); }
                 }
             }
             if (matching != null) return matching;
@@ -233,9 +218,7 @@ public class SorterGolemEntity extends BaseGolemEntity {
                 if (cargo.isEmpty()) continue;
                 for (int j = 0; j < c.getContainerSize(); j++) {
                     ItemStack dest = c.getItem(j);
-                    if (!dest.isEmpty() && ItemStack.isSameItem(dest, cargo)) {
-                        return true;
-                    }
+                    if (!dest.isEmpty() && ItemStack.isSameItem(dest, cargo)) return true;
                 }
             }
             return false;

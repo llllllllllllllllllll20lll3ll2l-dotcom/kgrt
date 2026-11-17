@@ -49,17 +49,11 @@ import java.util.UUID;
 
 /**
  * Базовый класс всех прислужников-големов Manyl_mod (~0.8 блока высотой).
- * Реализует:
- * - Систему голода (0..100), авто-поедание еды из слота 0 и смерть от голода;
- * - Встроенный инвентарь на 7 слотов (0: слот для еды, 1..6: груз);
- * - Привязку к владельцу, домашнюю точку/сундук и режим ожидания;
- * - Состояния ванильных ключевых анимаций (idle, walk, work, attack, carry, sit, summon, eat);
- * - Кастомные звуки и частицы.
  */
 public abstract class BaseGolemEntity extends PathfinderMob {
     public static final int MAX_HUNGER = 100;
     public static final int FOOD_SLOT = 0;
-    public static final int INVENTORY_SIZE = 7; // 1 слот еды + 6 слотов груза
+    public static final int INVENTORY_SIZE = 7; // 1 слот еды + 6 слотов груза/снаряжения
 
     private static final EntityDataAccessor<Integer> DATA_HUNGER =
             SynchedEntityData.defineId(BaseGolemEntity.class, EntityDataSerializers.INT);
@@ -75,8 +69,9 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             SynchedEntityData.defineId(BaseGolemEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ATTACK_TICKS =
             SynchedEntityData.defineId(BaseGolemEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> DATA_DISPLAY_ITEM =
+            SynchedEntityData.defineId(BaseGolemEntity.class, EntityDataSerializers.ITEM_STACK);
 
-    // Клиентские состояния анимаций (используются в GolemModel.setupAnim)
     public final AnimationState idleAnimationState = new AnimationState();
     public final AnimationState workAnimationState = new AnimationState();
     public final AnimationState attackAnimationState = new AnimationState();
@@ -85,7 +80,6 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     public final AnimationState summonAnimationState = new AnimationState();
     public final AnimationState eatAnimationState = new AnimationState();
 
-    // Встроенный инвентарь голема
     protected final SimpleContainer inventory = new SimpleContainer(INVENTORY_SIZE);
 
     private UUID ownerUuid;
@@ -96,10 +90,17 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
     protected BaseGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
-        this.inventory.addListener(container -> updateCarryingFlag());
+        this.inventory.addListener(container -> {
+            updateCarryingFlag();
+            onInventoryChanged();
+        });
     }
 
     public abstract GolemRole getRole();
+
+    protected void onInventoryChanged() {
+        // Переопределяется подклассами (например, WarriorGolemEntity для экипировки оружия)
+    }
 
     public static AttributeSupplier.Builder createGolemAttributes(GolemRole role) {
         return createMobAttributes()
@@ -120,6 +121,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         builder.define(DATA_SUMMON_TICKS, 24);
         builder.define(DATA_EAT_TICKS, 0);
         builder.define(DATA_ATTACK_TICKS, 0);
+        builder.define(DATA_DISPLAY_ITEM, ItemStack.EMPTY);
     }
 
     @Override
@@ -131,7 +133,6 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
     @Override
     public boolean removeWhenFarAway(double distanceToClosestPlayer) {
-        // Прислужники не исчезают при удалении игрока — живут, пока не погибнут от голода или мобов
         return false;
     }
 
@@ -144,12 +145,10 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             return;
         }
 
-        // Декремент серверных таймеров анимаций
         if (getSummonTicks() > 0) setSummonTicks(getSummonTicks() - 1);
         if (getEatTicks() > 0) setEatTicks(getEatTicks() - 1);
         if (getAttackTicks() > 0) setAttackTicks(getAttackTicks() - 1);
 
-        // Механика голода: расход каждые ~12 секунд (240 тиков), при активной работе быстрее
         int drainThreshold = isWorking() ? 160 : 260;
         hungerTickCounter++;
         if (hungerTickCounter >= drainThreshold) {
@@ -160,12 +159,10 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             }
         }
 
-        // Авто-поедание из слота еды при сытости <= 55
         if (getHunger() <= 55 && tickCount % 20 == 0) {
             tryEatFromInventory();
         }
 
-        // Предупреждение о сильном голоде
         if (getHunger() > 0 && getHunger() <= 20) {
             if (hungrySoundCooldown <= 0) {
                 playSound(ModSounds.GOLEM_HUNGRY, 0.7F, 1.0F);
@@ -179,7 +176,6 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             }
         }
 
-        // Голодная смерть при 0 сытости
         if (getHunger() <= 0) {
             starveTickCounter++;
             if (starveTickCounter >= 40) {
@@ -196,46 +192,25 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     private void updateClientAnimations() {
         idleAnimationState.startIfStopped(tickCount);
 
-        if (getSummonTicks() > 0) {
-            summonAnimationState.startIfStopped(tickCount);
-        } else {
-            summonAnimationState.stop();
-        }
+        if (getSummonTicks() > 0) summonAnimationState.startIfStopped(tickCount);
+        else summonAnimationState.stop();
 
-        if (getEatTicks() > 0) {
-            eatAnimationState.startIfStopped(tickCount);
-        } else {
-            eatAnimationState.stop();
-        }
+        if (getEatTicks() > 0) eatAnimationState.startIfStopped(tickCount);
+        else eatAnimationState.stop();
 
-        if (getAttackTicks() > 0) {
-            attackAnimationState.startIfStopped(tickCount);
-        } else {
-            attackAnimationState.stop();
-        }
+        if (getAttackTicks() > 0) attackAnimationState.startIfStopped(tickCount);
+        else attackAnimationState.stop();
 
-        if (isWorking()) {
-            workAnimationState.startIfStopped(tickCount);
-        } else {
-            workAnimationState.stop();
-        }
+        if (isWorking()) workAnimationState.startIfStopped(tickCount);
+        else workAnimationState.stop();
 
-        if (isCarrying() && !isWorking() && getAttackTicks() <= 0) {
-            carryAnimationState.startIfStopped(tickCount);
-        } else {
-            carryAnimationState.stop();
-        }
+        if (isCarrying() && !isWorking() && getAttackTicks() <= 0) carryAnimationState.startIfStopped(tickCount);
+        else carryAnimationState.stop();
 
-        if (isSitting()) {
-            sitAnimationState.startIfStopped(tickCount);
-        } else {
-            sitAnimationState.stop();
-        }
+        if (isSitting()) sitAnimationState.startIfStopped(tickCount);
+        else sitAnimationState.stop();
     }
 
-    /**
-     * Пытается съесть одну единицу еды из FOOD_SLOT (слот 0).
-     */
     public boolean tryEatFromInventory() {
         ItemStack stack = inventory.getItem(FOOD_SLOT);
         if (stack.isEmpty()) return false;
@@ -258,14 +233,10 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         return true;
     }
 
-    /**
-     * Добавляет предмет в грузовые слоты (1..6) голема.
-     */
     public ItemStack addToCargo(ItemStack stack) {
         if (stack.isEmpty()) return ItemStack.EMPTY;
         ItemStack remaining = stack.copy();
 
-        // Сначала докладываем в существующие стопки (слоты 1..6)
         for (int i = 1; i < INVENTORY_SIZE; i++) {
             ItemStack slot = inventory.getItem(i);
             if (!slot.isEmpty() && ItemStack.isSameItemSameComponents(slot, remaining)) {
@@ -279,7 +250,6 @@ public abstract class BaseGolemEntity extends PathfinderMob {
                 }
             }
         }
-        // Затем в пустые грузовые слоты
         for (int i = 1; i < INVENTORY_SIZE; i++) {
             if (inventory.getItem(i).isEmpty()) {
                 inventory.setItem(i, remaining.copy());
@@ -311,16 +281,12 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         }
     }
 
-    /**
-     * Складывает груз голема в ближайший контейнер (или привязанный homePos).
-     */
     public boolean depositCargoIntoContainer(Container target) {
         boolean movedAny = false;
         for (int i = 1; i < INVENTORY_SIZE; i++) {
             ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
 
-            // Попытка объединить с существующими предметами
             for (int j = 0; j < target.getContainerSize(); j++) {
                 ItemStack dest = target.getItem(j);
                 if (!dest.isEmpty() && ItemStack.isSameItemSameComponents(dest, stack)) {
@@ -334,7 +300,6 @@ public abstract class BaseGolemEntity extends PathfinderMob {
                     }
                 }
             }
-            // Попытка в пустой слот
             if (!stack.isEmpty()) {
                 for (int j = 0; j < target.getContainerSize(); j++) {
                     if (target.getItem(j).isEmpty() && target.canPlaceItem(j, stack)) {
@@ -356,9 +321,6 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         return movedAny;
     }
 
-    /**
-     * Ищет ближайший контейнер (сначала привязанный homePos, затем в радиусе 8 блоков).
-     */
     public BlockPos findNearestContainerPos(int radius) {
         if (homePos != null && level().getBlockEntity(homePos) instanceof Container) {
             return homePos;
@@ -386,13 +348,11 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             return InteractionResult.PASS;
         }
         if (!level().isClientSide()) {
-            // Если игрок присел — переключаем режим ожидания (Стоять / Следовать)
             if (player.isShiftKeyDown()) {
                 setSitting(!isSitting());
                 playSound(ModSounds.GOLEM_STEP, 0.8F, isSitting() ? 0.8F : 1.2F);
                 return InteractionResult.SUCCESS;
             }
-            // Если в руке еда и голем голоден — кормим напрямую
             FoodProperties food = held.get(DataComponents.FOOD);
             if (food != null && getHunger() < MAX_HUNGER) {
                 int restore = Math.max(12, food.nutrition() * 8);
@@ -409,7 +369,6 @@ public abstract class BaseGolemEntity extends PathfinderMob {
                 }
                 return InteractionResult.SUCCESS;
             }
-            // Открываем встроенный инвентарь голема (слот еды + 6 слотов груза)
             openGolemMenu(player);
         }
         return InteractionResult.SUCCESS;
@@ -470,38 +429,26 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         return level().getPlayerByUUID(ownerUuid);
     }
 
-    // --- Звуки ---
     @Override
-    protected SoundEvent getHurtSound(DamageSource source) {
-        return ModSounds.GOLEM_HURT;
-    }
+    protected SoundEvent getHurtSound(DamageSource source) { return ModSounds.GOLEM_HURT; }
 
     @Override
-    protected SoundEvent getDeathSound() {
-        return ModSounds.GOLEM_DEATH;
-    }
+    protected SoundEvent getDeathSound() { return ModSounds.GOLEM_DEATH; }
 
     @Override
     protected void playStepSound(BlockPos pos, BlockState state) {
         playSound(ModSounds.GOLEM_STEP, 0.35F, 0.9F + random.nextFloat() * 0.2F);
     }
 
-    // --- Сериализация (1.21.11 ValueOutput / ValueInput) ---
     @Override
     protected void addAdditionalSaveData(ValueOutput out) {
         super.addAdditionalSaveData(out);
         out.putInt("Hunger", getHunger());
         out.putBoolean("Sitting", isSitting());
-        if (ownerUuid != null) {
-            out.putString("Owner", ownerUuid.toString());
-        }
-        if (homePos != null) {
-            out.store("HomePos", BlockPos.CODEC, homePos);
-        }
+        if (ownerUuid != null) out.putString("Owner", ownerUuid.toString());
+        if (homePos != null) out.store("HomePos", BlockPos.CODEC, homePos);
         List<ItemStack> items = new ArrayList<>(INVENTORY_SIZE);
-        for (int i = 0; i < INVENTORY_SIZE; i++) {
-            items.add(inventory.getItem(i));
-        }
+        for (int i = 0; i < INVENTORY_SIZE; i++) items.add(inventory.getItem(i));
         out.store("Inventory", ItemStack.OPTIONAL_CODEC.listOf(), items);
     }
 
@@ -511,9 +458,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         setHunger(in.getIntOr("Hunger", MAX_HUNGER));
         setSitting(in.getBooleanOr("Sitting", false));
         in.getString("Owner").ifPresent(s -> {
-            try {
-                this.ownerUuid = UUID.fromString(s);
-            } catch (IllegalArgumentException ignored) {}
+            try { this.ownerUuid = UUID.fromString(s); } catch (IllegalArgumentException ignored) {}
         });
         this.homePos = in.read("HomePos", BlockPos.CODEC).orElse(null);
         in.read("Inventory", ItemStack.OPTIONAL_CODEC.listOf()).ifPresent(list -> {
@@ -521,10 +466,10 @@ public abstract class BaseGolemEntity extends PathfinderMob {
                 inventory.setItem(i, list.get(i));
             }
             updateCarryingFlag();
+            onInventoryChanged();
         });
     }
 
-    // --- Геттеры / Сеттеры ---
     public SimpleContainer getGolemInventory() { return inventory; }
     public UUID getOwnerUuid() { return ownerUuid; }
     public void setOwnerUuid(UUID ownerUuid) { this.ownerUuid = ownerUuid; }
@@ -551,4 +496,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
     public int getAttackTicks() { return entityData.get(DATA_ATTACK_TICKS); }
     public void setAttackTicks(int ticks) { entityData.set(DATA_ATTACK_TICKS, Math.max(0, ticks)); }
+
+    public ItemStack getDisplayItem() { return entityData.get(DATA_DISPLAY_ITEM); }
+    public void setDisplayItem(ItemStack stack) { entityData.set(DATA_DISPLAY_ITEM, stack == null ? ItemStack.EMPTY : stack.copy()); }
 }
