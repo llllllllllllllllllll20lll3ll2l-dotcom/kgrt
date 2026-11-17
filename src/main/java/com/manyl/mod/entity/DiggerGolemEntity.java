@@ -10,7 +10,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.Container;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
@@ -20,9 +23,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.pathfinder.Path;
+import net.minecraft.world.level.pathfinder.PathType;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -30,21 +36,34 @@ import java.util.List;
 
 /**
  * Голем-копатель (макс. 4 на игрока).
- * Поддерживает:
- * - обычный режим (вокруг игрока/точки, с прокопкой к подземным рудам и выходом наверх);
- * - режим размеченного карьера (по 2 точкам посоха карьера) со строительством спиральной каменной лестницы по кругу;
- * - автоматический сброс лишних второстепенных стройблоков (оставляет 1 стак, руду никогда не выкидывает).
+ * Умеет:
+ * - копать размеченный карьер послойно со строительством ровной спиральной каменной лестницы по кругу;
+ * - закрывать и осушать лаву, встреченную при копке или в карьере;
+ * - при выходе на пещеру аккуратно спускаться и застраивать камнем края зоны выделения;
+ * - распределять цели между союзными копателями и оставлять максимум 1 стак стройблоков при заполнении (руду не выбрасывает).
  */
 public class DiggerGolemEntity extends BaseGolemEntity {
     private BlockPos reservedTargetPos;
 
     public DiggerGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
+        this.setPathfindingMalus(PathType.LAVA, 16.0F);
+        this.setPathfindingMalus(PathType.DANGER_FIRE, 8.0F);
     }
 
     @Override
     public GolemRole getRole() {
         return GolemRole.DIGGER;
+    }
+
+    @Override
+    public boolean fireImmune() {
+        return true; // Жаропрочный корпус шахтёра: не сгорает при закрытии и осушении лавы
+    }
+
+    @Override
+    public boolean causeFallDamage(double fallDistance, float damageMultiplier, DamageSource source) {
+        return false; // Аккуратный спуск в пещерах и шахтах без урона от падения
     }
 
     public BlockPos getReservedTargetPos() {
@@ -160,9 +179,6 @@ public class DiggerGolemEntity extends BaseGolemEntity {
         return null;
     }
 
-    /**
-     * Списывает 1 каменный/строительный блок для постройки лестницы (если есть в инвентаре).
-     */
     private void consumeOneStoneIfPresent() {
         for (int i = 1; i < INVENTORY_SIZE; i++) {
             ItemStack s = inventory.getItem(i);
@@ -185,8 +201,9 @@ public class DiggerGolemEntity extends BaseGolemEntity {
     private static class DiggerWorkGoal extends Goal {
         private final DiggerGolemEntity golem;
         private BlockPos targetPos;
-        private BlockPos stairBuildPos;
-        private BlockState stairBuildState;
+        private BlockPos buildPos;
+        private BlockState buildState;
+        private boolean buildIsLavaFix;
         private BlockPos tunnelBlockPos;
         private BlockPos entryPos;
         private BlockPos depositChestPos;
@@ -208,7 +225,12 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 scanCooldown--;
                 return false;
             }
-            scanCooldown = 10;
+            scanCooldown = 8;
+
+            // Приоритет: если рядом с копателем открытая лава — закрываем/сушим её сразу
+            if (findNearbyLavaFix(golem.blockPosition(), 3)) {
+                return true;
+            }
 
             if (golem.isCargoFull()) {
                 golem.pruneExcessBuildingBlocks();
@@ -266,11 +288,14 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             if (depositChestPos != null) {
                 return golem.hasCargo() && golem.level().getBlockEntity(depositChestPos) instanceof Container;
             }
-            if (stairBuildPos != null && stairBuildState != null) {
-                BlockState cur = golem.level().getBlockState(stairBuildPos);
-                if (!cur.is(stairBuildState.getBlock())) return true;
-                return stairBuildState.hasProperty(net.minecraft.world.level.block.StairBlock.FACING)
-                        && cur.getValue(net.minecraft.world.level.block.StairBlock.FACING) != stairBuildState.getValue(net.minecraft.world.level.block.StairBlock.FACING);
+            if (buildPos != null && buildState != null) {
+                BlockState cur = golem.level().getBlockState(buildPos);
+                if (buildIsLavaFix) {
+                    return cur.getFluidState().is(FluidTags.LAVA);
+                }
+                if (!cur.is(buildState.getBlock())) return true;
+                return buildState.hasProperty(StairBlock.FACING)
+                        && cur.getValue(StairBlock.FACING) != buildState.getValue(StairBlock.FACING);
             }
             PlayerGolemSettings s = golem.getOwnerSettings();
             if (s.isQuarryActive() && s.hasQuarryBounds()) {
@@ -290,8 +315,9 @@ public class DiggerGolemEntity extends BaseGolemEntity {
         @Override
         public void stop() {
             targetPos = null;
-            stairBuildPos = null;
-            stairBuildState = null;
+            buildPos = null;
+            buildState = null;
+            buildIsLavaFix = false;
             tunnelBlockPos = null;
             depositChestPos = null;
             escaping = false;
@@ -330,13 +356,19 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 return;
             }
 
-            // Постройка каменной ступеньки / опоры спиральной лестницы карьера
-            if (stairBuildPos != null && stairBuildState != null) {
-                tickBuildStair();
+            // Постройка стенки пещеры, ступеньки лестницы или закрытие/осушение лавы
+            if (buildPos != null && buildState != null) {
+                tickBuildOrSeal();
                 return;
             }
 
             if (targetPos == null) return;
+
+            // Перед копкой блока проверяем, нет ли за ним/рядом с ним лавы — если есть, сначала закрываем её!
+            if (findNearbyLavaFix(targetPos, 1)) {
+                targetPos = null;
+                return;
+            }
 
             BlockPos activeDigPos = (tunnelBlockPos != null && isBreakableForTunnel(tunnelBlockPos)) ? tunnelBlockPos : targetPos;
             double distToTarget = golem.position().distanceToSqr(
@@ -375,8 +407,18 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                     activeDigPos.getX() + 0.5D, activeDigPos.getY() + 0.5D, activeDigPos.getZ() + 0.5D);
             if (activeDistSq > 7.5D) {
                 golem.setWorking(false);
-                golem.getNavigation().moveTo(activeDigPos.getX() + 0.5D, activeDigPos.getY(), activeDigPos.getZ() + 0.5D, 1.08D);
-                return;
+                // В пещере или карьере двигаемся осторожно — не прыгаем в глубокий обрыв > 4 блоков
+                if (!moveSafelyToward(activeDigPos)) {
+                    stuckTicks++;
+                    if (stuckTicks >= 20 && activeDistSq <= 25.0D) {
+                        // Если цель на краю обрыва/пещеры в пределах 5 блоков — дотягиваемся аккуратно с уступа
+                        stuckTicks = 0;
+                    } else {
+                        return;
+                    }
+                } else {
+                    return;
+                }
             }
 
             golem.getNavigation().stop();
@@ -410,6 +452,13 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 golem.pruneExcessBuildingBlocks();
                 golem.setWorking(false);
 
+                // Если после выкопки открылась лава в соседнем блоке — сразу переключаемся на её закрытие/осушение
+                if (findNearbyLavaFix(activeDigPos, 2)) {
+                    targetPos = null;
+                    tunnelBlockPos = null;
+                    return;
+                }
+
                 if (activeDigPos.equals(tunnelBlockPos)) {
                     tunnelBlockPos = null;
                     golem.getNavigation().moveTo(targetPos.getX() + 0.5D, targetPos.getY(), targetPos.getZ() + 0.5D, 1.05D);
@@ -428,57 +477,194 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             }
         }
 
-        private void tickBuildStair() {
+        private void tickBuildOrSeal() {
             double distSq = golem.position().distanceToSqr(
-                    stairBuildPos.getX() + 0.5D, stairBuildPos.getY() + 0.5D, stairBuildPos.getZ() + 0.5D);
+                    buildPos.getX() + 0.5D, buildPos.getY() + 0.5D, buildPos.getZ() + 0.5D);
+            double maxBuildRange = buildIsLavaFix ? 16.0D : 20.25D;
+
             if (distSq > 9.0D) {
                 golem.setWorking(false);
-                golem.getNavigation().moveTo(stairBuildPos.getX() + 0.5D, stairBuildPos.getY() + 1.0D, stairBuildPos.getZ() + 0.5D, 1.08D);
+                moveSafelyToward(buildPos.above());
                 stuckTicks++;
-                if (stuckTicks < 24) return;
-                // Если к точке лестницы подойти сложно (например, чуть в стороне на краю) — ставим с расстояния до 4.5 блоков
-                if (distSq > 20.25D) return;
+                if (stuckTicks < 16 || distSq > maxBuildRange) return;
             }
 
             golem.getNavigation().stop();
-            golem.getLookControl().setLookAt(stairBuildPos.getX() + 0.5D, stairBuildPos.getY() + 0.5D, stairBuildPos.getZ() + 0.5D);
+            golem.getLookControl().setLookAt(buildPos.getX() + 0.5D, buildPos.getY() + 0.5D, buildPos.getZ() + 0.5D);
             golem.setWorking(true);
 
             digProgress++;
-            if (digProgress >= 8 && golem.level() instanceof ServerLevel sl) {
+            int req = buildIsLavaFix ? 4 : 6;
+            if (digProgress >= req && golem.level() instanceof ServerLevel sl) {
                 digProgress = 0;
                 stuckTicks = 0;
-                BlockState current = sl.getBlockState(stairBuildPos);
-                if (!current.isAir() && !current.liquid() && current.getCollisionShape(sl, stairBuildPos).isEmpty() == false) {
-                    // На этом месте стоял другой твёрдый блок (земля/руда) — сначала выкопаем его в инвентарь
-                    List<ItemStack> drops = Block.getDrops(current, sl, stairBuildPos, null, golem, ItemStack.EMPTY);
-                    sl.destroyBlock(stairBuildPos, false, golem);
-                    for (ItemStack d : drops) {
-                        ItemStack left = golem.addToCargo(d);
-                        if (!left.isEmpty()) Block.popResource(sl, stairBuildPos, left);
+                BlockState current = sl.getBlockState(buildPos);
+
+                if (buildIsLavaFix) {
+                    // Закрываем источник/край лавы камнем или осушаем текучую лаву в воздух
+                    sl.setBlock(buildPos, buildState, 3);
+                    if (buildState.is(Blocks.STONE)) {
+                        golem.consumeOneStoneIfPresent();
                     }
+                    // Заодно осушаем соседние капли текучей лавы в радиусе 1 блока, чтобы не оставалось остатков
+                    for (BlockPos near : BlockPos.betweenClosed(buildPos.offset(-1, -1, -1), buildPos.offset(1, 1, 1))) {
+                        FluidState fs = sl.getFluidState(near);
+                        if (fs.is(FluidTags.LAVA) && !fs.isSource()) {
+                            sl.setBlock(near, Blocks.AIR.defaultBlockState(), 3);
+                        }
+                    }
+                    golem.playSound(SoundEvents.FIRE_EXTINGUISH, 0.28F, 1.1F + golem.getRandom().nextFloat() * 0.2F);
+                    sl.sendParticles(ModParticles.GOLEM_SPARK,
+                            buildPos.getX() + 0.5D, buildPos.getY() + 0.7D, buildPos.getZ() + 0.5D,
+                            4, 0.25D, 0.25D, 0.25D, 0.03D);
+                } else {
+                    if (!current.isAir() && !current.liquid() && !current.getCollisionShape(sl, buildPos).isEmpty()) {
+                        List<ItemStack> drops = Block.getDrops(current, sl, buildPos, null, golem, ItemStack.EMPTY);
+                        sl.destroyBlock(buildPos, false, golem);
+                        for (ItemStack d : drops) {
+                            ItemStack left = golem.addToCargo(d);
+                            if (!left.isEmpty()) Block.popResource(sl, buildPos, left);
+                        }
+                    }
+                    if (golem.blockPosition().equals(buildPos)) {
+                        golem.setPos(golem.getX(), buildPos.getY() + 1.05D, golem.getZ());
+                    }
+                    golem.consumeOneStoneIfPresent();
+                    sl.setBlock(buildPos, buildState, 3);
+                    golem.playSound(ModSounds.GOLEM_STEP, 0.25F, 0.95F);
+                    sl.sendParticles(ModParticles.GOLEM_SPARK,
+                            buildPos.getX() + 0.5D, buildPos.getY() + 0.6D, buildPos.getZ() + 0.5D,
+                            3, 0.2D, 0.2D, 0.2D, 0.02D);
                 }
-                // Если голем стоял ровно внутри этой клетки — чуть приподнимем, чтобы не застрял в ступеньке
-                if (golem.blockPosition().equals(stairBuildPos)) {
-                    golem.setPos(golem.getX(), stairBuildPos.getY() + 1.05D, golem.getZ());
-                }
-                golem.consumeOneStoneIfPresent();
-                sl.setBlock(stairBuildPos, stairBuildState, 3);
-                golem.playSound(ModSounds.GOLEM_STEP, 0.30F, 0.95F);
-                sl.sendParticles(ModParticles.GOLEM_SPARK,
-                        stairBuildPos.getX() + 0.5D, stairBuildPos.getY() + 0.6D, stairBuildPos.getZ() + 0.5D,
-                        3, 0.2D, 0.2D, 0.2D, 0.02D);
+
                 golem.setWorking(false);
-                stairBuildPos = null;
-                stairBuildState = null;
+                buildPos = null;
+                buildState = null;
+                buildIsLavaFix = false;
                 golem.setReservedTargetPos(null);
             }
         }
 
         /**
+         * Двигает копателя аккуратно по ступенькам/краю пещеры, избегая слепого прыжка в глубокую пустоту (> 4 блоков).
+         */
+        private boolean moveSafelyToward(BlockPos goalPos) {
+            Path path = golem.getNavigation().createPath(goalPos, 1);
+            if (path != null && path.canReach()) {
+                golem.getNavigation().moveTo(path, 1.08D);
+                return true;
+            }
+            PlayerGolemSettings s = golem.getOwnerSettings();
+            if (s.isQuarryActive() && s.hasQuarryBounds() && s.isQuarryStairs()) {
+                // Если цель глубоко в пещере ниже голема — спускаемся сначала к ближайшей построенной ступеньке карьера
+                BlockPos bestStep = findSafeStairStepToward(s, goalPos);
+                if (bestStep != null) {
+                    golem.getNavigation().moveTo(bestStep.getX() + 0.5D, bestStep.getY() + 1.0D, bestStep.getZ() + 0.5D, 1.08D);
+                    return true;
+                }
+            }
+            // Не шагаем, если в направлении движения обрыв глубже 4 блоков и под целью пещера
+            BlockPos ahead = golem.blockPosition().offset(
+                    Integer.compare(goalPos.getX(), golem.blockPosition().getX()),
+                    0,
+                    Integer.compare(goalPos.getZ(), golem.blockPosition().getZ())
+            );
+            int dropDepth = measureAirDropBelow(ahead, 5);
+            if (dropDepth >= 4 && goalPos.getY() >= golem.blockPosition().getY() - 2) {
+                golem.getNavigation().stop();
+                return false;
+            }
+            golem.getNavigation().moveTo(goalPos.getX() + 0.5D, goalPos.getY(), goalPos.getZ() + 0.5D, 1.05D);
+            return true;
+        }
+
+        private BlockPos findSafeStairStepToward(PlayerGolemSettings s, BlockPos goalPos) {
+            int minX = s.getQuarryMinX(), maxX = s.getQuarryMaxX();
+            int minZ = s.getQuarryMinZ(), maxZ = s.getQuarryMaxZ();
+            int myY = golem.blockPosition().getY();
+            BlockPos best = null;
+            double bestScore = Double.MAX_VALUE;
+            for (int y = Math.min(s.getQuarryTopY(), myY + 1); y >= Math.max(s.getQuarryBottomY(), myY - 3); y--) {
+                for (int x = minX; x <= maxX; x++) {
+                    for (int z = minZ; z <= maxZ; z++) {
+                        BlockPos p = new BlockPos(x, y, z);
+                        BlockState desired = QuarryPlanner.getDesiredStairBlock(s, p);
+                        if (desired == null || QuarryPlanner.isSupportUnderStair(s, p)) continue;
+                        if (!golem.level().getBlockState(p).is(desired.getBlock())) continue;
+                        if (!golem.level().getBlockState(p.above()).isAir()) continue;
+                        double score = p.distSqr(goalPos) + p.distSqr(golem.blockPosition()) * 0.5D;
+                        if (score < bestScore) {
+                            bestScore = score;
+                            best = p;
+                        }
+                    }
+                }
+            }
+            return best;
+        }
+
+        private int measureAirDropBelow(BlockPos pos, int maxCheck) {
+            int air = 0;
+            for (int dy = 1; dy <= maxCheck; dy++) {
+                BlockState st = golem.level().getBlockState(pos.below(dy));
+                if (st.isAir() || st.getCollisionShape(golem.level(), pos.below(dy)).isEmpty()) {
+                    air++;
+                } else {
+                    break;
+                }
+            }
+            return air;
+        }
+
+        /**
+         * Проверяет лаву рядом с точкой center (радиус r). Если найдена — планирует закрытие/осушение.
+         */
+        private boolean findNearbyLavaFix(BlockPos center, int r) {
+            PlayerGolemSettings s = golem.getOwnerSettings();
+            BlockPos best = null;
+            double bestDist = Double.MAX_VALUE;
+            BlockState bestFix = null;
+
+            for (int dy = 1; dy >= -1; dy--) {
+                for (int dx = -r; dx <= r; dx++) {
+                    for (int dz = -r; dz <= r; dz++) {
+                        BlockPos p = center.offset(dx, dy, dz);
+                        FluidState fs = golem.level().getFluidState(p);
+                        if (!fs.is(FluidTags.LAVA)) continue;
+                        double d = p.distSqr(golem.blockPosition());
+                        if (d < bestDist) {
+                            bestDist = d;
+                            best = p;
+                            boolean onBorderOrBottom = isOnQuarryOuterWallOrFloor(s, p) || fs.isSource();
+                            bestFix = onBorderOrBottom ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState();
+                        }
+                    }
+                }
+            }
+            if (best != null) {
+                this.buildPos = best;
+                this.buildState = bestFix;
+                this.buildIsLavaFix = true;
+                this.targetPos = null;
+                golem.setReservedTargetPos(best);
+                return true;
+            }
+            return false;
+        }
+
+        private boolean isOnQuarryOuterWallOrFloor(PlayerGolemSettings s, BlockPos p) {
+            if (!s.isQuarryActive() || !s.hasQuarryBounds()) return true;
+            return p.getX() < s.getQuarryMinX() || p.getX() > s.getQuarryMaxX()
+                    || p.getZ() < s.getQuarryMinZ() || p.getZ() > s.getQuarryMaxZ()
+                    || p.getY() < s.getQuarryBottomY();
+        }
+
+        /**
          * Выбор следующей задачи в размеченном карьере:
-         * идём послойно сверху вниз — сначала ставим недостающие элементы спиральной каменной лестницы на верхнем активном слое,
-         * либо выкапываем ближайший свободный блок (с распределением между копателями).
+         * 1) Закрытие и осушение лавы (внутри слоя и в стенках/под ногами);
+         * 2) Застройка камнем пустых краёв зоны выделения, если открылась пещера;
+         * 3) Постройка спиральной каменной лестницы на текущем слое;
+         * 4) Выкопка блоков слоя сверху вниз.
          */
         private boolean selectNextQuarryTask(PlayerGolemSettings s) {
             int minX = s.getQuarryMinX();
@@ -499,7 +685,71 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             );
 
             for (int y = topY; y >= bottomY; y--) {
-                // 1. Проверяем, нужно ли построить элемент спиральной лестницы на слое y (или опору на y-1)
+                // 1. Лава на уровне y (или y - 1) в зоне [minX-1..maxX+1] x [minZ-1..maxZ+1]
+                BlockPos bestLava = null;
+                BlockState bestLavaFix = null;
+                double bestLavaDist = Double.MAX_VALUE;
+                for (int checkY = y; checkY >= Math.max(bottomY - 1, y - 1); checkY--) {
+                    for (int x = minX - 1; x <= maxX + 1; x++) {
+                        for (int z = minZ - 1; z <= maxZ + 1; z++) {
+                            BlockPos p = new BlockPos(x, checkY, z);
+                            FluidState fs = golem.level().getFluidState(p);
+                            if (!fs.is(FluidTags.LAVA)) continue;
+                            if (isClaimedByCloserPeer(p, peerDiggers)) continue;
+                            double d = p.distSqr(golem.blockPosition());
+                            if (d < bestLavaDist) {
+                                bestLavaDist = d;
+                                bestLava = p;
+                                boolean sealStone = isOnQuarryOuterWallOrFloor(s, p) || fs.isSource();
+                                bestLavaFix = sealStone ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState();
+                            }
+                        }
+                    }
+                }
+                if (bestLava != null) {
+                    this.buildPos = bestLava;
+                    this.buildState = bestLavaFix;
+                    this.buildIsLavaFix = true;
+                    this.targetPos = null;
+                    golem.setReservedTargetPos(bestLava);
+                    return true;
+                }
+
+                // 2. Если открылась пещера по краям зоны выделения — аккуратно застраиваем края камнем!
+                // Проверяем все 4 внешние границы (включая углы [minX-1..maxX+1] x [minZ-1..maxZ+1] на уровне y и y-1)
+                BlockPos bestWall = null;
+                double bestWallDist = Double.MAX_VALUE;
+                for (int checkY = y; checkY >= Math.max(bottomY, y - 1); checkY--) {
+                    for (int x = minX - 1; x <= maxX + 1; x++) {
+                        for (int z = minZ - 1; z <= maxZ + 1; z++) {
+                            boolean isOuterBorder = (x == minX - 1 || x == maxX + 1 || z == minZ - 1 || z == maxZ + 1);
+                            if (!isOuterBorder) continue;
+                            BlockPos p = new BlockPos(x, checkY, z);
+                            BlockState cur = golem.level().getBlockState(p);
+                            boolean needsWall = cur.isAir() || cur.liquid() || cur.getCollisionShape(golem.level(), p).isEmpty();
+                            if (!needsWall) continue;
+                            // Застраиваем стенку пещеры, если либо под ней пусто (пещера!), либо внутри на этом слое уже выкопано/пещера
+                            if (!isCaveEdgeExposed(s, p, checkY)) continue;
+                            if (isClaimedByCloserPeer(p, peerDiggers)) continue;
+
+                            double d = p.distSqr(golem.blockPosition());
+                            if (d < bestWallDist) {
+                                bestWallDist = d;
+                                bestWall = p;
+                            }
+                        }
+                    }
+                }
+                if (bestWall != null) {
+                    this.buildPos = bestWall;
+                    this.buildState = Blocks.STONE.defaultBlockState();
+                    this.buildIsLavaFix = false;
+                    this.targetPos = null;
+                    golem.setReservedTargetPos(bestWall);
+                    return true;
+                }
+
+                // 3. Строительство ровной спиральной каменной лестницы на слое y (или опоры под ней на y - 1)
                 if (s.isQuarryStairs()) {
                     BlockPos bestStair = null;
                     BlockState bestStairState = null;
@@ -513,12 +763,10 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                                 if (desired == null) continue;
                                 BlockState cur = golem.level().getBlockState(p);
                                 if (QuarryPlanner.isSupportUnderStair(s, p)) {
-                                    // Под ступенькой любой прочный непрозрачный блок уже служит хорошей опорой (не портим стену)
                                     if (!cur.isAir() && !cur.liquid() && !cur.getCollisionShape(golem.level(), p).isEmpty()) continue;
                                 } else if (cur.is(desired.getBlock())) {
-                                    // Для ступеньки проверяем ещё и совпадение направления (FACING), чтобы не осталась криво повёрнутая ступенька
-                                    if (!desired.hasProperty(net.minecraft.world.level.block.StairBlock.FACING)
-                                            || cur.getValue(net.minecraft.world.level.block.StairBlock.FACING) == desired.getValue(net.minecraft.world.level.block.StairBlock.FACING)) {
+                                    if (!desired.hasProperty(StairBlock.FACING)
+                                            || cur.getValue(StairBlock.FACING) == desired.getValue(StairBlock.FACING)) {
                                         continue;
                                     }
                                 }
@@ -537,14 +785,15 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                     if (bestStair != null) {
                         BlockState cur = golem.level().getBlockState(bestStair);
                         if (!cur.isAir() && !cur.liquid()) {
-                            // Если на месте будущей ступеньки ещё стоит порода/земля — сначала выкопаем её
                             this.targetPos = bestStair;
-                            this.stairBuildPos = null;
-                            this.stairBuildState = null;
+                            this.buildPos = null;
+                            this.buildState = null;
+                            this.buildIsLavaFix = false;
                             golem.setReservedTargetPos(bestStair);
                         } else {
-                            this.stairBuildPos = bestStair;
-                            this.stairBuildState = bestStairState;
+                            this.buildPos = bestStair;
+                            this.buildState = bestStairState;
+                            this.buildIsLavaFix = false;
                             this.targetPos = null;
                             golem.setReservedTargetPos(bestStair);
                         }
@@ -552,7 +801,7 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                     }
                 }
 
-                // 2. Ищем блок для выкопки на текущем слое y (не трогая защищённые блоки лестницы)
+                // 4. Выкопка обычных блоков текущего слоя y (с защитой лестницы)
                 BlockPos bestDig = null;
                 double bestScore = Double.MAX_VALUE;
                 BlockPos fallback = null;
@@ -579,9 +828,33 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 BlockPos chosen = bestDig != null ? bestDig : fallback;
                 if (chosen != null) {
                     this.targetPos = chosen;
-                    this.stairBuildPos = null;
-                    this.stairBuildState = null;
+                    this.buildPos = null;
+                    this.buildState = null;
+                    this.buildIsLavaFix = false;
                     golem.setReservedTargetPos(chosen);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Определяет, выходит ли край зоны выделения в пещеру/воду/пустоту (чтобы застраивать края карьера именно там, где открылась пещера,
+         * и не строить бессмысленный забор выше земли на поверхности).
+         */
+        private boolean isCaveEdgeExposed(PlayerGolemSettings s, BlockPos wallPos, int y) {
+            // Если это самый верхний слой над поверхностью (сверху открытое небо), не строим забор в воздухе выше земли,
+            // кроме случаев, когда там жидкость или под ногами пещера глубже 1 блока!
+            BlockState st = golem.level().getBlockState(wallPos);
+            if (!st.getFluidState().isEmpty()) return true;
+            if (!golem.level().canSeeSky(wallPos)) return true; // под потолком пещеры!
+            // Даже под открытым небом, если прямо сбоку выкопано ниже topY (стенка ямы/карьера с выходом в пещеру)
+            if (y < s.getQuarryTopY()) {
+                // Проверяем соседа внутри карьера: если рядом пустота или ниже нас пещера
+                int inX = Math.max(s.getQuarryMinX(), Math.min(s.getQuarryMaxX(), wallPos.getX()));
+                int inZ = Math.max(s.getQuarryMinZ(), Math.min(s.getQuarryMaxZ(), wallPos.getZ()));
+                BlockPos inside = new BlockPos(inX, y, inZ);
+                if (!golem.level().canSeeSky(inside) || measureAirDropBelow(wallPos, 3) >= 2) {
                     return true;
                 }
             }
@@ -617,21 +890,18 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                 return false;
             }
 
-            // Если позиция принадлежит спиральной лестнице — выкапываем ТОЛЬКО если там ещё не наш блок лестницы
             BlockState desiredStair = QuarryPlanner.getDesiredStairBlock(s, pos);
             if (desiredStair != null) {
                 if (QuarryPlanner.isSupportUnderStair(s, pos)) {
-                    return false; // природную опору под ступенькой не ломаем
+                    return false;
                 }
                 if (state.is(desiredStair.getBlock())) {
-                    if (!desiredStair.hasProperty(net.minecraft.world.level.block.StairBlock.FACING)) return false;
-                    return state.getValue(net.minecraft.world.level.block.StairBlock.FACING) != desiredStair.getValue(net.minecraft.world.level.block.StairBlock.FACING);
+                    if (!desiredStair.hasProperty(StairBlock.FACING)) return false;
+                    return state.getValue(StairBlock.FACING) != desiredStair.getValue(StairBlock.FACING);
                 }
                 return true;
             }
 
-            // В режиме карьера обычные блоки и руды выкапываются согласно фильтру/режиму,
-            // но блоки, мешающие проходу над ступеньками (3 блока вверх), выкапываются всегда!
             if (s.isQuarryStairs()) {
                 for (int dy = 1; dy <= 3; dy++) {
                     if (QuarryPlanner.getDesiredStairBlock(s, pos.below(dy)) != null) {
