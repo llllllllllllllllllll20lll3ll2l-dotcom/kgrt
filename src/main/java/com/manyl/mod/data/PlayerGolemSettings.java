@@ -12,6 +12,24 @@ import java.util.Optional;
  * включает параметры копателей и разметку карьера (quarryPos1, quarryPos2, глубина, каменная лестница).
  */
 public class PlayerGolemSettings {
+    public record QuarryData(
+            Optional<BlockPos> pos1,
+            Optional<BlockPos> pos2,
+            boolean active,
+            int depth,
+            boolean stairs
+    ) {
+        public static final Codec<QuarryData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                BlockPos.CODEC.optionalFieldOf("pos1").forGetter(QuarryData::pos1),
+                BlockPos.CODEC.optionalFieldOf("pos2").forGetter(QuarryData::pos2),
+                Codec.BOOL.optionalFieldOf("active", false).forGetter(QuarryData::active),
+                Codec.INT.optionalFieldOf("depth", 16).forGetter(QuarryData::depth),
+                Codec.BOOL.optionalFieldOf("stairs", true).forGetter(QuarryData::stairs)
+        ).apply(instance, QuarryData::new));
+
+        public static final QuarryData DEFAULT = new QuarryData(Optional.empty(), Optional.empty(), false, 16, true);
+    }
+
     public static final Codec<PlayerGolemSettings> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.optionalFieldOf("digger_radius", 4).forGetter(PlayerGolemSettings::getDiggerRadius),
             Codec.INT.optionalFieldOf("dig_mode", 0).forGetter(s -> s.getDigMode().ordinal()),
@@ -25,11 +43,7 @@ public class PlayerGolemSettings {
             Codec.INT.optionalFieldOf("digger_depth", 4).forGetter(PlayerGolemSettings::getDiggerDepth),
             Codec.BOOL.optionalFieldOf("digger_drop_trash", true).forGetter(PlayerGolemSettings::isDiggerDropTrash),
             Codec.BOOL.optionalFieldOf("digger_tunnel_to_ore", true).forGetter(PlayerGolemSettings::isDiggerTunnelToOre),
-            BlockPos.CODEC.optionalFieldOf("quarry_pos1").forGetter(s -> Optional.ofNullable(s.getQuarryPos1())),
-            BlockPos.CODEC.optionalFieldOf("quarry_pos2").forGetter(s -> Optional.ofNullable(s.getQuarryPos2())),
-            Codec.BOOL.optionalFieldOf("quarry_active", false).forGetter(PlayerGolemSettings::isQuarryActive),
-            Codec.INT.optionalFieldOf("quarry_depth", 16).forGetter(PlayerGolemSettings::getQuarryDepth),
-            Codec.BOOL.optionalFieldOf("quarry_stairs", true).forGetter(PlayerGolemSettings::isQuarryStairs)
+            QuarryData.CODEC.optionalFieldOf("quarry", QuarryData.DEFAULT).forGetter(PlayerGolemSettings::toQuarryData)
     ).apply(instance, PlayerGolemSettings::new));
 
     private int diggerRadius;
@@ -52,15 +66,12 @@ public class PlayerGolemSettings {
     private boolean quarryStairs;
 
     public PlayerGolemSettings() {
-        this(4, 0, true, Optional.empty(), "", "", "all", "follow", "", 4, true, true,
-                Optional.empty(), Optional.empty(), false, 16, true);
+        this(4, 0, true, Optional.empty(), "", "", "all", "follow", "", 4, true, true, QuarryData.DEFAULT);
     }
 
     public PlayerGolemSettings(int diggerRadius, int digModeOrdinal, boolean followOwner, Optional<BlockPos> homePos,
                                String extractFilter, String cropFilter, String sortMode, String guardMode, String targetFilter,
-                               int diggerDepth, boolean diggerDropTrash, boolean diggerTunnelToOre,
-                               Optional<BlockPos> quarryPos1, Optional<BlockPos> quarryPos2,
-                               boolean quarryActive, int quarryDepth, boolean quarryStairs) {
+                               int diggerDepth, boolean diggerDropTrash, boolean diggerTunnelToOre, QuarryData quarry) {
         this.diggerRadius = Math.max(2, Math.min(10, diggerRadius));
         this.digMode = DigMode.byOrdinal(digModeOrdinal);
         this.followOwner = followOwner;
@@ -73,11 +84,17 @@ public class PlayerGolemSettings {
         this.diggerDepth = Math.max(2, Math.min(12, diggerDepth));
         this.diggerDropTrash = diggerDropTrash;
         this.diggerTunnelToOre = diggerTunnelToOre;
-        this.quarryPos1 = quarryPos1.orElse(null);
-        this.quarryPos2 = quarryPos2.orElse(null);
-        this.quarryActive = quarryActive;
-        this.quarryDepth = Math.max(2, Math.min(64, quarryDepth));
-        this.quarryStairs = quarryStairs;
+
+        QuarryData q = quarry == null ? QuarryData.DEFAULT : quarry;
+        this.quarryPos1 = q.pos1().orElse(null);
+        this.quarryPos2 = q.pos2().orElse(null);
+        this.quarryActive = q.active();
+        this.quarryDepth = Math.max(2, Math.min(64, q.depth()));
+        this.quarryStairs = q.stairs();
+    }
+
+    private QuarryData toQuarryData() {
+        return new QuarryData(Optional.ofNullable(quarryPos1), Optional.ofNullable(quarryPos2), quarryActive, quarryDepth, quarryStairs);
     }
 
     public int getDiggerRadius() { return diggerRadius; }
