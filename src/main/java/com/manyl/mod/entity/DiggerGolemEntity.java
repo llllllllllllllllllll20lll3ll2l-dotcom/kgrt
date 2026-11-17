@@ -268,7 +268,9 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             }
             if (stairBuildPos != null && stairBuildState != null) {
                 BlockState cur = golem.level().getBlockState(stairBuildPos);
-                return !cur.is(stairBuildState.getBlock());
+                if (!cur.is(stairBuildState.getBlock())) return true;
+                return stairBuildState.hasProperty(net.minecraft.world.level.block.StairBlock.FACING)
+                        && cur.getValue(net.minecraft.world.level.block.StairBlock.FACING) != stairBuildState.getValue(net.minecraft.world.level.block.StairBlock.FACING);
             }
             PlayerGolemSettings s = golem.getOwnerSettings();
             if (s.isQuarryActive() && s.hasQuarryBounds()) {
@@ -510,7 +512,16 @@ public class DiggerGolemEntity extends BaseGolemEntity {
                                 BlockState desired = QuarryPlanner.getDesiredStairBlock(s, p);
                                 if (desired == null) continue;
                                 BlockState cur = golem.level().getBlockState(p);
-                                if (cur.is(desired.getBlock())) continue;
+                                if (QuarryPlanner.isSupportUnderStair(s, p)) {
+                                    // Под ступенькой любой прочный непрозрачный блок уже служит хорошей опорой (не портим стену)
+                                    if (!cur.isAir() && !cur.liquid() && !cur.getCollisionShape(golem.level(), p).isEmpty()) continue;
+                                } else if (cur.is(desired.getBlock())) {
+                                    // Для ступеньки проверяем ещё и совпадение направления (FACING), чтобы не осталась криво повёрнутая ступенька
+                                    if (!desired.hasProperty(net.minecraft.world.level.block.StairBlock.FACING)
+                                            || cur.getValue(net.minecraft.world.level.block.StairBlock.FACING) == desired.getValue(net.minecraft.world.level.block.StairBlock.FACING)) {
+                                        continue;
+                                    }
+                                }
                                 if (!cur.isAir() && !cur.liquid() && !isBreakableForTunnel(p)) continue;
                                 if (isClaimedByCloserPeer(p, peerDiggers)) continue;
 
@@ -609,7 +620,14 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             // Если позиция принадлежит спиральной лестнице — выкапываем ТОЛЬКО если там ещё не наш блок лестницы
             BlockState desiredStair = QuarryPlanner.getDesiredStairBlock(s, pos);
             if (desiredStair != null) {
-                return !state.is(desiredStair.getBlock());
+                if (QuarryPlanner.isSupportUnderStair(s, pos)) {
+                    return false; // природную опору под ступенькой не ломаем
+                }
+                if (state.is(desiredStair.getBlock())) {
+                    if (!desiredStair.hasProperty(net.minecraft.world.level.block.StairBlock.FACING)) return false;
+                    return state.getValue(net.minecraft.world.level.block.StairBlock.FACING) != desiredStair.getValue(net.minecraft.world.level.block.StairBlock.FACING);
+                }
+                return true;
             }
 
             // В режиме карьера обычные блоки и руды выкапываются согласно фильтру/режиму,
