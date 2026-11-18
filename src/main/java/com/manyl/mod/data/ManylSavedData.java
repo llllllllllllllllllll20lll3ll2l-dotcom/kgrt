@@ -78,12 +78,20 @@ public class ManylSavedData extends SavedData {
         return result;
     }
 
-    public static int getWarriorCount(MinecraftServer server, UUID ownerUuid) {
+    public static int getRoleCount(MinecraftServer server, UUID ownerUuid, GolemRole role) {
         int count = 0;
         for (BaseGolemEntity golem : getPlayerGolems(server, ownerUuid)) {
-            if (golem.getRole() == GolemRole.WARRIOR) count++;
+            if (golem.getRole() == role) count++;
         }
         return count;
+    }
+
+    public static int getWarriorCount(MinecraftServer server, UUID ownerUuid) {
+        return getRoleCount(server, ownerUuid, GolemRole.WARRIOR);
+    }
+
+    public static int getValkyrieCount(MinecraftServer server, UUID ownerUuid) {
+        return getRoleCount(server, ownerUuid, GolemRole.VALKYRIE);
     }
 
     public static void applySettingsToActiveGolems(ServerPlayer player, PlayerGolemSettings settings) {

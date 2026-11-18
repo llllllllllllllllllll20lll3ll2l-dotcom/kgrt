@@ -99,9 +99,12 @@ public final class ChatCommandHandler {
 
     private static void sendStatus(ServerPlayer player, MinecraftServer server, PlayerGolemSettings s) {
         List<BaseGolemEntity> golems = ManylSavedData.getPlayerGolems(server, player.getUUID());
-        int count = ManylSavedData.getWarriorCount(server, player.getUUID());
-        reply(player, String.format("§c[Статус]§r Воины: §c%d/%d§r | Режим: §e%s§r | Цель: §e%s",
-                count, GolemRole.WARRIOR.getMaxPerPlayer(), s.getGuardMode(),
+        int wCount = ManylSavedData.getWarriorCount(server, player.getUUID());
+        int vCount = ManylSavedData.getValkyrieCount(server, player.getUUID());
+        reply(player, String.format("§c[Статус]§r Воины: §c%d/%d§r | Воительницы: §d%d/%d§r | Режим: §e%s§r | Цель: §e%s",
+                wCount, GolemRole.WARRIOR.getMaxPerPlayer(),
+                vCount, GolemRole.VALKYRIE.getMaxPerPlayer(),
+                s.getGuardMode(),
                 s.getTargetFilter().isEmpty() ? "все" : s.getTargetFilter()));
         for (BaseGolemEntity g : golems) {
             player.displayClientMessage(Component.literal(String.format(" §8• §f%s §7[HP: §c%.0f/%.0f§7, Сытость: §e%d%%§7]",

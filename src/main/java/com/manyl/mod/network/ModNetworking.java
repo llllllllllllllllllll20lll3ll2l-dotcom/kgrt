@@ -25,24 +25,25 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 
 /**
- * Сетевые пакеты (C2S и S2C) для управления воинами.
+ * Сетевые пакеты (C2S и S2C) для управления отрядом Воинов и Воительниц.
  */
 public final class ModNetworking {
 
     public record OpenStaffMenuPayload(
-            int warriorCount, boolean followOwner, String guardMode, String targetFilter, boolean openManagement
+            int warriorCount, int valkyrieCount, boolean followOwner, String guardMode, String targetFilter, boolean openManagement
     ) implements CustomPacketPayload {
         public static final Type<OpenStaffMenuPayload> TYPE = new Type<>(ManylMod.id("open_staff_menu"));
         public static final StreamCodec<RegistryFriendlyByteBuf, OpenStaffMenuPayload> CODEC = StreamCodec.of(
                 (buf, p) -> {
                     buf.writeVarInt(p.warriorCount);
+                    buf.writeVarInt(p.valkyrieCount);
                     buf.writeBoolean(p.followOwner);
                     buf.writeUtf(p.guardMode == null ? "follow" : p.guardMode, 32);
                     buf.writeUtf(p.targetFilter == null ? "" : p.targetFilter, 64);
                     buf.writeBoolean(p.openManagement);
                 },
                 buf -> new OpenStaffMenuPayload(
-                        buf.readVarInt(), buf.readBoolean(), buf.readUtf(32), buf.readUtf(64), buf.readBoolean()
+                        buf.readVarInt(), buf.readVarInt(), buf.readBoolean(), buf.readUtf(32), buf.readUtf(64), buf.readBoolean()
                 )
         );
 
@@ -51,18 +52,19 @@ public final class ModNetworking {
     }
 
     public record SyncGolemStatePayload(
-            int warriorCount, boolean followOwner, String guardMode, String targetFilter
+            int warriorCount, int valkyrieCount, boolean followOwner, String guardMode, String targetFilter
     ) implements CustomPacketPayload {
         public static final Type<SyncGolemStatePayload> TYPE = new Type<>(ManylMod.id("sync_golem_state"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SyncGolemStatePayload> CODEC = StreamCodec.of(
                 (buf, p) -> {
                     buf.writeVarInt(p.warriorCount);
+                    buf.writeVarInt(p.valkyrieCount);
                     buf.writeBoolean(p.followOwner);
                     buf.writeUtf(p.guardMode == null ? "follow" : p.guardMode, 32);
                     buf.writeUtf(p.targetFilter == null ? "" : p.targetFilter, 64);
                 },
                 buf -> new SyncGolemStatePayload(
-                        buf.readVarInt(), buf.readBoolean(), buf.readUtf(32), buf.readUtf(64)
+                        buf.readVarInt(), buf.readVarInt(), buf.readBoolean(), buf.readUtf(32), buf.readUtf(64)
                 )
         );
 
@@ -129,12 +131,14 @@ public final class ModNetworking {
     public static void registerServerReceivers() {
         ServerPlayNetworking.registerGlobalReceiver(SummonGolemPayload.TYPE, (payload, ctx) -> {
             ServerPlayer player = ctx.player();
-            ctx.server().execute(() -> handleSummon(player));
+            int roleOrdinal = payload.roleOrdinal();
+            ctx.server().execute(() -> handleSummon(player, GolemRole.byOrdinal(roleOrdinal)));
         });
 
         ServerPlayNetworking.registerGlobalReceiver(RecallGolemsPayload.TYPE, (payload, ctx) -> {
             ServerPlayer player = ctx.player();
-            ctx.server().execute(() -> handleRecall(player));
+            int roleOrdinal = payload.roleOrdinal();
+            ctx.server().execute(() -> handleRecall(player, roleOrdinal));
         });
 
         ServerPlayNetworking.registerGlobalReceiver(UpdateWarriorSettingsPayload.TYPE, (payload, ctx) -> {
@@ -156,27 +160,28 @@ public final class ModNetworking {
 
     public static void sendOpenStaffMenu(ServerPlayer player, boolean openManagement) {
         MinecraftServer server = ((ServerLevel) player.level()).getServer();
-        int count = ManylSavedData.getWarriorCount(server, player.getUUID());
+        int wCount = ManylSavedData.getWarriorCount(server, player.getUUID());
+        int vCount = ManylSavedData.getValkyrieCount(server, player.getUUID());
         PlayerGolemSettings s = ManylSavedData.get(server).getSettings(player.getUUID());
         ServerPlayNetworking.send(player, new OpenStaffMenuPayload(
-                count, s.isFollowOwner(), s.getGuardMode(), s.getTargetFilter(), openManagement
+                wCount, vCount, s.isFollowOwner(), s.getGuardMode(), s.getTargetFilter(), openManagement
         ));
     }
 
     public static void sendStateSync(ServerPlayer player) {
         MinecraftServer server = ((ServerLevel) player.level()).getServer();
-        int count = ManylSavedData.getWarriorCount(server, player.getUUID());
+        int wCount = ManylSavedData.getWarriorCount(server, player.getUUID());
+        int vCount = ManylSavedData.getValkyrieCount(server, player.getUUID());
         PlayerGolemSettings s = ManylSavedData.get(server).getSettings(player.getUUID());
         ServerPlayNetworking.send(player, new SyncGolemStatePayload(
-                count, s.isFollowOwner(), s.getGuardMode(), s.getTargetFilter()
+                wCount, vCount, s.isFollowOwner(), s.getGuardMode(), s.getTargetFilter()
         ));
     }
 
-    private static void handleSummon(ServerPlayer player) {
+    private static void handleSummon(ServerPlayer player, GolemRole role) {
         ServerLevel level = (ServerLevel) player.level();
         MinecraftServer server = level.getServer();
-        GolemRole role = GolemRole.WARRIOR;
-        int current = ManylSavedData.getWarriorCount(server, player.getUUID());
+        int current = ManylSavedData.getRoleCount(server, player.getUUID(), role);
         if (current >= role.getMaxPerPlayer()) {
             player.displayClientMessage(Component.translatable("msg.manyl_mod.limit_reached", current, role.getMaxPerPlayer()), true);
             sendStateSync(player);
@@ -188,7 +193,7 @@ public final class ModNetworking {
         double sz = player.getZ() + look.z * 1.8D + (player.getRandom().nextDouble() - 0.5D) * 0.8D;
         double sy = player.getY();
 
-        BaseGolemEntity golem = ModEntities.WARRIOR_GOLEM.create(level, EntitySpawnReason.MOB_SUMMONED);
+        BaseGolemEntity golem = ModEntities.forRole(role).create(level, EntitySpawnReason.MOB_SUMMONED);
         if (golem != null) {
             PlayerGolemSettings settings = ManylSavedData.get(server).getSettings(player.getUUID());
             golem.setPos(sx, sy, sz);
@@ -199,7 +204,8 @@ public final class ModNetworking {
             golem.setSummonTicks(24);
             level.addFreshEntity(golem);
 
-            level.playSound(null, sx, sy, sz, ModSounds.GOLEM_SUMMON, player.getSoundSource(), 0.7F, 1.0F);
+            level.playSound(null, sx, sy, sz, ModSounds.GOLEM_SUMMON, player.getSoundSource(), 0.7F,
+                    role == GolemRole.VALKYRIE ? 1.18F : 1.0F);
             level.sendParticles(ModParticles.SUMMON_RUNE, sx, sy + 0.5D, sz, 14, 0.35D, 0.4D, 0.35D, 0.04D);
 
             player.displayClientMessage(Component.translatable("msg.manyl_mod.summoned",
@@ -208,13 +214,15 @@ public final class ModNetworking {
         sendStateSync(player);
     }
 
-    private static void handleRecall(ServerPlayer player) {
+    private static void handleRecall(ServerPlayer player, int roleOrdinal) {
         ServerLevel level = (ServerLevel) player.level();
         MinecraftServer server = level.getServer();
         List<BaseGolemEntity> golems = ManylSavedData.getPlayerGolems(server, player.getUUID());
+        GolemRole filterRole = (roleOrdinal >= 0) ? GolemRole.byOrdinal(roleOrdinal) : null;
         int recalled = 0;
 
         for (BaseGolemEntity golem : golems) {
+            if (filterRole != null && golem.getRole() != filterRole) continue;
             for (int i = 0; i < BaseGolemEntity.INVENTORY_SIZE; i++) {
                 ItemStack stack = golem.getGolemInventory().getItem(i);
                 if (!stack.isEmpty()) {

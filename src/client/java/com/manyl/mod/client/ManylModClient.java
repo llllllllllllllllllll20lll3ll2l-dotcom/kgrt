@@ -1,8 +1,10 @@
 package com.manyl.mod.client;
 
 import com.manyl.mod.client.model.GolemModel;
+import com.manyl.mod.client.model.ValkyrieModel;
 import com.manyl.mod.client.particle.ManylParticles;
 import com.manyl.mod.client.renderer.GolemRenderer;
+import com.manyl.mod.client.renderer.ValkyrieRenderer;
 import com.manyl.mod.client.screen.GolemInventoryScreen;
 import com.manyl.mod.client.screen.GolemManagementScreen;
 import com.manyl.mod.client.screen.RadialMenuScreen;
@@ -18,13 +20,16 @@ import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.minecraft.client.gui.screens.MenuScreens;
 
 /**
- * Клиентская инициализация Manyl_mod (только Воины).
+ * Клиентская инициализация Manyl_mod (Воин и Воительница).
  */
 public class ManylModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         EntityModelLayerRegistry.registerModelLayer(GolemModel.LAYER_LOCATION, GolemModel::createBodyLayer);
+        EntityModelLayerRegistry.registerModelLayer(ValkyrieModel.LAYER_LOCATION, ValkyrieModel::createBodyLayer);
+
         EntityRendererRegistry.register(ModEntities.WARRIOR_GOLEM, GolemRenderer::new);
+        EntityRendererRegistry.register(ModEntities.VALKYRIE_GOLEM, ValkyrieRenderer::new);
 
         ParticleFactoryRegistry.getInstance().register(ModParticles.SUMMON_RUNE, ManylParticles.RuneFactory::new);
         ParticleFactoryRegistry.getInstance().register(ModParticles.GOLEM_SPARK, ManylParticles.SparkFactory::new);
