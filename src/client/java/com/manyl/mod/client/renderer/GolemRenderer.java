@@ -54,7 +54,7 @@ public class GolemRenderer extends MobRenderer<BaseGolemEntity, GolemRenderState
 
     @Override
     protected void scale(GolemRenderState state, PoseStack poseStack) {
-        poseStack.scale(0.25F, 0.25F, 0.25F);
+        poseStack.scale(0.0625F, 0.0625F, 0.0625F);
     }
 
     @Override

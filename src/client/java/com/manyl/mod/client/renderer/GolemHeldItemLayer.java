@@ -9,7 +9,7 @@ import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 
 /**
- * Слой рендера оружия в руке HD 2-блочного голема-воина (учитывает 0.25x масштаб модели).
+ * Слой рендера оружия в руке ультра-HD 2-блочного голема-воина (учитывает 0.0625x масштаб модели).
  */
 public class GolemHeldItemLayer extends RenderLayer<GolemRenderState, GolemModel> {
     public GolemHeldItemLayer(RenderLayerParent<GolemRenderState, GolemModel> parent) {
@@ -24,11 +24,11 @@ public class GolemHeldItemLayer extends RenderLayer<GolemRenderState, GolemModel
         }
         matrices.pushPose();
         this.getParentModel().translateToRightHand(matrices);
-        // Позиция кисти в 4x координатах модели (16 ед = 1 модельный блок) + масштаб 3.6F (3.6 * 0.25 = 0.90)
-        matrices.translate(-0.50F, 2.35F, -0.35F);
+        // Позиция кисти в 16x координатах модели + масштаб 14.4F (14.4 * 0.0625 = 0.90)
+        matrices.translate(-2.00F, 9.40F, -1.40F);
         matrices.mulPose(Axis.XP.rotationDegrees(-90.0F));
         matrices.mulPose(Axis.YP.rotationDegrees(180.0F));
-        matrices.scale(3.6F, 3.6F, 3.6F);
+        matrices.scale(14.4F, 14.4F, 14.4F);
 
         state.heldItem.submit(matrices, commandQueue, light, OverlayTexture.NO_OVERLAY, state.outlineColor);
         matrices.popPose();
