@@ -12,8 +12,7 @@ import net.minecraft.client.model.geom.builders.*;
 import net.minecraft.util.Mth;
 
 /**
- * Новая 3D-модель голема-воина (высота ~2.0 блока / 32+ пикселя),
- * с кованой бронёй, нагрудной пластиной, рунным заплечным щитом, наплечниками и шлемом с гребнем.
+ * Высокодетализированная 3D-модель 2-блочного Голема-Воина (41 скульптурный элемент, 4x разрешение геометрии, текстура 1024x1024).
  */
 public class GolemModel extends EntityModel<GolemRenderState> {
     public static final ModelLayerLocation LAYER_LOCATION =
@@ -64,50 +63,88 @@ public class GolemModel extends EntityModel<GolemRenderState> {
                 CubeListBuilder.create(),
                 PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        // Ноги (4x11x4) с опорой на y=24 (от y=13 до y=24)
+        // Правая нога (бедро, тассет, голень, наколенник, сапог, носок)
         root.addOrReplaceChild("right_leg",
-                CubeListBuilder.create().texOffs(0, 34).addBox(-2.0F, 0.0F, -2.0F, 4.0F, 11.0F, 4.0F),
-                PartPose.offset(-2.5F, 13.0F, 0.0F));
+                CubeListBuilder.create()
+                        .texOffs(2, 2).addBox(-8.0F, 0.0F, -8.0F, 16.0F, 18.0F, 16.0F)
+                        .texOffs(68, 2).addBox(-10.5F, 1.0F, -6.0F, 3.0F, 14.0F, 12.0F)
+                        .texOffs(100, 2).addBox(-8.5F, 18.0F, -8.5F, 17.0F, 17.0F, 17.0F)
+                        .texOffs(170, 2).addBox(-6.0F, 14.5F, -11.5F, 12.0F, 10.0F, 4.0F)
+                        .texOffs(204, 2).addBox(-9.0F, 35.0F, -11.5F, 18.0F, 9.0F, 21.0F)
+                        .texOffs(284, 2).addBox(-7.0F, 39.0F, -15.0F, 14.0F, 5.0F, 5.0F),
+                PartPose.offset(-10.0F, -20.0F, 0.0F));
 
+        // Левая нога
         root.addOrReplaceChild("left_leg",
-                CubeListBuilder.create().texOffs(16, 34).addBox(-2.0F, 0.0F, -2.0F, 4.0F, 11.0F, 4.0F),
-                PartPose.offset(2.5F, 13.0F, 0.0F));
+                CubeListBuilder.create()
+                        .texOffs(324, 2).addBox(-8.0F, 0.0F, -8.0F, 16.0F, 18.0F, 16.0F)
+                        .texOffs(390, 2).addBox(7.5F, 1.0F, -6.0F, 3.0F, 14.0F, 12.0F)
+                        .texOffs(422, 2).addBox(-8.5F, 18.0F, -8.5F, 17.0F, 17.0F, 17.0F)
+                        .texOffs(492, 2).addBox(-6.0F, 14.5F, -11.5F, 12.0F, 10.0F, 4.0F)
+                        .texOffs(526, 2).addBox(-9.0F, 35.0F, -11.5F, 18.0F, 9.0F, 21.0F)
+                        .texOffs(606, 2).addBox(-7.0F, 39.0F, -15.0F, 14.0F, 5.0F, 5.0F),
+                PartPose.offset(10.0F, -20.0F, 0.0F));
 
-        // Торс (10x12x6, от y=1 до y=13) + рельефная нагрудная пластина (8x7x1)
+        // Торс (талия, грудь, кираса, рама ядра, рунное ядро, пояс, пряжка, табарда, горжет)
         PartDefinition body = root.addOrReplaceChild("body",
                 CubeListBuilder.create()
-                        .texOffs(0, 16).addBox(-5.0F, -12.0F, -3.0F, 10.0F, 12.0F, 6.0F)
-                        .texOffs(0, 49).addBox(-4.0F, -11.0F, -3.6F, 8.0F, 7.0F, 1.0F),
-                PartPose.offset(0.0F, 13.0F, 0.0F));
+                        .texOffs(646, 2).addBox(-18.0F, -20.0F, -11.0F, 36.0F, 20.0F, 22.0F)
+                        .texOffs(764, 2).addBox(-21.0F, -48.0F, -13.0F, 42.0F, 28.0F, 26.0F)
+                        .texOffs(902, 2).addBox(-16.0F, -45.0F, -16.5F, 32.0F, 24.0F, 4.0F)
+                        .texOffs(976, 2).addBox(-7.5F, -42.5F, -19.0F, 15.0F, 19.0F, 3.0F)
+                        .texOffs(2, 58).addBox(-4.5F, -39.0F, -21.0F, 9.0F, 12.0F, 3.0F)
+                        .texOffs(28, 58).addBox(-19.0F, -7.0F, -12.0F, 38.0F, 7.0F, 24.0F)
+                        .texOffs(154, 58).addBox(-5.5F, -8.0F, -14.5F, 11.0F, 9.0F, 3.0F)
+                        .texOffs(184, 58).addBox(-7.0F, 0.0F, -13.0F, 14.0F, 18.0F, 2.0F)
+                        .texOffs(218, 58).addBox(-14.0F, -52.0F, -12.0F, 28.0F, 6.0F, 24.0F),
+                PartPose.offset(0.0F, -20.0F, 0.0F));
 
-        // Рунный заплечный щит/ранец (6x8x2)
+        // Заплечный рунный генератор / щит
         body.addOrReplaceChild("backpack",
-                CubeListBuilder.create().texOffs(18, 49).addBox(-3.0F, -4.0F, 0.0F, 6.0F, 8.0F, 2.0F),
-                PartPose.offset(0.0F, -7.0F, 3.0F));
+                CubeListBuilder.create()
+                        .texOffs(324, 58).addBox(-13.0F, -17.0F, 0.0F, 26.0F, 34.0F, 8.0F)
+                        .texOffs(394, 58).addBox(-15.5F, -13.0F, 5.0F, 5.0F, 26.0F, 5.0F)
+                        .texOffs(416, 58).addBox(10.5F, -13.0F, 5.0F, 5.0F, 26.0F, 5.0F)
+                        .texOffs(438, 58).addBox(-5.0F, -9.0F, 7.5F, 10.0F, 18.0F, 3.0F),
+                PartPose.offset(0.0F, -32.0F, 13.0F));
 
-        // Голова (8x8x8, от y=-7 до y=1) + шлем (8x3x8 + 0.45) + гребень (2x2x6) -> рост ровно ~2.0 блока
+        // Голова и многослойный шлем с нащёчниками, наносником и плюмажем
         body.addOrReplaceChild("head",
                 CubeListBuilder.create()
-                        .texOffs(0, 0).addBox(-4.0F, -8.0F, -4.0F, 8.0F, 8.0F, 8.0F)
-                        .texOffs(32, 0).addBox(-4.0F, -8.35F, -4.0F, 8.0F, 3.0F, 8.0F, new CubeDeformation(0.45F))
-                        .texOffs(32, 11).addBox(-1.0F, -10.4F, -2.5F, 2.0F, 2.0F, 6.0F),
-                PartPose.offset(0.0F, -12.0F, 0.0F));
+                        .texOffs(466, 58).addBox(-15.0F, -30.0F, -15.0F, 30.0F, 30.0F, 30.0F)
+                        .texOffs(588, 58).addBox(-17.0F, -34.0F, -17.0F, 34.0F, 13.0F, 34.0F)
+                        .texOffs(726, 58).addBox(-18.0F, -24.0F, -19.0F, 36.0F, 7.0F, 36.0F)
+                        .texOffs(872, 58).addBox(-18.0F, -18.0F, -16.0F, 5.0F, 16.0F, 20.0F)
+                        .texOffs(924, 58).addBox(13.0F, -18.0F, -16.0F, 5.0F, 16.0F, 20.0F)
+                        .texOffs(976, 58).addBox(-2.5F, -20.0F, -19.5F, 5.0F, 15.0F, 4.0F)
+                        .texOffs(2, 120).addBox(-4.0F, -38.0F, -13.0F, 8.0F, 5.0F, 28.0F)
+                        .texOffs(76, 120).addBox(-2.5F, -46.0F, -11.0F, 5.0F, 9.0F, 26.0F)
+                        .texOffs(140, 120).addBox(-2.0F, -40.0F, 14.0F, 4.0F, 8.0F, 7.0F),
+                PartPose.offset(0.0F, -48.0F, 0.0F));
 
-        // Правая рука (4x11x4) + наплечник (5x4x5)
+        // Правая рука (плечо, двойной наплечник, наруч, налокотник, боевая перчатка)
         body.addOrReplaceChild("right_arm",
                 CubeListBuilder.create()
-                        .texOffs(32, 19).addBox(-4.0F, -1.0F, -2.0F, 4.0F, 11.0F, 4.0F)
-                        .texOffs(32, 34).addBox(-4.5F, -1.8F, -2.5F, 5.0F, 4.0F, 5.0F),
-                PartPose.offset(-5.0F, -10.5F, 0.0F));
+                        .texOffs(164, 120).addBox(-15.0F, -2.0F, -7.0F, 14.0F, 16.0F, 14.0F)
+                        .texOffs(222, 120).addBox(-18.0F, -7.0F, -10.0F, 20.0F, 10.0F, 20.0F)
+                        .texOffs(304, 120).addBox(-16.0F, -12.0F, -8.0F, 16.0F, 7.0F, 16.0F)
+                        .texOffs(370, 120).addBox(-16.0F, 14.0F, -8.0F, 16.0F, 20.0F, 16.0F)
+                        .texOffs(436, 120).addBox(-18.5F, 16.0F, -5.0F, 4.0F, 14.0F, 10.0F)
+                        .texOffs(466, 120).addBox(-16.5F, 34.0F, -8.5F, 17.0F, 10.0F, 17.0F),
+                PartPose.offset(-21.0F, -42.0F, 0.0F));
 
-        // Левая рука (4x11x4) + наплечник (5x4x5)
+        // Левая рука
         body.addOrReplaceChild("left_arm",
                 CubeListBuilder.create()
-                        .texOffs(48, 19).addBox(0.0F, -1.0F, -2.0F, 4.0F, 11.0F, 4.0F)
-                        .texOffs(32, 43).addBox(-0.5F, -1.8F, -2.5F, 5.0F, 4.0F, 5.0F),
-                PartPose.offset(5.0F, -10.5F, 0.0F));
+                        .texOffs(536, 120).addBox(1.0F, -2.0F, -7.0F, 14.0F, 16.0F, 14.0F)
+                        .texOffs(594, 120).addBox(-2.0F, -7.0F, -10.0F, 20.0F, 10.0F, 20.0F)
+                        .texOffs(676, 120).addBox(0.0F, -12.0F, -8.0F, 16.0F, 7.0F, 16.0F)
+                        .texOffs(742, 120).addBox(0.0F, 14.0F, -8.0F, 16.0F, 20.0F, 16.0F)
+                        .texOffs(808, 120).addBox(14.5F, 16.0F, -5.0F, 4.0F, 14.0F, 10.0F)
+                        .texOffs(838, 120).addBox(-0.5F, 34.0F, -8.5F, 17.0F, 10.0F, 17.0F),
+                PartPose.offset(21.0F, -42.0F, 0.0F));
 
-        return LayerDefinition.create(mesh, 64, 64);
+        return LayerDefinition.create(mesh, 1024, 1024);
     }
 
     @Override

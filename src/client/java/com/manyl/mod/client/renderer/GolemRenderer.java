@@ -5,6 +5,7 @@ import com.manyl.mod.entity.BaseGolemEntity;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.client.renderer.item.ItemModelResolver;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 
@@ -49,6 +50,11 @@ public class GolemRenderer extends MobRenderer<BaseGolemEntity, GolemRenderState
         state.sitAnimationState.copyFrom(entity.sitAnimationState);
         state.summonAnimationState.copyFrom(entity.summonAnimationState);
         state.eatAnimationState.copyFrom(entity.eatAnimationState);
+    }
+
+    @Override
+    protected void scale(GolemRenderState state, PoseStack poseStack) {
+        poseStack.scale(0.25F, 0.25F, 0.25F);
     }
 
     @Override
