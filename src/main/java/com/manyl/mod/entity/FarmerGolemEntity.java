@@ -7,7 +7,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.item.BlockItem;
@@ -34,6 +36,30 @@ public class FarmerGolemEntity extends BaseGolemEntity {
     @Override
     public GolemRole getRole() {
         return GolemRole.FARMER;
+    }
+
+    @Override
+    protected void onInventoryChanged() {
+        if (level().isClientSide()) return;
+        ItemStack best = ItemStack.EMPTY;
+        double bestScore = 0.0D;
+        for (int i = 1; i < INVENTORY_SIZE; i++) {
+            ItemStack s = inventory.getItem(i);
+            if (!isToolOrWeaponItem(s)) continue;
+            double score = s.is(ItemTags.HOES) ? 10.0D : 2.0D;
+            if (score > bestScore) {
+                bestScore = score;
+                best = s;
+            }
+        }
+        this.setItemSlot(EquipmentSlot.MAINHAND, best.isEmpty() ? ItemStack.EMPTY : best.copy());
+        this.setDisplayItem(best);
+    }
+
+    @Override
+    protected boolean isProtectedGearSlot(int slot) {
+        ItemStack s = inventory.getItem(slot);
+        return isToolOrWeaponItem(s) || isFoodItem(s);
     }
 
     @Override

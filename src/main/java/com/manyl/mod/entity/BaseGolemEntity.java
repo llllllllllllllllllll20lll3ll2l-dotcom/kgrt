@@ -29,14 +29,22 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
+import java.util.EnumSet;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -127,6 +135,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
+        this.goalSelector.addGoal(3, new PickupFoodAndToolGoal(this));
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 6.0F));
         this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
     }
@@ -157,6 +166,10 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             if (current > 0) {
                 setHunger(current - 1);
             }
+        }
+
+        if (tickCount % 5 == 0) {
+            pickupNearbyFoodAndTools(1.65D);
         }
 
         if (getHunger() <= 55 && tickCount % 20 == 0) {
@@ -213,6 +226,18 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
     public boolean tryEatFromInventory() {
         ItemStack stack = inventory.getItem(FOOD_SLOT);
+        if (stack.isEmpty()) {
+            for (int i = 1; i < INVENTORY_SIZE; i++) {
+                ItemStack s = inventory.getItem(i);
+                if (!s.isEmpty() && isFoodItem(s)) {
+                    inventory.setItem(FOOD_SLOT, s.copy());
+                    inventory.setItem(i, ItemStack.EMPTY);
+                    inventory.setChanged();
+                    stack = inventory.getItem(FOOD_SLOT);
+                    break;
+                }
+            }
+        }
         if (stack.isEmpty()) return false;
         FoodProperties food = stack.get(DataComponents.FOOD);
         if (food == null) return false;
@@ -260,8 +285,123 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         return remaining;
     }
 
+    protected boolean isProtectedGearSlot(int slot) {
+        return false;
+    }
+
+    public static boolean isFoodItem(ItemStack stack) {
+        return !stack.isEmpty() && stack.has(DataComponents.FOOD);
+    }
+
+    public static boolean isToolOrWeaponItem(ItemStack stack) {
+        if (stack.isEmpty() || stack.has(DataComponents.FOOD)) return false;
+        if (stack.has(DataComponents.TOOL)) return true;
+        if (stack.is(ItemTags.SWORDS) || stack.is(ItemTags.PICKAXES) || stack.is(ItemTags.AXES)
+                || stack.is(ItemTags.SHOVELS) || stack.is(ItemTags.HOES)) {
+            return true;
+        }
+        if (stack.is(Items.BOW) || stack.is(Items.CROSSBOW) || stack.is(Items.TRIDENT)
+                || stack.is(Items.SHIELD) || stack.is(Items.MACE) || stack.is(Items.SHEARS)
+                || stack.is(Items.FLINT_AND_STEEL) || stack.is(Items.FISHING_ROD) || stack.is(Items.BRUSH)) {
+            return true;
+        }
+        if (stack.isDamageableItem()) {
+            ItemAttributeModifiers mods = stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
+            for (ItemAttributeModifiers.Entry entry : mods.modifiers()) {
+                if (entry.attribute().equals(Attributes.ATTACK_DAMAGE) && entry.modifier().amount() > 0.0D) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean canAcceptFoodOrTool(ItemStack stack) {
+        if (isFoodItem(stack)) {
+            ItemStack foodSlot = inventory.getItem(FOOD_SLOT);
+            if (foodSlot.isEmpty()) return true;
+            if (ItemStack.isSameItemSameComponents(foodSlot, stack)
+                    && foodSlot.getCount() < Math.min(foodSlot.getMaxStackSize(), inventory.getMaxStackSize())) {
+                return true;
+            }
+            return canFitInCargo(stack);
+        }
+        if (isToolOrWeaponItem(stack)) {
+            return canFitInCargo(stack);
+        }
+        return false;
+    }
+
+    private boolean canFitInCargo(ItemStack stack) {
+        for (int i = 1; i < INVENTORY_SIZE; i++) {
+            ItemStack slot = inventory.getItem(i);
+            if (slot.isEmpty()) return true;
+            if (ItemStack.isSameItemSameComponents(slot, stack)
+                    && slot.getCount() < Math.min(slot.getMaxStackSize(), inventory.getMaxStackSize())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public ItemStack pickupFoodOrTool(ItemStack stack) {
+        if (stack.isEmpty()) return ItemStack.EMPTY;
+        ItemStack remaining = stack.copy();
+
+        if (isFoodItem(remaining)) {
+            ItemStack slot0 = inventory.getItem(FOOD_SLOT);
+            if (slot0.isEmpty()) {
+                inventory.setItem(FOOD_SLOT, remaining.copy());
+                inventory.setChanged();
+                return ItemStack.EMPTY;
+            } else if (ItemStack.isSameItemSameComponents(slot0, remaining)) {
+                int space = Math.min(slot0.getMaxStackSize(), inventory.getMaxStackSize()) - slot0.getCount();
+                if (space > 0) {
+                    int move = Math.min(space, remaining.getCount());
+                    slot0.grow(move);
+                    remaining.shrink(move);
+                    inventory.setChanged();
+                    if (remaining.isEmpty()) return ItemStack.EMPTY;
+                }
+            }
+            return addToCargo(remaining);
+        }
+
+        if (isToolOrWeaponItem(remaining)) {
+            return addToCargo(remaining);
+        }
+        return remaining;
+    }
+
+    public void pickupNearbyFoodAndTools(double radius) {
+        if (level().isClientSide() || !isAlive()) return;
+        List<ItemEntity> items = level().getEntitiesOfClass(
+                ItemEntity.class,
+                getBoundingBox().inflate(radius, 1.2D, radius),
+                item -> item.isAlive() && !item.hasPickUpDelay()
+                        && (isFoodItem(item.getItem()) || isToolOrWeaponItem(item.getItem()))
+        );
+        for (ItemEntity itemEntity : items) {
+            ItemStack stack = itemEntity.getItem();
+            if (!canAcceptFoodOrTool(stack)) continue;
+            int before = stack.getCount();
+            ItemStack leftover = pickupFoodOrTool(stack);
+            int taken = before - leftover.getCount();
+            if (taken > 0) {
+                take(itemEntity, taken);
+                playSound(SoundEvents.ITEM_PICKUP, 0.25F, 1.0F + random.nextFloat() * 0.2F);
+                if (leftover.isEmpty()) {
+                    itemEntity.discard();
+                } else {
+                    itemEntity.setItem(leftover);
+                }
+            }
+        }
+    }
+
     public boolean hasCargo() {
         for (int i = 1; i < INVENTORY_SIZE; i++) {
+            if (isProtectedGearSlot(i)) continue;
             if (!inventory.getItem(i).isEmpty()) return true;
         }
         return false;
@@ -284,6 +424,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     public boolean depositCargoIntoContainer(Container target) {
         boolean movedAny = false;
         for (int i = 1; i < INVENTORY_SIZE; i++) {
+            if (isProtectedGearSlot(i)) continue;
             ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
 
@@ -499,4 +640,79 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
     public ItemStack getDisplayItem() { return entityData.get(DATA_DISPLAY_ITEM); }
     public void setDisplayItem(ItemStack stack) { entityData.set(DATA_DISPLAY_ITEM, stack == null ? ItemStack.EMPTY : stack.copy()); }
+
+    protected static class PickupFoodAndToolGoal extends Goal {
+        private final BaseGolemEntity golem;
+        private ItemEntity targetItem;
+        private int scanCooldown;
+
+        public PickupFoodAndToolGoal(BaseGolemEntity golem) {
+            this.golem = golem;
+            this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        }
+
+        @Override
+        public boolean canUse() {
+            if (golem.isSitting() || golem.isWorking()) return false;
+            if (scanCooldown > 0) {
+                scanCooldown--;
+                return false;
+            }
+            scanCooldown = 10;
+            targetItem = findBestFoodOrToolItem();
+            return targetItem != null;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            if (golem.isSitting() || golem.isWorking()) return false;
+            return targetItem != null && targetItem.isAlive()
+                    && !targetItem.hasPickUpDelay()
+                    && golem.canAcceptFoodOrTool(targetItem.getItem())
+                    && golem.distanceToSqr(targetItem) <= 100.0D;
+        }
+
+        @Override
+        public void stop() {
+            targetItem = null;
+            golem.getNavigation().stop();
+        }
+
+        @Override
+        public void tick() {
+            if (targetItem == null || !targetItem.isAlive()) return;
+            golem.getLookControl().setLookAt(targetItem, 30.0F, 30.0F);
+            double distSq = golem.distanceToSqr(targetItem);
+            if (distSq > 2.25D) {
+                golem.getNavigation().moveTo(targetItem, 1.15D);
+            } else {
+                golem.pickupNearbyFoodAndTools(2.0D);
+                targetItem = null;
+            }
+        }
+
+        private ItemEntity findBestFoodOrToolItem() {
+            List<ItemEntity> list = golem.level().getEntitiesOfClass(
+                    ItemEntity.class,
+                    golem.getBoundingBox().inflate(8.5D, 3.0D, 8.5D),
+                    item -> item.isAlive() && !item.hasPickUpDelay()
+                            && (isFoodItem(item.getItem()) || isToolOrWeaponItem(item.getItem()))
+                            && golem.canAcceptFoodOrTool(item.getItem())
+            );
+            ItemEntity best = null;
+            double bestScore = Double.MAX_VALUE;
+            for (ItemEntity item : list) {
+                double d = golem.distanceToSqr(item);
+                // Голодный голем сильнее тянется к еде
+                if (isFoodItem(item.getItem()) && golem.getHunger() <= 60) {
+                    d *= 0.45D;
+                }
+                if (d < bestScore) {
+                    bestScore = d;
+                    best = item;
+                }
+            }
+            return best;
+        }
+    }
 }

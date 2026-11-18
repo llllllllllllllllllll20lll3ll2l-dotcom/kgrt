@@ -12,9 +12,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -46,6 +48,7 @@ import java.util.Map;
  */
 public class DiggerGolemEntity extends BaseGolemEntity {
     private BlockPos reservedTargetPos;
+    private int equippedToolSlot = -1;
 
     public DiggerGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -56,6 +59,45 @@ public class DiggerGolemEntity extends BaseGolemEntity {
     @Override
     public GolemRole getRole() {
         return GolemRole.DIGGER;
+    }
+
+    @Override
+    protected void onInventoryChanged() {
+        if (level().isClientSide()) return;
+        int bestSlot = -1;
+        ItemStack best = ItemStack.EMPTY;
+        double bestScore = 0.0D;
+
+        for (int i = 1; i < INVENTORY_SIZE; i++) {
+            ItemStack s = inventory.getItem(i);
+            if (!isToolOrWeaponItem(s)) continue;
+            double score = scoreDiggerTool(s);
+            if (score > bestScore) {
+                bestScore = score;
+                best = s;
+                bestSlot = i;
+            }
+        }
+        equippedToolSlot = bestSlot;
+        this.setItemSlot(EquipmentSlot.MAINHAND, best.isEmpty() ? ItemStack.EMPTY : best.copy());
+        this.setDisplayItem(best);
+    }
+
+    private double scoreDiggerTool(ItemStack s) {
+        double score = 1.0D;
+        if (s.is(ItemTags.PICKAXES)) score += 10.0D;
+        else if (s.is(ItemTags.SHOVELS)) score += 7.0D;
+        else if (s.is(ItemTags.AXES)) score += 5.0D;
+        else if (s.has(DataComponents.TOOL)) score += 4.0D;
+        score += s.getDestroySpeed(Blocks.STONE.defaultBlockState());
+        return score;
+    }
+
+    @Override
+    protected boolean isProtectedGearSlot(int slot) {
+        if (slot == equippedToolSlot) return true;
+        ItemStack s = inventory.getItem(slot);
+        return isToolOrWeaponItem(s) || isFoodItem(s);
     }
 
     @Override
@@ -260,42 +302,33 @@ public class DiggerGolemEntity extends BaseGolemEntity {
             }
 
             PlayerGolemSettings settings = golem.getOwnerSettings();
-            if (settings.isQuarryActive() && settings.hasQuarryBounds()) {
-                if (selectNextQuarryTask(settings)) {
-                    return true;
-                }
-                // Если весь карьер уже выкопан или есть груз — несём в сундук (и только потом поднимаемся наверх)
-                if (golem.hasCargo()) {
-                    depositChestPos = golem.findNearestContainerPos(12);
-                    if (depositChestPos != null) {
-                        if (needToClimbOutForChest(depositChestPos)) escaping = true;
-                        return true;
-                    }
-                }
+            // Копатель копает ТОЛЬКО выделенную и активную зону карьера!
+            // Без выделенной зоны при спавне он не копает окружающий мир.
+            if (!settings.isQuarryActive() || !settings.hasQuarryBounds()) {
                 if (needToClimbOut()) {
                     escaping = true;
                     return true;
                 }
+                if (golem.hasCargo()) {
+                    depositChestPos = golem.findNearestContainerPos(12);
+                    return depositChestPos != null;
+                }
                 return false;
             }
 
-            targetPos = findTargetBlock();
-            if (targetPos != null) {
-                golem.setReservedTargetPos(targetPos);
-                if (entryPos == null && targetPos.getY() < golem.blockPosition().getY()) {
-                    entryPos = golem.blockPosition();
-                }
+            if (selectNextQuarryTask(settings)) {
                 return true;
             }
-
+            if (golem.hasCargo()) {
+                depositChestPos = golem.findNearestContainerPos(12);
+                if (depositChestPos != null) {
+                    if (needToClimbOutForChest(depositChestPos)) escaping = true;
+                    return true;
+                }
+            }
             if (needToClimbOut()) {
                 escaping = true;
                 return true;
-            }
-
-            if (golem.hasCargo()) {
-                depositChestPos = golem.findNearestContainerPos(12);
-                return depositChestPos != null;
             }
             return false;
         }
@@ -461,7 +494,9 @@ public class DiggerGolemEntity extends BaseGolemEntity {
 
             BlockState state = golem.level().getBlockState(activeDigPos);
             float hardness = state.getDestroySpeed(golem.level(), activeDigPos);
-            int requiredTicks = Math.max(8, Math.min(55, (int) (hardness * 9.0F)));
+            ItemStack mainTool = golem.getMainHandItem();
+            float toolSpeed = mainTool.isEmpty() ? 1.0F : Math.max(1.0F, mainTool.getDestroySpeed(state));
+            int requiredTicks = Math.max(4, Math.min(55, (int) (hardness * 9.0F / Math.min(8.0F, toolSpeed))));
 
             if (digProgress >= requiredTicks && golem.level() instanceof ServerLevel sl) {
                 digProgress = 0;

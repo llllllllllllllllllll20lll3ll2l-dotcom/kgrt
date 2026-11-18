@@ -56,6 +56,12 @@ public class WarriorGolemEntity extends BaseGolemEntity {
         this.setDisplayItem(best);
     }
 
+    @Override
+    protected boolean isProtectedGearSlot(int slot) {
+        ItemStack s = inventory.getItem(slot);
+        return isToolOrWeaponItem(s) || isFoodItem(s);
+    }
+
     private double scoreWeapon(ItemStack stack) {
         double dmg = 0.0D;
         ItemAttributeModifiers mods = stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
