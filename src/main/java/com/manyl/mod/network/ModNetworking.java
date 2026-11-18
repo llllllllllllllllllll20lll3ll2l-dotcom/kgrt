@@ -4,14 +4,12 @@ import com.manyl.mod.ManylMod;
 import com.manyl.mod.data.ManylSavedData;
 import com.manyl.mod.data.PlayerGolemSettings;
 import com.manyl.mod.entity.BaseGolemEntity;
-import com.manyl.mod.entity.DigMode;
 import com.manyl.mod.entity.GolemRole;
 import com.manyl.mod.registry.ModEntities;
 import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -27,141 +25,44 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 
 /**
- * Сетевые пакеты (C2S и S2C) для работы кругового меню, окна настройки копания и меню карьера.
+ * Сетевые пакеты (C2S и S2C) для управления воинами.
  */
 public final class ModNetworking {
 
     public record OpenStaffMenuPayload(
-            int diggerCount, int farmerCount, int sorterCount, int warriorCount,
-            int diggerRadius, int diggerDepth, int digModeOrdinal, boolean followOwner,
-            String extractFilter, boolean diggerDropTrash, boolean diggerTunnelToOre,
-            boolean openManagement
+            int warriorCount, boolean followOwner, String guardMode, String targetFilter, boolean openManagement
     ) implements CustomPacketPayload {
         public static final Type<OpenStaffMenuPayload> TYPE = new Type<>(ManylMod.id("open_staff_menu"));
         public static final StreamCodec<RegistryFriendlyByteBuf, OpenStaffMenuPayload> CODEC = StreamCodec.of(
                 (buf, p) -> {
-                    buf.writeVarInt(p.diggerCount);
-                    buf.writeVarInt(p.farmerCount);
-                    buf.writeVarInt(p.sorterCount);
                     buf.writeVarInt(p.warriorCount);
-                    buf.writeVarInt(p.diggerRadius);
-                    buf.writeVarInt(p.diggerDepth);
-                    buf.writeVarInt(p.digModeOrdinal);
                     buf.writeBoolean(p.followOwner);
-                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
-                    buf.writeBoolean(p.diggerDropTrash);
-                    buf.writeBoolean(p.diggerTunnelToOre);
+                    buf.writeUtf(p.guardMode == null ? "follow" : p.guardMode, 32);
+                    buf.writeUtf(p.targetFilter == null ? "" : p.targetFilter, 64);
                     buf.writeBoolean(p.openManagement);
                 },
                 buf -> new OpenStaffMenuPayload(
-                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean(),
-                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean(), buf.readBoolean()
+                        buf.readVarInt(), buf.readBoolean(), buf.readUtf(32), buf.readUtf(64), buf.readBoolean()
                 )
         );
 
         @Override
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
-
-        public int countFor(GolemRole role) {
-            return switch (role) {
-                case DIGGER -> diggerCount;
-                case FARMER -> farmerCount;
-                case SORTER -> sorterCount;
-                case WARRIOR -> warriorCount;
-            };
-        }
     }
 
     public record SyncGolemStatePayload(
-            int diggerCount, int farmerCount, int sorterCount, int warriorCount,
-            int diggerRadius, int diggerDepth, int digModeOrdinal, boolean followOwner,
-            String extractFilter, boolean diggerDropTrash, boolean diggerTunnelToOre
+            int warriorCount, boolean followOwner, String guardMode, String targetFilter
     ) implements CustomPacketPayload {
         public static final Type<SyncGolemStatePayload> TYPE = new Type<>(ManylMod.id("sync_golem_state"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SyncGolemStatePayload> CODEC = StreamCodec.of(
                 (buf, p) -> {
-                    buf.writeVarInt(p.diggerCount);
-                    buf.writeVarInt(p.farmerCount);
-                    buf.writeVarInt(p.sorterCount);
                     buf.writeVarInt(p.warriorCount);
-                    buf.writeVarInt(p.diggerRadius);
-                    buf.writeVarInt(p.diggerDepth);
-                    buf.writeVarInt(p.digModeOrdinal);
                     buf.writeBoolean(p.followOwner);
-                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
-                    buf.writeBoolean(p.diggerDropTrash);
-                    buf.writeBoolean(p.diggerTunnelToOre);
+                    buf.writeUtf(p.guardMode == null ? "follow" : p.guardMode, 32);
+                    buf.writeUtf(p.targetFilter == null ? "" : p.targetFilter, 64);
                 },
                 buf -> new SyncGolemStatePayload(
-                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean(),
-                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean()
-                )
-        );
-
-        @Override
-        public Type<? extends CustomPacketPayload> type() { return TYPE; }
-
-        public int countFor(GolemRole role) {
-            return switch (role) {
-                case DIGGER -> diggerCount;
-                case FARMER -> farmerCount;
-                case SORTER -> sorterCount;
-                case WARRIOR -> warriorCount;
-            };
-        }
-    }
-
-    public record OpenQuarryConfigPayload(
-            int minX, int maxX, int minZ, int maxZ, int topY,
-            int quarryDepth, boolean quarryStairs, int digModeOrdinal,
-            String extractFilter, boolean dropTrash, boolean quarryActive
-    ) implements CustomPacketPayload {
-        public static final Type<OpenQuarryConfigPayload> TYPE = new Type<>(ManylMod.id("open_quarry_config"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, OpenQuarryConfigPayload> CODEC = StreamCodec.of(
-                (buf, p) -> {
-                    buf.writeInt(p.minX);
-                    buf.writeInt(p.maxX);
-                    buf.writeInt(p.minZ);
-                    buf.writeInt(p.maxZ);
-                    buf.writeInt(p.topY);
-                    buf.writeVarInt(p.quarryDepth);
-                    buf.writeBoolean(p.quarryStairs);
-                    buf.writeVarInt(p.digModeOrdinal);
-                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
-                    buf.writeBoolean(p.dropTrash);
-                    buf.writeBoolean(p.quarryActive);
-                },
-                buf -> new OpenQuarryConfigPayload(
-                        buf.readInt(), buf.readInt(), buf.readInt(), buf.readInt(), buf.readInt(),
-                        buf.readVarInt(), buf.readBoolean(), buf.readVarInt(),
-                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean()
-                )
-        );
-
-        @Override
-        public Type<? extends CustomPacketPayload> type() { return TYPE; }
-    }
-
-    public record SaveQuarryConfigPayload(
-            int quarryDepth, boolean quarryStairs, int digModeOrdinal,
-            String extractFilter, boolean dropTrash, boolean quarryActive, boolean clearSelection
-    ) implements CustomPacketPayload {
-        public static final Type<SaveQuarryConfigPayload> TYPE = new Type<>(ManylMod.id("save_quarry_config"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, SaveQuarryConfigPayload> CODEC = StreamCodec.of(
-                (buf, p) -> {
-                    buf.writeVarInt(p.quarryDepth);
-                    buf.writeBoolean(p.quarryStairs);
-                    buf.writeVarInt(p.digModeOrdinal);
-                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
-                    buf.writeBoolean(p.dropTrash);
-                    buf.writeBoolean(p.quarryActive);
-                    buf.writeBoolean(p.clearSelection);
-                },
-                buf -> new SaveQuarryConfigPayload(
-                        buf.readVarInt(), buf.readBoolean(), buf.readVarInt(),
-                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean(), buf.readBoolean()
+                        buf.readVarInt(), buf.readBoolean(), buf.readUtf(32), buf.readUtf(64)
                 )
         );
 
@@ -187,24 +88,18 @@ public final class ModNetworking {
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    public record UpdateDiggerSettingsPayload(
-            int diggerRadius, int diggerDepth, int digModeOrdinal, boolean followOwner,
-            String extractFilter, boolean diggerDropTrash, boolean diggerTunnelToOre
+    public record UpdateWarriorSettingsPayload(
+            boolean followOwner, String guardMode, String targetFilter
     ) implements CustomPacketPayload {
-        public static final Type<UpdateDiggerSettingsPayload> TYPE = new Type<>(ManylMod.id("update_digger_settings"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, UpdateDiggerSettingsPayload> CODEC = StreamCodec.of(
+        public static final Type<UpdateWarriorSettingsPayload> TYPE = new Type<>(ManylMod.id("update_warrior_settings"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, UpdateWarriorSettingsPayload> CODEC = StreamCodec.of(
                 (buf, p) -> {
-                    buf.writeVarInt(p.diggerRadius);
-                    buf.writeVarInt(p.diggerDepth);
-                    buf.writeVarInt(p.digModeOrdinal);
                     buf.writeBoolean(p.followOwner);
-                    buf.writeUtf(p.extractFilter == null ? "" : p.extractFilter, 64);
-                    buf.writeBoolean(p.diggerDropTrash);
-                    buf.writeBoolean(p.diggerTunnelToOre);
+                    buf.writeUtf(p.guardMode == null ? "follow" : p.guardMode, 32);
+                    buf.writeUtf(p.targetFilter == null ? "" : p.targetFilter, 64);
                 },
-                buf -> new UpdateDiggerSettingsPayload(
-                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean(),
-                        buf.readUtf(64), buf.readBoolean(), buf.readBoolean()
+                buf -> new UpdateWarriorSettingsPayload(
+                        buf.readBoolean(), buf.readUtf(32), buf.readUtf(64)
                 )
         );
 
@@ -224,83 +119,31 @@ public final class ModNetworking {
     public static void registerPayloads() {
         PayloadTypeRegistry.playS2C().register(OpenStaffMenuPayload.TYPE, OpenStaffMenuPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncGolemStatePayload.TYPE, SyncGolemStatePayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(OpenQuarryConfigPayload.TYPE, OpenQuarryConfigPayload.CODEC);
 
         PayloadTypeRegistry.playC2S().register(SummonGolemPayload.TYPE, SummonGolemPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(RecallGolemsPayload.TYPE, RecallGolemsPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(UpdateDiggerSettingsPayload.TYPE, UpdateDiggerSettingsPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(UpdateWarriorSettingsPayload.TYPE, UpdateWarriorSettingsPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(RequestOpenManagementPayload.TYPE, RequestOpenManagementPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(SaveQuarryConfigPayload.TYPE, SaveQuarryConfigPayload.CODEC);
     }
 
     public static void registerServerReceivers() {
         ServerPlayNetworking.registerGlobalReceiver(SummonGolemPayload.TYPE, (payload, ctx) -> {
             ServerPlayer player = ctx.player();
-            ctx.server().execute(() -> handleSummon(player, GolemRole.byOrdinal(payload.roleOrdinal())));
+            ctx.server().execute(() -> handleSummon(player));
         });
 
         ServerPlayNetworking.registerGlobalReceiver(RecallGolemsPayload.TYPE, (payload, ctx) -> {
             ServerPlayer player = ctx.player();
-            ctx.server().execute(() -> handleRecall(player, payload.roleOrdinal()));
+            ctx.server().execute(() -> handleRecall(player));
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(UpdateDiggerSettingsPayload.TYPE, (payload, ctx) -> {
+        ServerPlayNetworking.registerGlobalReceiver(UpdateWarriorSettingsPayload.TYPE, (payload, ctx) -> {
             ServerPlayer player = ctx.player();
             ctx.server().execute(() -> {
                 MinecraftServer server = ((ServerLevel) player.level()).getServer();
                 ManylSavedData data = ManylSavedData.get(server);
-                data.updateDiggerSettings(
-                        player.getUUID(),
-                        payload.diggerRadius(),
-                        payload.diggerDepth(),
-                        DigMode.byOrdinal(payload.digModeOrdinal()),
-                        payload.followOwner(),
-                        payload.extractFilter(),
-                        payload.diggerDropTrash(),
-                        payload.diggerTunnelToOre()
-                );
+                data.updateWarriorSettings(player.getUUID(), payload.followOwner(), payload.guardMode(), payload.targetFilter());
                 ManylSavedData.applySettingsToActiveGolems(player, data.getSettings(player.getUUID()));
-                sendStateSync(player);
-            });
-        });
-
-        ServerPlayNetworking.registerGlobalReceiver(SaveQuarryConfigPayload.TYPE, (payload, ctx) -> {
-            ServerPlayer player = ctx.player();
-            ctx.server().execute(() -> {
-                MinecraftServer server = ((ServerLevel) player.level()).getServer();
-                ManylSavedData data = ManylSavedData.get(server);
-                PlayerGolemSettings s = data.getSettings(player.getUUID());
-
-                if (payload.clearSelection()) {
-                    s.setQuarryPos1(null);
-                    s.setQuarryPos2(null);
-                    s.setQuarryActive(false);
-                    data.setDirty();
-                    player.displayClientMessage(Component.translatable("msg.manyl_mod.quarry_cleared"), true);
-                    sendStateSync(player);
-                    return;
-                }
-
-                s.setQuarryDepth(payload.quarryDepth());
-                s.setQuarryStairs(payload.quarryStairs());
-                s.setDigMode(DigMode.byOrdinal(payload.digModeOrdinal()));
-                s.setExtractFilter(payload.extractFilter());
-                s.setDiggerDropTrash(payload.dropTrash());
-                s.setQuarryActive(payload.quarryActive() && s.hasQuarryBounds());
-                if (s.isQuarryActive() && s.hasQuarryBounds()) {
-                    // Устанавливаем центр карьера для ориентира копателей
-                    int cx = (s.getQuarryMinX() + s.getQuarryMaxX()) / 2;
-                    int cz = (s.getQuarryMinZ() + s.getQuarryMaxZ()) / 2;
-                    s.setHomePos(new BlockPos(cx, s.getQuarryTopY(), cz));
-                    player.displayClientMessage(Component.translatable("msg.manyl_mod.quarry_started",
-                            s.getQuarryMaxX() - s.getQuarryMinX() + 1,
-                            s.getQuarryMaxZ() - s.getQuarryMinZ() + 1,
-                            s.getQuarryDepth()), false);
-                } else {
-                    player.displayClientMessage(Component.translatable("msg.manyl_mod.quarry_paused"), true);
-                }
-                data.setDirty();
-                ManylSavedData.applySettingsToActiveGolems(player, s);
                 sendStateSync(player);
             });
         });
@@ -311,45 +154,29 @@ public final class ModNetworking {
         });
     }
 
-    public static void sendOpenQuarryConfig(ServerPlayer player) {
-        MinecraftServer server = ((ServerLevel) player.level()).getServer();
-        PlayerGolemSettings s = ManylSavedData.get(server).getSettings(player.getUUID());
-        if (!s.hasQuarryBounds()) return;
-        ServerPlayNetworking.send(player, new OpenQuarryConfigPayload(
-                s.getQuarryMinX(), s.getQuarryMaxX(), s.getQuarryMinZ(), s.getQuarryMaxZ(), s.getQuarryTopY(),
-                s.getQuarryDepth(), s.isQuarryStairs(), s.getDigMode().ordinal(),
-                s.getExtractFilter(), s.isDiggerDropTrash(), s.isQuarryActive()
-        ));
-    }
-
     public static void sendOpenStaffMenu(ServerPlayer player, boolean openManagement) {
         MinecraftServer server = ((ServerLevel) player.level()).getServer();
-        int[] counts = ManylSavedData.getRoleCounts(server, player.getUUID());
+        int count = ManylSavedData.getWarriorCount(server, player.getUUID());
         PlayerGolemSettings s = ManylSavedData.get(server).getSettings(player.getUUID());
         ServerPlayNetworking.send(player, new OpenStaffMenuPayload(
-                counts[0], counts[1], counts[2], counts[3],
-                s.getDiggerRadius(), s.getDiggerDepth(), s.getDigMode().ordinal(), s.isFollowOwner(),
-                s.getExtractFilter(), s.isDiggerDropTrash(), s.isDiggerTunnelToOre(),
-                openManagement
+                count, s.isFollowOwner(), s.getGuardMode(), s.getTargetFilter(), openManagement
         ));
     }
 
     public static void sendStateSync(ServerPlayer player) {
         MinecraftServer server = ((ServerLevel) player.level()).getServer();
-        int[] counts = ManylSavedData.getRoleCounts(server, player.getUUID());
+        int count = ManylSavedData.getWarriorCount(server, player.getUUID());
         PlayerGolemSettings s = ManylSavedData.get(server).getSettings(player.getUUID());
         ServerPlayNetworking.send(player, new SyncGolemStatePayload(
-                counts[0], counts[1], counts[2], counts[3],
-                s.getDiggerRadius(), s.getDiggerDepth(), s.getDigMode().ordinal(), s.isFollowOwner(),
-                s.getExtractFilter(), s.isDiggerDropTrash(), s.isDiggerTunnelToOre()
+                count, s.isFollowOwner(), s.getGuardMode(), s.getTargetFilter()
         ));
     }
 
-    private static void handleSummon(ServerPlayer player, GolemRole role) {
+    private static void handleSummon(ServerPlayer player) {
         ServerLevel level = (ServerLevel) player.level();
         MinecraftServer server = level.getServer();
-        int[] counts = ManylSavedData.getRoleCounts(server, player.getUUID());
-        int current = counts[role.ordinal()];
+        GolemRole role = GolemRole.WARRIOR;
+        int current = ManylSavedData.getWarriorCount(server, player.getUUID());
         if (current >= role.getMaxPerPlayer()) {
             player.displayClientMessage(Component.translatable("msg.manyl_mod.limit_reached", current, role.getMaxPerPlayer()), true);
             sendStateSync(player);
@@ -361,14 +188,14 @@ public final class ModNetworking {
         double sz = player.getZ() + look.z * 1.8D + (player.getRandom().nextDouble() - 0.5D) * 0.8D;
         double sy = player.getY();
 
-        BaseGolemEntity golem = ModEntities.forRole(role).create(level, EntitySpawnReason.MOB_SUMMONED);
+        BaseGolemEntity golem = ModEntities.WARRIOR_GOLEM.create(level, EntitySpawnReason.MOB_SUMMONED);
         if (golem != null) {
             PlayerGolemSettings settings = ManylSavedData.get(server).getSettings(player.getUUID());
             golem.setPos(sx, sy, sz);
             golem.setYRot(player.getYRot() + 180.0F);
             golem.setOwnerUuid(player.getUUID());
             golem.setHomePos(settings.getHomePos());
-            golem.setSitting(!settings.isFollowOwner());
+            golem.setSitting("stay".equals(settings.getGuardMode()));
             golem.setSummonTicks(24);
             level.addFreshEntity(golem);
 
@@ -381,15 +208,13 @@ public final class ModNetworking {
         sendStateSync(player);
     }
 
-    private static void handleRecall(ServerPlayer player, int roleOrdinal) {
+    private static void handleRecall(ServerPlayer player) {
         ServerLevel level = (ServerLevel) player.level();
         MinecraftServer server = level.getServer();
         List<BaseGolemEntity> golems = ManylSavedData.getPlayerGolems(server, player.getUUID());
         int recalled = 0;
 
         for (BaseGolemEntity golem : golems) {
-            if (roleOrdinal >= 0 && golem.getRole().ordinal() != roleOrdinal) continue;
-
             for (int i = 0; i < BaseGolemEntity.INVENTORY_SIZE; i++) {
                 ItemStack stack = golem.getGolemInventory().getItem(i);
                 if (!stack.isEmpty()) {

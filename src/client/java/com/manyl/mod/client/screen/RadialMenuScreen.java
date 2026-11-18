@@ -13,50 +13,35 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 
 /**
- * Оптимизированное круговое меню управления прислужниками (Manyl_mod 1.1):
- * использует предварительно запечённые PNG-текстуры (2-3 blit вместо 135 000 fill на кадр — без лагов FPS).
+ * Круговое меню управления Воинами (Призвать / Отозвать / Управление).
  */
 public class RadialMenuScreen extends Screen {
-    private static final Identifier ICON_SUMMON = ManylMod.id("textures/gui/icons/summon.png");
     private static final Identifier ICON_RECALL = ManylMod.id("textures/gui/icons/recall.png");
     private static final Identifier ICON_MANAGE = ManylMod.id("textures/gui/icons/manage.png");
 
     private static final Identifier RADIAL_3_BASE = ManylMod.id("textures/gui/radial/radial_3_base.png");
-    private static final Identifier RADIAL_4_BASE = ManylMod.id("textures/gui/radial/radial_4_base.png");
     private static final Identifier RADIAL_CENTER_HOVER = ManylMod.id("textures/gui/radial/radial_center_hover.png");
-
     private static final Identifier[] RADIAL_3_HOVER = {
             ManylMod.id("textures/gui/radial/radial_3_hover_0.png"),
             ManylMod.id("textures/gui/radial/radial_3_hover_1.png"),
             ManylMod.id("textures/gui/radial/radial_3_hover_2.png")
-    };
-    private static final Identifier[] RADIAL_4_HOVER = {
-            ManylMod.id("textures/gui/radial/radial_4_hover_0.png"),
-            ManylMod.id("textures/gui/radial/radial_4_hover_1.png"),
-            ManylMod.id("textures/gui/radial/radial_4_hover_2.png"),
-            ManylMod.id("textures/gui/radial/radial_4_hover_3.png")
     };
 
     private static final int WHEEL_SIZE = 224;
     private static final int OUTER_RADIUS = 104;
     private static final int INNER_RADIUS = 30;
 
-    private final int[] counts = new int[GolemRole.values().length];
-    private boolean summonSubmenu = false;
+    private int warriorCount;
     private int hoveredSector = -1;
     private boolean hoveredCenter = false;
 
     public RadialMenuScreen(ModNetworking.OpenStaffMenuPayload payload) {
         super(Component.translatable("screen.manyl_mod.radial"));
-        for (GolemRole role : GolemRole.values()) {
-            counts[role.ordinal()] = payload.countFor(role);
-        }
+        this.warriorCount = payload.warriorCount();
     }
 
-    public void updateCounts(ModNetworking.SyncGolemStatePayload payload) {
-        for (GolemRole role : GolemRole.values()) {
-            counts[role.ordinal()] = payload.countFor(role);
-        }
+    public void updateState(ModNetworking.SyncGolemStatePayload payload) {
+        this.warriorCount = payload.warriorCount();
     }
 
     @Override
@@ -73,60 +58,39 @@ public class RadialMenuScreen extends Screen {
 
         updateHover(cx, cy, mouseX, mouseY);
 
-        int sectorCount = summonSubmenu ? 4 : 3;
+        graphics.blit(RenderPipelines.GUI_TEXTURED, RADIAL_3_BASE, wx, wy, 0, 0, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE);
 
-        // 1. Быстрая отрисовка базового кольца (1 blit)
-        graphics.blit(RenderPipelines.GUI_TEXTURED,
-                summonSubmenu ? RADIAL_4_BASE : RADIAL_3_BASE,
-                wx, wy, 0, 0, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE);
-
-        // 2. Подсветка наведённого сектора или центра (1 blit)
         if (hoveredCenter) {
-            graphics.blit(RenderPipelines.GUI_TEXTURED, RADIAL_CENTER_HOVER,
-                    wx, wy, 0, 0, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE);
-        } else if (hoveredSector >= 0 && hoveredSector < sectorCount) {
-            Identifier hoverTex = summonSubmenu ? RADIAL_4_HOVER[hoveredSector] : RADIAL_3_HOVER[hoveredSector];
-            graphics.blit(RenderPipelines.GUI_TEXTURED, hoverTex,
-                    wx, wy, 0, 0, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE);
+            graphics.blit(RenderPipelines.GUI_TEXTURED, RADIAL_CENTER_HOVER, wx, wy, 0, 0, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE);
+        } else if (hoveredSector >= 0 && hoveredSector < 3) {
+            graphics.blit(RenderPipelines.GUI_TEXTURED, RADIAL_3_HOVER[hoveredSector], wx, wy, 0, 0, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE);
         }
 
-        // 3. Иконки и подписи секторов
-        double startOffset = summonSubmenu ? -Math.PI * 0.75D : -Math.PI * 0.5D - Math.PI / 3.0D;
-        double step = (Math.PI * 2.0D) / sectorCount;
+        double startOffset = -Math.PI * 0.5D - Math.PI / 3.0D;
+        double step = (Math.PI * 2.0D) / 3.0D;
         int iconR = (INNER_RADIUS + OUTER_RADIUS) / 2;
 
-        for (int i = 0; i < sectorCount; i++) {
+        for (int i = 0; i < 3; i++) {
             double mid = startOffset + (i + 0.5D) * step;
             boolean hovered = (hoveredSector == i);
 
             int ix = cx + (int) Math.round(Math.cos(mid) * iconR);
             int iy = cy + (int) Math.round(Math.sin(mid) * iconR);
 
-            if (!summonSubmenu) {
-                Identifier icon = switch (i) {
-                    case 0 -> ICON_SUMMON;
-                    case 1 -> ICON_RECALL;
-                    default -> ICON_MANAGE;
-                };
-                Component label = switch (i) {
-                    case 0 -> Component.translatable("gui.manyl_mod.summon");
-                    case 1 -> Component.translatable("gui.manyl_mod.recall");
-                    default -> Component.translatable("gui.manyl_mod.manage");
-                };
+            if (i == 0) {
+                graphics.blit(RenderPipelines.GUI_TEXTURED, GolemRole.WARRIOR.getIconTexture(), ix - 8, iy - 14, 0, 0, 16, 16, 16, 16);
+                graphics.drawCenteredString(this.font, Component.translatable("gui.manyl_mod.summon"), ix, iy + 5, hovered ? 0xFFFFE599 : 0xFFE0E5F0);
+                String countStr = warriorCount + "/" + GolemRole.WARRIOR.getMaxPerPlayer();
+                graphics.drawCenteredString(this.font, countStr, ix, iy + 15, GolemRole.WARRIOR.getAccentColor());
+            } else {
+                Identifier icon = (i == 1) ? ICON_RECALL : ICON_MANAGE;
+                Component label = Component.translatable(i == 1 ? "gui.manyl_mod.recall" : "gui.manyl_mod.manage");
                 graphics.blit(RenderPipelines.GUI_TEXTURED, icon, ix - 8, iy - 12, 0, 0, 16, 16, 16, 16);
                 graphics.drawCenteredString(this.font, label, ix, iy + 8, hovered ? 0xFFFFE599 : 0xFFE0E5F0);
-            } else {
-                GolemRole role = GolemRole.byOrdinal(i);
-                graphics.blit(RenderPipelines.GUI_TEXTURED, role.getIconTexture(), ix - 8, iy - 14, 0, 0, 16, 16, 16, 16);
-                graphics.drawCenteredString(this.font, Component.translatable(role.getTranslationKey()), ix, iy + 5, hovered ? 0xFFFFFFFF : 0xFFD8DEE9);
-                String countStr = counts[i] + "/" + role.getMaxPerPlayer();
-                graphics.drawCenteredString(this.font, countStr, ix, iy + 15, role.getAccentColor());
             }
         }
 
-        String centerText = summonSubmenu ? "←" : "✕";
-        graphics.drawCenteredString(this.font, centerText, cx, cy - 4, 0xFFFFE8A3);
-
+        graphics.drawCenteredString(this.font, "✕", cx, cy - 4, 0xFFFFE8A3);
         super.render(graphics, mouseX, mouseY, delta);
     }
 
@@ -139,12 +103,11 @@ public class RadialMenuScreen extends Screen {
             hoveredSector = -1;
             return;
         }
-        int sectorCount = summonSubmenu ? 4 : 3;
-        double startOffset = summonSubmenu ? -Math.PI * 0.75D : -Math.PI * 0.5D - Math.PI / 3.0D;
+        double startOffset = -Math.PI * 0.5D - Math.PI / 3.0D;
         double angle = Math.atan2(dy, dx) - startOffset;
         while (angle < 0) angle += Math.PI * 2.0D;
         while (angle >= Math.PI * 2.0D) angle -= Math.PI * 2.0D;
-        hoveredSector = Mth.clamp((int) (angle / ((Math.PI * 2.0D) / sectorCount)), 0, sectorCount - 1);
+        hoveredSector = Mth.clamp((int) (angle / ((Math.PI * 2.0D) / 3.0D)), 0, 2);
     }
 
     @Override
@@ -155,26 +118,17 @@ public class RadialMenuScreen extends Screen {
             updateHover(cx, cy, (int) event.x(), (int) event.y());
 
             if (hoveredCenter) {
-                if (summonSubmenu) {
-                    summonSubmenu = false;
-                } else {
-                    this.onClose();
-                }
+                this.onClose();
                 return true;
             }
-
             if (hoveredSector >= 0) {
-                if (!summonSubmenu) {
-                    switch (hoveredSector) {
-                        case 0 -> summonSubmenu = true;
-                        case 1 -> {
-                            ClientPlayNetworking.send(new ModNetworking.RecallGolemsPayload(-1));
-                            this.onClose();
-                        }
-                        case 2 -> ClientPlayNetworking.send(new ModNetworking.RequestOpenManagementPayload());
+                switch (hoveredSector) {
+                    case 0 -> ClientPlayNetworking.send(new ModNetworking.SummonGolemPayload(0));
+                    case 1 -> {
+                        ClientPlayNetworking.send(new ModNetworking.RecallGolemsPayload(-1));
+                        this.onClose();
                     }
-                } else {
-                    ClientPlayNetworking.send(new ModNetworking.SummonGolemPayload(hoveredSector));
+                    case 2 -> ClientPlayNetworking.send(new ModNetworking.RequestOpenManagementPayload());
                 }
                 return true;
             }

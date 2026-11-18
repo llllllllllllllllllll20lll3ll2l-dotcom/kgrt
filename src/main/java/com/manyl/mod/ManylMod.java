@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Главный класс инициализации мода Manyl_mod v1.1 (сервер + общая логика).
+ * Главный класс инициализации мода Manyl_mod.
  */
 public class ManylMod implements ModInitializer {
     public static final String MOD_ID = "manyl_mod";
@@ -28,7 +28,7 @@ public class ManylMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        LOGGER.info("Инициализация мода Manyl_mod 1.1...");
+        LOGGER.info("Инициализация мода Manyl_mod...");
 
         ModSounds.init();
         ModParticles.init();
@@ -43,10 +43,10 @@ public class ManylMod implements ModInitializer {
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, MAIN_TAB, FabricItemGroup.builder()
                 .title(Component.translatable("itemGroup.manyl_mod.main"))
                 .icon(() -> new ItemStack(ModItems.SUMMON_STAFF))
-                .displayItems((ctx, entries) -> { entries.accept(ModItems.SUMMON_STAFF); entries.accept(ModItems.QUARRY_STAFF); })
+                .displayItems((ctx, entries) -> entries.accept(ModItems.SUMMON_STAFF))
                 .build());
 
-        LOGGER.info("Manyl_mod 1.1 успешно загружен!");
+        LOGGER.info("Manyl_mod успешно загружен!");
     }
 
     public static Identifier id(String path) {

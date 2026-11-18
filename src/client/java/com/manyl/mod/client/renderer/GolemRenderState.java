@@ -6,10 +6,10 @@ import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.world.entity.AnimationState;
 
 /**
- * Состояние рендера прислужника для Minecraft 1.21.11 (включая оружие в руке).
+ * Состояние рендера голема-воина.
  */
 public class GolemRenderState extends LivingEntityRenderState {
-    public GolemRole role = GolemRole.DIGGER;
+    public GolemRole role = GolemRole.WARRIOR;
     public int hunger = 100;
     public boolean isSitting = false;
     public boolean isCarrying = false;

@@ -1,7 +1,6 @@
 package com.manyl.mod.data;
 
 import com.manyl.mod.entity.BaseGolemEntity;
-import com.manyl.mod.entity.DigMode;
 import com.manyl.mod.entity.GolemRole;
 import com.manyl.mod.entity.WarriorGolemEntity;
 import com.mojang.serialization.Codec;
@@ -53,16 +52,11 @@ public class ManylSavedData extends SavedData {
         });
     }
 
-    public void updateDiggerSettings(UUID playerUuid, int radius, int depth, DigMode mode, boolean followOwner,
-                                     String extractFilter, boolean dropTrash, boolean tunnelToOre) {
+    public void updateWarriorSettings(UUID playerUuid, boolean followOwner, String guardMode, String targetFilter) {
         PlayerGolemSettings s = getSettings(playerUuid);
-        s.setDiggerRadius(radius);
-        s.setDiggerDepth(depth);
-        s.setDigMode(mode);
         s.setFollowOwner(followOwner);
-        s.setExtractFilter(extractFilter);
-        s.setDiggerDropTrash(dropTrash);
-        s.setDiggerTunnelToOre(tunnelToOre);
+        s.setGuardMode(guardMode);
+        s.setTargetFilter(targetFilter);
         setDirty();
     }
 
@@ -84,12 +78,12 @@ public class ManylSavedData extends SavedData {
         return result;
     }
 
-    public static int[] getRoleCounts(MinecraftServer server, UUID ownerUuid) {
-        int[] counts = new int[GolemRole.values().length];
+    public static int getWarriorCount(MinecraftServer server, UUID ownerUuid) {
+        int count = 0;
         for (BaseGolemEntity golem : getPlayerGolems(server, ownerUuid)) {
-            counts[golem.getRole().ordinal()]++;
+            if (golem.getRole() == GolemRole.WARRIOR) count++;
         }
-        return counts;
+        return count;
     }
 
     public static void applySettingsToActiveGolems(ServerPlayer player, PlayerGolemSettings settings) {
@@ -105,8 +99,6 @@ public class ManylSavedData extends SavedData {
                         golem.setHomePos(player.blockPosition());
                     }
                 }
-            } else if (settings.isFollowOwner()) {
-                golem.setSitting(false);
             }
             if (settings.getHomePos() != null) {
                 golem.setHomePos(settings.getHomePos());

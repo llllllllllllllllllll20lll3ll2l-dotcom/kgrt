@@ -9,8 +9,7 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import java.util.EnumSet;
 
 /**
- * ИИ-цель следования за владельцем, если прислужник не в режиме ожидания (isSitting)
- * и в настройках включено следование.
+ * ИИ-цель следования за владельцем, если воин не в режиме ожидания и включено следование.
  */
 public class FollowOwnerGoal extends Goal {
     private final BaseGolemEntity golem;
@@ -31,10 +30,6 @@ public class FollowOwnerGoal extends Goal {
     @Override
     public boolean canUse() {
         if (golem.isSitting() || golem.isWorking()) return false;
-        if (golem instanceof com.manyl.mod.entity.DiggerGolemEntity) {
-            var s = golem.getOwnerSettings();
-            if (s.isQuarryActive() && s.hasQuarryBounds()) return false;
-        }
         if (!golem.getOwnerSettings().isFollowOwner()) return false;
         LivingEntity living = golem.getOwnerEntity();
         if (living == null || living.isSpectator()) return false;
@@ -46,10 +41,6 @@ public class FollowOwnerGoal extends Goal {
     @Override
     public boolean canContinueToUse() {
         if (golem.isSitting() || golem.isWorking()) return false;
-        if (golem instanceof com.manyl.mod.entity.DiggerGolemEntity) {
-            var s = golem.getOwnerSettings();
-            if (s.isQuarryActive() && s.hasQuarryBounds()) return false;
-        }
         if (owner == null || !owner.isAlive()) return false;
         if (!golem.getOwnerSettings().isFollowOwner()) return false;
         return golem.distanceToSqr(owner) > (double) (stopDistance * stopDistance);
@@ -74,11 +65,10 @@ public class FollowOwnerGoal extends Goal {
             recalcPathTicks = 10;
             double distSq = golem.distanceToSqr(owner);
             if (distSq > 484.0D && golem.level() instanceof ServerLevel sl) {
-                // Телепорт ближе к владельцу, если сильно отстал (> 22 блоков)
                 double tx = owner.getX() + (golem.getRandom().nextDouble() - 0.5D) * 3.0D;
                 double tz = owner.getZ() + (golem.getRandom().nextDouble() - 0.5D) * 3.0D;
                 golem.teleportTo(tx, owner.getY(), tz);
-                sl.sendParticles(ModParticles.SUMMON_RUNE, tx, owner.getY() + 0.5D, tz, 6, 0.25D, 0.25D, 0.25D, 0.02D);
+                sl.sendParticles(ModParticles.SUMMON_RUNE, tx, owner.getY() + 0.5D, tz, 8, 0.3D, 0.3D, 0.3D, 0.02D);
             } else {
                 golem.getNavigation().moveTo(owner, speedModifier);
             }

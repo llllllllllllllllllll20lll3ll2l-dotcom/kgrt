@@ -17,9 +17,9 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
 /**
- * Посох призыва прислужников (Manyl_mod):
+ * Посох призыва воинов Manyl_mod:
  * - ПКМ: открывает круговое меню (Призвать / Отозвать / Управление);
- * - Shift + ПКМ по сундуку/блоку: привязывает точку работы и выгрузки ресурсов.
+ * - Shift + ПКМ по блоку: привязывает точку патрулирования/охраны.
  */
 public class SummonStaffItem extends Item {
     public SummonStaffItem(Properties properties) {
@@ -50,7 +50,7 @@ public class SummonStaffItem extends Item {
                     sp.displayClientMessage(Component.translatable("msg.manyl_mod.bound_home", pos.getX(), pos.getY(), pos.getZ()), true);
                     ((ServerLevel) level).sendParticles(ModParticles.SUMMON_RUNE,
                             pos.getX() + 0.5D, pos.getY() + 1.05D, pos.getZ() + 0.5D, 8, 0.25D, 0.15D, 0.25D, 0.02D);
-                    level.playSound(null, pos, ModSounds.GOLEM_WORK_SORT, sp.getSoundSource(), 0.8F, 1.2F);
+                    level.playSound(null, pos, ModSounds.GOLEM_SUMMON, sp.getSoundSource(), 0.5F, 1.2F);
                 }
                 return InteractionResult.SUCCESS;
             }

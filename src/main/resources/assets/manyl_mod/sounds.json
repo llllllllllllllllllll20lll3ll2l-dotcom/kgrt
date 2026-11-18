@@ -11,18 +11,6 @@
     "subtitle": "subtitles.manyl_mod.golem_step",
     "sounds": [{ "name": "manyl_mod:golem_step", "volume": 0.25 }]
   },
-  "golem_work_dig": {
-    "subtitle": "subtitles.manyl_mod.golem_work_dig",
-    "sounds": [{ "name": "manyl_mod:golem_work_dig", "volume": 0.35 }]
-  },
-  "golem_work_farm": {
-    "subtitle": "subtitles.manyl_mod.golem_work_farm",
-    "sounds": [{ "name": "manyl_mod:golem_work_farm", "volume": 0.32 }]
-  },
-  "golem_work_sort": {
-    "subtitle": "subtitles.manyl_mod.golem_work_sort",
-    "sounds": [{ "name": "manyl_mod:golem_work_sort", "volume": 0.34 }]
-  },
   "golem_attack": {
     "subtitle": "subtitles.manyl_mod.golem_attack",
     "sounds": [{ "name": "manyl_mod:golem_attack", "volume": 0.45 }]

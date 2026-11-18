@@ -3,25 +3,9 @@ package com.manyl.mod.entity;
 import net.minecraft.resources.Identifier;
 
 /**
- * Перечисление всех типов прислужников-големов в Manyl_mod.
- * Хранит идентификаторы, лимиты количества на игрока, текстуры, иконки и базовые характеристики.
+ * Роль прислужников-големов в Manyl_mod (оставлены только Воины для полной переработки).
  */
 public enum GolemRole {
-    DIGGER("digger_golem", 4, 24.0D, 0.25D, 3.0D, 0xFFE59D3B,
-            "entity.manyl_mod.digger_golem",
-            "textures/entity/golem/digger_golem.png",
-            "textures/entity/golem/digger_golem_glow.png",
-            "textures/gui/icons/digger.png"),
-    FARMER("farmer_golem", 2, 20.0D, 0.26D, 2.0D, 0xFF66B846,
-            "entity.manyl_mod.farmer_golem",
-            "textures/entity/golem/farmer_golem.png",
-            "textures/entity/golem/farmer_golem_glow.png",
-            "textures/gui/icons/farmer.png"),
-    SORTER("sorter_golem", 6, 18.0D, 0.30D, 2.0D, 0xFF40E8DC,
-            "entity.manyl_mod.sorter_golem",
-            "textures/entity/golem/sorter_golem.png",
-            "textures/entity/golem/sorter_golem_glow.png",
-            "textures/gui/icons/sorter.png"),
     WARRIOR("warrior_golem", 5, 36.0D, 0.29D, 7.0D, 0xFFE24444,
             "entity.manyl_mod.warrior_golem",
             "textures/entity/golem/warrior_golem.png",
@@ -65,8 +49,6 @@ public enum GolemRole {
     public Identifier getIconTexture() { return iconTexture; }
 
     public static GolemRole byOrdinal(int index) {
-        GolemRole[] values = values();
-        if (index < 0 || index >= values.length) return DIGGER;
-        return values[index];
+        return WARRIOR;
     }
 }
