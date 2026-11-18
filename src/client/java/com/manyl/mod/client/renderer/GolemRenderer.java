@@ -15,7 +15,7 @@ public class GolemRenderer extends MobRenderer<BaseGolemEntity, GolemRenderState
     private final ItemModelResolver itemModelResolver;
 
     public GolemRenderer(EntityRendererProvider.Context context) {
-        super(context, new GolemModel(context.bakeLayer(GolemModel.LAYER_LOCATION)), 0.38F);
+        super(context, new GolemModel(context.bakeLayer(GolemModel.LAYER_LOCATION)), 0.55F);
         this.itemModelResolver = context.getItemModelResolver();
         this.addLayer(new GolemGlowLayer(this));
         this.addLayer(new GolemHeldItemLayer(this));

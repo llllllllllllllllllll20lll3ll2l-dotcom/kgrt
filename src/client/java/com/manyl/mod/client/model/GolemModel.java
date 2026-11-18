@@ -12,8 +12,8 @@ import net.minecraft.client.model.geom.builders.*;
 import net.minecraft.util.Mth;
 
 /**
- * Ванильная 3D-модель прислужника-голема (высота ~0.81 блока),
- * полностью синхронизированная по пивотам, кубам и UV 64x64 с нашими .bbmodel и текстурами.
+ * Новая 3D-модель голема-воина (высота ~2.0 блока / 32+ пикселя),
+ * с кованой бронёй, нагрудной пластиной, рунным заплечным щитом, наплечниками и шлемом с гребнем.
  */
 public class GolemModel extends EntityModel<GolemRenderState> {
     public static final ModelLayerLocation LAYER_LOCATION =
@@ -64,46 +64,48 @@ public class GolemModel extends EntityModel<GolemRenderState> {
                 CubeListBuilder.create(),
                 PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        // Ноги (4x3x4) с опорой на y=24
+        // Ноги (4x11x4) с опорой на y=24 (от y=13 до y=24)
         root.addOrReplaceChild("right_leg",
-                CubeListBuilder.create().texOffs(0, 34).addBox(-2.0F, 0.0F, -2.0F, 4.0F, 3.0F, 4.0F),
-                PartPose.offset(-2.0F, 21.0F, 0.0F));
+                CubeListBuilder.create().texOffs(0, 34).addBox(-2.0F, 0.0F, -2.0F, 4.0F, 11.0F, 4.0F),
+                PartPose.offset(-2.5F, 13.0F, 0.0F));
 
         root.addOrReplaceChild("left_leg",
-                CubeListBuilder.create().texOffs(17, 34).addBox(-2.0F, 0.0F, -2.0F, 4.0F, 3.0F, 4.0F),
-                PartPose.offset(2.0F, 21.0F, 0.0F));
+                CubeListBuilder.create().texOffs(16, 34).addBox(-2.0F, 0.0F, -2.0F, 4.0F, 11.0F, 4.0F),
+                PartPose.offset(2.5F, 13.0F, 0.0F));
 
-        // Торс (8x5x6)
+        // Торс (10x12x6, от y=1 до y=13) + рельефная нагрудная пластина (8x7x1)
         PartDefinition body = root.addOrReplaceChild("body",
-                CubeListBuilder.create().texOffs(0, 12).addBox(-4.0F, -5.0F, -3.0F, 8.0F, 5.0F, 6.0F),
-                PartPose.offset(0.0F, 21.0F, 0.0F));
+                CubeListBuilder.create()
+                        .texOffs(0, 16).addBox(-5.0F, -12.0F, -3.0F, 10.0F, 12.0F, 6.0F)
+                        .texOffs(0, 49).addBox(-4.0F, -11.0F, -3.6F, 8.0F, 7.0F, 1.0F),
+                PartPose.offset(0.0F, 13.0F, 0.0F));
 
-        // Ранец / корзина / сундучок на спине (6x4x3)
+        // Рунный заплечный щит/ранец (6x8x2)
         body.addOrReplaceChild("backpack",
-                CubeListBuilder.create().texOffs(32, 12).addBox(-3.0F, -2.0F, 0.0F, 6.0F, 4.0F, 3.0F),
-                PartPose.offset(0.0F, -2.5F, 3.0F));
+                CubeListBuilder.create().texOffs(18, 49).addBox(-3.0F, -4.0F, 0.0F, 6.0F, 8.0F, 2.0F),
+                PartPose.offset(0.0F, -7.0F, 3.0F));
 
-        // Голова (6x5x6) + шлем/шляпа (8x3x8) + гребень/кристалл/антенна (2x3x2)
+        // Голова (8x8x8, от y=-7 до y=1) + шлем (8x3x8 + 0.45) + гребень (2x2x6) -> рост ровно ~2.0 блока
         body.addOrReplaceChild("head",
                 CubeListBuilder.create()
-                        .texOffs(0, 0).addBox(-3.0F, -5.0F, -3.0F, 6.0F, 5.0F, 6.0F)
-                        .texOffs(32, 0).addBox(-4.0F, -6.5F, -4.0F, 8.0F, 3.0F, 8.0F, new CubeDeformation(0.15F))
-                        .texOffs(34, 34).addBox(-1.0F, -9.2F, -1.0F, 2.0F, 3.0F, 2.0F),
-                PartPose.offset(0.0F, -5.0F, 0.0F));
+                        .texOffs(0, 0).addBox(-4.0F, -8.0F, -4.0F, 8.0F, 8.0F, 8.0F)
+                        .texOffs(32, 0).addBox(-4.0F, -8.35F, -4.0F, 8.0F, 3.0F, 8.0F, new CubeDeformation(0.45F))
+                        .texOffs(32, 11).addBox(-1.0F, -10.4F, -2.5F, 2.0F, 2.0F, 6.0F),
+                PartPose.offset(0.0F, -12.0F, 0.0F));
 
-        // Правая рука + наплечник
+        // Правая рука (4x11x4) + наплечник (5x4x5)
         body.addOrReplaceChild("right_arm",
                 CubeListBuilder.create()
-                        .texOffs(0, 24).addBox(-3.0F, -0.5F, -1.5F, 3.0F, 6.0F, 3.0F)
-                        .texOffs(32, 20).addBox(-3.5F, -1.0F, -2.0F, 4.0F, 2.0F, 4.0F, new CubeDeformation(0.1F)),
-                PartPose.offset(-4.0F, -4.5F, 0.0F));
+                        .texOffs(32, 19).addBox(-4.0F, -1.0F, -2.0F, 4.0F, 11.0F, 4.0F)
+                        .texOffs(32, 34).addBox(-4.5F, -1.8F, -2.5F, 5.0F, 4.0F, 5.0F),
+                PartPose.offset(-5.0F, -10.5F, 0.0F));
 
-        // Левая рука + наплечник
+        // Левая рука (4x11x4) + наплечник (5x4x5)
         body.addOrReplaceChild("left_arm",
                 CubeListBuilder.create()
-                        .texOffs(13, 24).addBox(0.0F, -0.5F, -1.5F, 3.0F, 6.0F, 3.0F)
-                        .texOffs(48, 20).addBox(-0.5F, -1.0F, -2.0F, 4.0F, 2.0F, 4.0F, new CubeDeformation(0.1F)),
-                PartPose.offset(4.0F, -4.5F, 0.0F));
+                        .texOffs(48, 19).addBox(0.0F, -1.0F, -2.0F, 4.0F, 11.0F, 4.0F)
+                        .texOffs(32, 43).addBox(-0.5F, -1.8F, -2.5F, 5.0F, 4.0F, 5.0F),
+                PartPose.offset(5.0F, -10.5F, 0.0F));
 
         return LayerDefinition.create(mesh, 64, 64);
     }
@@ -112,15 +114,12 @@ public class GolemModel extends EntityModel<GolemRenderState> {
     public void setupAnim(GolemRenderState state) {
         super.setupAnim(state);
 
-        // Поворот головы по направлению взгляда
         this.head.yRot = state.yRot * Mth.DEG_TO_RAD;
         this.head.xRot = state.xRot * Mth.DEG_TO_RAD;
 
-        // Базовое дыхание и походка
         this.idleAnim.apply(state.idleAnimationState, state.ageInTicks);
-        this.walkAnim.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, 2.2F, 2.5F);
+        this.walkAnim.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, 2.0F, 2.2F);
 
-        // Состояния действий и эмоций
         this.sitAnim.apply(state.sitAnimationState, state.ageInTicks);
         this.carryAnim.apply(state.carryAnimationState, state.ageInTicks);
         this.workAnim.apply(state.workAnimationState, state.ageInTicks);

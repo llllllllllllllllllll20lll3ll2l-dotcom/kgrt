@@ -22,7 +22,7 @@ public final class ModEntities {
     private static <T extends BaseGolemEntity> EntityType<T> register(String name, EntityType.EntityFactory<T> factory) {
         ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, ManylMod.id(name));
         EntityType<T> type = EntityType.Builder.of(factory, MobCategory.CREATURE)
-                .sized(0.6F, 0.85F)
+                .sized(0.85F, 2.02F)
                 .clientTrackingRange(8)
                 .build(key);
         return Registry.register(BuiltInRegistries.ENTITY_TYPE, key, type);

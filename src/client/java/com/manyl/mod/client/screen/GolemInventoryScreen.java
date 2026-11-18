@@ -54,12 +54,12 @@ public class GolemInventoryScreen extends AbstractContainerScreen<GolemInventory
             // Превью 3D-модели голема в левом окне
             InventoryScreen.renderEntityInInventoryFollowsMouse(
                     graphics, x + 8, y + 17, x + 56, y + 73,
-                    28, 0.08F, (float) mouseX, (float) mouseY, golem
+                    19, 0.06F, (float) mouseX, (float) mouseY, golem
             );
 
             // Полоса сытости (голод 0..100)
             int hunger = golem.getHunger();
-            int fillWidth = Math.round(100.0F * hunger / (float) BaseGolemEntity.MAX_HUNGER);
+            int fillWidth = Math.round(90.0F * hunger / (float) BaseGolemEntity.MAX_HUNGER);
             if (fillWidth > 0) {
                 graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, x + 65, y + 20, 176, 0, fillWidth, 7, 256, 256);
             }
