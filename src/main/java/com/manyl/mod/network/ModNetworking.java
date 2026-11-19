@@ -121,7 +121,7 @@ public final class ModNetworking {
     }
 
     public record OpenValkyrieDialoguePayload(
-            int entityId, boolean tamed, boolean sitting, int affection, int romanceStage, String dialogueLine
+            int entityId, boolean tamed, boolean sitting, int affection, int romanceStage, int jealousy, String dialogueLine
     ) implements CustomPacketPayload {
         public static final Type<OpenValkyrieDialoguePayload> TYPE = new Type<>(ManylMod.id("open_valkyrie_dialogue"));
         public static final StreamCodec<RegistryFriendlyByteBuf, OpenValkyrieDialoguePayload> CODEC = StreamCodec.of(
@@ -131,10 +131,11 @@ public final class ModNetworking {
                     buf.writeBoolean(p.sitting);
                     buf.writeVarInt(p.affection);
                     buf.writeVarInt(p.romanceStage);
+                    buf.writeVarInt(p.jealousy);
                     buf.writeUtf(p.dialogueLine == null ? "" : p.dialogueLine, 512);
                 },
                 buf -> new OpenValkyrieDialoguePayload(
-                        buf.readVarInt(), buf.readBoolean(), buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readUtf(512)
+                        buf.readVarInt(), buf.readBoolean(), buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readUtf(512)
                 )
         );
 
@@ -243,6 +244,7 @@ public final class ModNetworking {
     }
 
     public static void sendOpenValkyrieDialogue(ServerPlayer player, ValkyrieGolemEntity valkyrie) {
+        valkyrie.playGreetVoice();
         sendValkyrieDialogueWithLine(player, valkyrie, valkyrie.getGreetingLine(valkyrie.isTamed()));
     }
 
@@ -253,6 +255,7 @@ public final class ModNetworking {
                 valkyrie.isSitting(),
                 valkyrie.getAffection(),
                 valkyrie.getRomanceStage(),
+                valkyrie.getJealousy(),
                 line
         ));
     }

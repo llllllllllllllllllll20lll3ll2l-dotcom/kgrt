@@ -11,7 +11,7 @@ public enum GolemRole {
             "textures/entity/golem/warrior_golem.png",
             "textures/entity/golem/warrior_golem_glow.png",
             "textures/gui/icons/warrior.png"),
-    VALKYRIE("valkyrie_golem", -1, 32.0D, 0.34D, 7.5D, 0xFFE866B8,
+    VALKYRIE("valkyrie_golem", -1, 36.0D * 0.75D, 0.34D, 7.5D, 0xFFE866B8,
             "entity.manyl_mod.valkyrie_golem",
             "textures/entity/golem/valkyrie_golem.png",
             "textures/entity/golem/valkyrie_golem_glow.png",

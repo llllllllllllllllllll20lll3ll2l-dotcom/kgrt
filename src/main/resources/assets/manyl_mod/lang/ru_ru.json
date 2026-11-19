@@ -29,6 +29,7 @@
   "gui.manyl_mod.valkyrie.confess": "Признаться ♥",
   "gui.manyl_mod.valkyrie.beloved_badge": "Возлюбленная ♥",
   "gui.manyl_mod.valkyrie.gear": "Снаряжение и еда",
+  "gui.manyl_mod.valkyrie.jealousy_bar": "⚡ Ревность %s%%",
   "gui.manyl_mod.valkyrie.confess_hint": "Признание откроется при %s близости ♥",
   "gui.manyl_mod.valkyrie.gift_bar_hint": "Возьмите цветок, самоцвет, золото или сладость в руку для подарка",
 
@@ -38,6 +39,12 @@
   "gui.manyl_mod.valkyrie.stage.crush": "Особая симпатия ♥",
   "gui.manyl_mod.valkyrie.stage.beloved": "Возлюбленная ♥",
 
+  "gui.manyl_mod.valkyrie.perk.none": "Бонус: приручите, чтобы открыть заботу и ауру",
+  "gui.manyl_mod.valkyrie.perk.ally": "Бонус: откроется на 20+ близости (заботливое лечение)",
+  "gui.manyl_mod.valkyrie.perk.friend": "Плюшка: подлечивает вас при ХП < 50%",
+  "gui.manyl_mod.valkyrie.perk.crush": "Плюшка: Скорость + Реген рядом, делится едой",
+  "gui.manyl_mod.valkyrie.perk.beloved": "Плюшка ♥: аура Регена/Скорости + спасение при низком ХП",
+
   "dialogue.manyl_mod.valkyrie.wild_greeting": "Здравствуй, путник. Я странствую по этим землям в поисках достойного соратника. Пойдём вместе?",
   "dialogue.manyl_mod.valkyrie.recruited": "С радостью присоединюсь к тебе! Вместе нам не страшна никакая тьма.",
   "dialogue.manyl_mod.valkyrie.need_recruit": "Сначала пригласи меня в свой отряд, и я буду сражаться на твоей стороне.",
@@ -46,6 +53,7 @@
   "dialogue.manyl_mod.valkyrie.greet.friend": "Рада видеть тебя, мой друг! С тобой каждый поход становится светлее.",
   "dialogue.manyl_mod.valkyrie.greet.crush": "Я как раз думала о тебе... Как твои дела? Всё ли в порядке?",
   "dialogue.manyl_mod.valkyrie.greet.beloved": "Какое счастье снова видеть твою улыбку! Моё сердце всегда спокойно, когда ты рядом ♥",
+  "dialogue.manyl_mod.valkyrie.greet.jealous": "Хмф... Наконец-то ты вспомнил обо мне, а не о других воительницах?",
 
   "dialogue.manyl_mod.valkyrie.talk.ally.0": "Мои доспехи откованы из серебра и стали, но настоящую силу даёт цель, ради которой сражаешься.",
   "dialogue.manyl_mod.valkyrie.talk.ally.1": "Если встретишь хорошую еду или оружие по пути — я всегда готова помочь с припасами.",
@@ -61,7 +69,7 @@
 
   "dialogue.manyl_mod.valkyrie.talk.beloved.0": "Пока я рядом, никакая тень не коснётся тебя. Моя любовь согревает меня сильнее любого рунного огня ♥",
   "dialogue.manyl_mod.valkyrie.talk.beloved.1": "Знаешь, что самое прекрасное в наших странствиях? Возвращаться под одно небо вместе с тобой.",
-  "dialogue.manyl_mod.valkyrie.talk.beloved.2": "Береги себя, любимый. Моя аура всегда будет оберегать твоё здоровье в пути ♥",
+  "dialogue.manyl_mod.valkyrie.talk.beloved.2": "Береги себя, любимый. Моя аура всегда будет оберегать и спасать тебя в критический миг ♥",
 
   "dialogue.manyl_mod.valkyrie.compliment.early.0": "Ох... спасибо! Никто раньше не говорил мне таких тёплых слов.",
   "dialogue.manyl_mod.valkyrie.compliment.early.1": "Благодарю. Очень приятно слышать это именно от тебя.",
@@ -91,6 +99,12 @@
   "msg.manyl_mod.recalled": "Отозвано воинов: %s",
   "msg.manyl_mod.starved": "Ваш %s погиб от голода!",
   "msg.manyl_mod.bound_home": "Точка охраны установлена (%s, %s, %s)",
+  "msg.manyl_mod.valkyrie_rescue": "§d[Воительница]§r «Держись! Я тебя прикрою!» §c(Оберег спас от гибели ♥)",
+  "msg.manyl_mod.valkyrie_care_heal": "§d[Воительница]§r «Не ушибись... Я подлечила тебя ♥»",
+  "msg.manyl_mod.valkyrie_share_food": "§d[Воительница]§r «Поешь немного, я припасла для тебя перекус ♥»",
+  "msg.manyl_mod.valkyrie_jealous_warn": "§6[Воительница ревнует]§r «Хмф... Не уделяй другим больше внимания, чем мне!»",
+  "msg.manyl_mod.valkyrie_jealous_slap": "§c[Воительница ревнует]§r «Хмф! Не заглядывайся на других!» §7(-1♥, ревность 75%)",
+
   "subtitles.manyl_mod.golem_summon": "Призыв воина",
   "subtitles.manyl_mod.golem_recall": "Отзыв воина",
   "subtitles.manyl_mod.golem_step": "Шаги воина",
@@ -98,5 +112,12 @@
   "subtitles.manyl_mod.golem_hurt": "Голем ранен",
   "subtitles.manyl_mod.golem_death": "Голем разрушен",
   "subtitles.manyl_mod.golem_eat": "Голем подкрепился",
-  "subtitles.manyl_mod.golem_hungry": "Голем проголодался"
+  "subtitles.manyl_mod.golem_hungry": "Голем проголодался",
+  "subtitles.manyl_mod.valkyrie_laugh": "Смех воительницы",
+  "subtitles.manyl_mod.valkyrie_hurt": "Вздох воительницы",
+  "subtitles.manyl_mod.valkyrie_attack": "Боевой клич воительницы",
+  "subtitles.manyl_mod.valkyrie_greet": "Голос воительницы",
+  "subtitles.manyl_mod.valkyrie_jealous": "Воительница недовольна",
+  "subtitles.manyl_mod.valkyrie_love": "Нежный голос воительницы",
+  "subtitles.manyl_mod.valkyrie_sigh": "Вздох воительницы"
 }

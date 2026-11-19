@@ -34,9 +34,18 @@ public class WarriorGolemEntity extends BaseGolemEntity {
         return GolemRole.WARRIOR;
     }
 
+    protected boolean isWeaponHidden() {
+        return false;
+    }
+
     @Override
     protected void onInventoryChanged() {
         if (level().isClientSide()) return;
+        if (isWeaponHidden()) {
+            this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+            this.setDisplayItem(ItemStack.EMPTY);
+            return;
+        }
         ItemStack best = ItemStack.EMPTY;
         double bestScore = -1.0D;
 

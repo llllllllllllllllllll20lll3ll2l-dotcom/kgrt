@@ -1,6 +1,5 @@
 package com.manyl.mod.client.screen;
 
-import com.manyl.mod.ManylMod;
 import com.manyl.mod.entity.GolemRole;
 import com.manyl.mod.entity.ValkyrieGolemEntity;
 import com.manyl.mod.network.ModNetworking;
@@ -10,24 +9,23 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 
 import java.util.List;
 
 /**
- * Диалоговый экран общения и тёплой романтической ветки с Големом-воительницей.
+ * Диалоговый экран общения, романтических плюшек, ревности и отношений с Големом-воительницей.
  */
 public class ValkyrieDialogueScreen extends Screen {
-    private static final Identifier PANEL_TEX = ManylMod.id("textures/gui/management_panel.png");
-    private static final int PANEL_W = 280;
-    private static final int PANEL_H = 212;
+    private static final int PANEL_W = 286;
+    private static final int PANEL_H = 232;
 
     private final int entityId;
     private boolean tamed;
     private boolean sitting;
     private int affection;
     private int romanceStage;
+    private int jealousy;
     private String dialogueLine;
 
     private Button recruitBtn;
@@ -55,6 +53,7 @@ public class ValkyrieDialogueScreen extends Screen {
         this.sitting = payload.sitting();
         this.affection = payload.affection();
         this.romanceStage = payload.romanceStage();
+        this.jealousy = payload.jealousy();
         this.dialogueLine = payload.dialogueLine();
     }
 
@@ -77,7 +76,7 @@ public class ValkyrieDialogueScreen extends Screen {
         this.recruitBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.recruit"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_RECRUIT))
-                .pos(left + 14, top + 124)
+                .pos(left + 14, top + 140)
                 .size(PANEL_W - 28, 22)
                 .build());
 
@@ -85,42 +84,42 @@ public class ValkyrieDialogueScreen extends Screen {
         this.talkBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.talk"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_TALK))
-                .pos(left + 14, top + 114)
+                .pos(left + 14, top + 132)
                 .size(halfW, 20)
                 .build());
 
         this.complimentBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.compliment"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_COMPLIMENT))
-                .pos(left + 20 + halfW, top + 114)
+                .pos(left + 20 + halfW, top + 132)
                 .size(halfW, 20)
                 .build());
 
         this.giftBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.gift"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_GIFT))
-                .pos(left + 14, top + 138)
+                .pos(left + 14, top + 156)
                 .size(halfW, 20)
                 .build());
 
         this.confessBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.confess"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_CONFESS))
-                .pos(left + 20 + halfW, top + 138)
+                .pos(left + 20 + halfW, top + 156)
                 .size(halfW, 20)
                 .build());
 
         this.modeBtn = this.addRenderableWidget(Button.builder(
                         modeLabel(),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_TOGGLE_SIT))
-                .pos(left + 14, top + 162)
+                .pos(left + 14, top + 180)
                 .size(halfW, 20)
                 .build());
 
         this.gearBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.gear"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_OPEN_INVENTORY))
-                .pos(left + 20 + halfW, top + 162)
+                .pos(left + 20 + halfW, top + 180)
                 .size(halfW, 20)
                 .build());
 
@@ -184,24 +183,44 @@ public class ValkyrieDialogueScreen extends Screen {
         };
         graphics.drawString(this.font, stageText, left + 38, top + 21, stageColor, false);
 
-        // Полоска близости (♥ 0..100)
+        // Полоска близости (♥ 0..100) и Полоска ревности (⚡ 0..100)
         int barX = left + 14;
         int barY = top + 36;
-        int barW = PANEL_W - 28;
-        graphics.fill(barX, barY, barX + barW, barY + 8, 0xFF23283D);
-        int fillW = Math.round(barW * (affection / (float) ValkyrieGolemEntity.MAX_AFFECTION));
+        int totalW = PANEL_W - 28;
+        boolean showJealousy = tamed && (jealousy > 0 || romanceStage >= ValkyrieGolemEntity.STAGE_FRIEND);
+        int affW = showJealousy ? (totalW - 6) / 2 : totalW;
+
+        graphics.fill(barX, barY, barX + affW, barY + 9, 0xFF23283D);
+        int fillW = Math.round(affW * (affection / (float) ValkyrieGolemEntity.MAX_AFFECTION));
         if (fillW > 0) {
             int barColor = romanceStage >= ValkyrieGolemEntity.STAGE_BELOVED ? 0xFFFF4D94 : 0xFFE866B8;
-            graphics.fill(barX, barY, barX + fillW, barY + 8, barColor);
+            graphics.fill(barX, barY, barX + fillW, barY + 9, barColor);
         }
-        String affLabel = "♥ " + affection + " / " + ValkyrieGolemEntity.MAX_AFFECTION;
-        graphics.drawCenteredString(this.font, affLabel, left + PANEL_W / 2, barY, 0xFFFFFFFF);
+        String affLabel = "♥ " + affection + "%";
+        graphics.drawCenteredString(this.font, affLabel, barX + affW / 2, barY + 1, 0xFFFFFFFF);
+
+        if (showJealousy) {
+            int jX = barX + affW + 6;
+            int jW = totalW - affW - 6;
+            graphics.fill(jX, barY, jX + jW, barY + 9, 0xFF2A1D24);
+            int jFill = Math.round(jW * (jealousy / (float) ValkyrieGolemEntity.MAX_JEALOUSY));
+            if (jFill > 0) {
+                int jColor = jealousy >= 75 ? 0xFFE83E4A : 0xFFF09040;
+                graphics.fill(jX, barY, jX + jFill, barY + 9, jColor);
+            }
+            Component jLabel = Component.translatable("gui.manyl_mod.valkyrie.jealousy_bar", jealousy);
+            graphics.drawCenteredString(this.font, jLabel, jX + jW / 2, barY + 1, 0xFFFFFFFF);
+        }
+
+        // Активная плюшка уровня влюблённости
+        Component perkText = perkComponent();
+        graphics.drawString(this.font, perkText, left + 14, top + 49, 0xFFAEE2B8, false);
 
         // Окошко с репликой
         int boxX = left + 14;
-        int boxY = top + 50;
+        int boxY = top + 62;
         int boxW = PANEL_W - 28;
-        int boxH = 56;
+        int boxH = 62;
         graphics.fill(boxX, boxY, boxX + boxW, boxY + boxH, 0xAA0D101B);
         graphics.fill(boxX, boxY, boxX + boxW, boxY + 1, 0x88E866B8);
         graphics.fill(boxX, boxY + boxH - 1, boxX + boxW, boxY + boxH, 0x88E866B8);
@@ -233,6 +252,18 @@ public class ValkyrieDialogueScreen extends Screen {
             case ValkyrieGolemEntity.STAGE_CRUSH -> Component.translatable("gui.manyl_mod.valkyrie.stage.crush");
             case ValkyrieGolemEntity.STAGE_FRIEND -> Component.translatable("gui.manyl_mod.valkyrie.stage.friend");
             default -> Component.translatable(tamed ? "gui.manyl_mod.valkyrie.stage.ally" : "gui.manyl_mod.valkyrie.stage.wild");
+        };
+    }
+
+    private Component perkComponent() {
+        if (!tamed) {
+            return Component.translatable("gui.manyl_mod.valkyrie.perk.none");
+        }
+        return switch (romanceStage) {
+            case ValkyrieGolemEntity.STAGE_BELOVED -> Component.translatable("gui.manyl_mod.valkyrie.perk.beloved");
+            case ValkyrieGolemEntity.STAGE_CRUSH -> Component.translatable("gui.manyl_mod.valkyrie.perk.crush");
+            case ValkyrieGolemEntity.STAGE_FRIEND -> Component.translatable("gui.manyl_mod.valkyrie.perk.friend");
+            default -> Component.translatable("gui.manyl_mod.valkyrie.perk.ally");
         };
     }
 }

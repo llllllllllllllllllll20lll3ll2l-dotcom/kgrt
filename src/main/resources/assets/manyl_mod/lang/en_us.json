@@ -29,6 +29,7 @@
   "gui.manyl_mod.valkyrie.confess": "Confess ♥",
   "gui.manyl_mod.valkyrie.beloved_badge": "Beloved ♥",
   "gui.manyl_mod.valkyrie.gear": "Gear & Food",
+  "gui.manyl_mod.valkyrie.jealousy_bar": "⚡ Jealousy %s%%",
   "gui.manyl_mod.valkyrie.confess_hint": "Confession unlocks at %s affection ♥",
   "gui.manyl_mod.valkyrie.gift_bar_hint": "Hold a flower, gem, gold, or sweet food to give as a gift",
 
@@ -38,6 +39,12 @@
   "gui.manyl_mod.valkyrie.stage.crush": "Special Bond ♥",
   "gui.manyl_mod.valkyrie.stage.beloved": "Beloved ♥",
 
+  "gui.manyl_mod.valkyrie.perk.none": "Perk: invite her to unlock care & protective aura",
+  "gui.manyl_mod.valkyrie.perk.ally": "Perk: unlocks at 20+ affection (caring heal)",
+  "gui.manyl_mod.valkyrie.perk.friend": "Perk: heals you when your HP drops below 50%",
+  "gui.manyl_mod.valkyrie.perk.crush": "Perk: Speed + Regen aura & shares snacks",
+  "gui.manyl_mod.valkyrie.perk.beloved": "Perk ♥: Regen/Speed aura + emergency low-HP rescue",
+
   "dialogue.manyl_mod.valkyrie.wild_greeting": "Greetings, traveler. I wander these lands seeking a worthy companion. Shall we journey together?",
   "dialogue.manyl_mod.valkyrie.recruited": "I gladly join your side! Together we need fear no darkness.",
   "dialogue.manyl_mod.valkyrie.need_recruit": "Invite me to travel with you first, and my blade will be yours.",
@@ -46,6 +53,7 @@
   "dialogue.manyl_mod.valkyrie.greet.friend": "Good to see you, my friend! Every journey feels brighter beside you.",
   "dialogue.manyl_mod.valkyrie.greet.crush": "I was just thinking about you... How are you feeling today?",
   "dialogue.manyl_mod.valkyrie.greet.beloved": "Seeing your smile makes everything worthwhile. My heart is always at peace near you ♥",
+  "dialogue.manyl_mod.valkyrie.greet.jealous": "Hmph... Did you finally remember me instead of the other Valkyries?",
 
   "dialogue.manyl_mod.valkyrie.talk.ally.0": "My armor is forged from silver and steel, yet true strength comes from who we protect.",
   "dialogue.manyl_mod.valkyrie.talk.ally.1": "If you find spare food or better weapons on our path, I am always ready to help.",
@@ -61,7 +69,7 @@
 
   "dialogue.manyl_mod.valkyrie.talk.beloved.0": "While I am by your side, no shadow will harm you. My love burns warmer than any rune ♥",
   "dialogue.manyl_mod.valkyrie.talk.beloved.1": "My favorite part of every adventure is simply sharing the road with you.",
-  "dialogue.manyl_mod.valkyrie.talk.beloved.2": "Stay safe, my love. My aura will gently watch over your health along the way ♥",
+  "dialogue.manyl_mod.valkyrie.talk.beloved.2": "Stay safe, my love. My aura will watch over and rescue you whenever danger strikes ♥",
 
   "dialogue.manyl_mod.valkyrie.compliment.early.0": "Oh... thank you! No one has spoken such kind words to me before.",
   "dialogue.manyl_mod.valkyrie.compliment.early.1": "Thank you. Hearing that from you means a lot.",
@@ -91,6 +99,12 @@
   "msg.manyl_mod.recalled": "Recalled warriors: %s",
   "msg.manyl_mod.starved": "Your %s starved to death!",
   "msg.manyl_mod.bound_home": "Guard point set to (%s, %s, %s)",
+  "msg.manyl_mod.valkyrie_rescue": "§d[Valkyrie]§r \"Hold on! I've got you!\" §c(Emergency care shield ♥)",
+  "msg.manyl_mod.valkyrie_care_heal": "§d[Valkyrie]§r \"Be careful... I patched you up ♥\"",
+  "msg.manyl_mod.valkyrie_share_food": "§d[Valkyrie]§r \"Here, have a bite to keep your strength up ♥\"",
+  "msg.manyl_mod.valkyrie_jealous_warn": "§6[Valkyrie is jealous]§r \"Hmph... Don't give the others more attention than me!\"",
+  "msg.manyl_mod.valkyrie_jealous_slap": "§c[Valkyrie is jealous]§r \"Hmph! Eyes over here!\" §7(-1♥, jealousy 75%)",
+
   "subtitles.manyl_mod.golem_summon": "Warrior summoned",
   "subtitles.manyl_mod.golem_recall": "Warrior recalled",
   "subtitles.manyl_mod.golem_step": "Warrior footsteps",
@@ -98,5 +112,12 @@
   "subtitles.manyl_mod.golem_hurt": "Golem hurts",
   "subtitles.manyl_mod.golem_death": "Golem crumbles",
   "subtitles.manyl_mod.golem_eat": "Golem eats",
-  "subtitles.manyl_mod.golem_hungry": "Golem is hungry"
+  "subtitles.manyl_mod.golem_hungry": "Golem is hungry",
+  "subtitles.manyl_mod.valkyrie_laugh": "Valkyrie laughs",
+  "subtitles.manyl_mod.valkyrie_hurt": "Valkyrie gasps",
+  "subtitles.manyl_mod.valkyrie_attack": "Valkyrie battle cry",
+  "subtitles.manyl_mod.valkyrie_greet": "Valkyrie speaks",
+  "subtitles.manyl_mod.valkyrie_jealous": "Valkyrie huffs",
+  "subtitles.manyl_mod.valkyrie_love": "Valkyrie speaks warmly",
+  "subtitles.manyl_mod.valkyrie_sigh": "Valkyrie sighs"
 }
