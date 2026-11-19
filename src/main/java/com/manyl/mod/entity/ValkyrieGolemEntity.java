@@ -1159,7 +1159,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case ANIM_OP_SEDUCTIVE_DANCE -> {
                 if (t % 12 == 0) {
                     sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.65D, getZ(), 3, 0.38D, 0.22D, 0.38D, 0.02D);
-                    sl.sendParticles(ParticleTypes.CHERRY_BLOSSOM, getX(), getY() + 1.85D, getZ(), 4, 0.4D, 0.25D, 0.4D, 0.02D);
+                    sl.sendParticles(ModParticles.CORE_HEART, getX(), getY() + 1.85D, getZ(), 3, 0.35D, 0.25D, 0.35D, 0.02D);
                 }
             }
             case ANIM_OP_CUDDLE, ANIM_OP_MAID_BOW -> {
@@ -1371,7 +1371,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         double distSq = distanceToSqr(sp);
         if (isOpAura() && tickCount % 14 == 0 && distSq <= 256.0D) {
             sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 1, 0.28D, 0.18D, 0.28D, 0.01D);
-            sl.sendParticles(ParticleTypes.CHERRY_BLOSSOM, getX(), getY() + 1.55D, getZ(), 2, 0.35D, 0.28D, 0.35D, 0.01D);
+            sl.sendParticles(ModParticles.CORE_HEART, getX(), getY() + 1.55D, getZ(), 1, 0.32D, 0.24D, 0.32D, 0.01D);
         }
 
         long now = sl.getGameTime();
