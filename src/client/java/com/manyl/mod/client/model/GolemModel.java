@@ -22,6 +22,15 @@ public class GolemModel extends EntityModel<GolemRenderState> {
     private final ModelPart body;
     private final ModelPart head;
     private final ModelPart rightArm;
+    private final ModelPart leftArm;
+    private final ModelPart rightLeg;
+    private final ModelPart leftLeg;
+    private final ModelPart armorHead;
+    private final ModelPart armorChest;
+    private final ModelPart armorLegsR;
+    private final ModelPart armorLegsL;
+    private final ModelPart armorFeetR;
+    private final ModelPart armorFeetL;
 
     private final KeyframeAnimation idleAnim;
     private final KeyframeAnimation walkAnim;
@@ -38,6 +47,15 @@ public class GolemModel extends EntityModel<GolemRenderState> {
         this.body = this.root.getChild("body");
         this.head = this.body.getChild("head");
         this.rightArm = this.body.getChild("right_arm");
+        this.leftArm = this.body.getChild("left_arm");
+        this.rightLeg = this.root.getChild("right_leg");
+        this.leftLeg = this.root.getChild("left_leg");
+        this.armorHead = this.head.getChild("armor_head");
+        this.armorChest = this.body.getChild("armor_chest");
+        this.armorLegsR = this.rightLeg.getChild("armor_legs_r");
+        this.armorLegsL = this.leftLeg.getChild("armor_legs_l");
+        this.armorFeetR = this.rightLeg.getChild("armor_feet_r");
+        this.armorFeetL = this.leftLeg.getChild("armor_feet_l");
 
         this.idleAnim = GolemAnimations.IDLE.bake(root);
         this.walkAnim = GolemAnimations.WALK.bake(root);
@@ -55,21 +73,45 @@ public class GolemModel extends EntityModel<GolemRenderState> {
         this.rightArm.translateAndRotate(matrices);
     }
 
+    public void translateToLeftHand(PoseStack matrices) {
+        this.root.translateAndRotate(matrices);
+        this.body.translateAndRotate(matrices);
+        this.leftArm.translateAndRotate(matrices);
+    }
+
     public static LayerDefinition createBodyLayer() {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition rootPart = mesh.getRoot();
         PartDefinition root = rootPart.addOrReplaceChild("root", CubeListBuilder.create(), PartPose.offset(0.0F, 0.0F, 0.0F));
-        buildRightLeg(root);
-        buildLeftLeg(root);
+        PartDefinition rightLeg = buildRightLeg(root);
+        rightLeg.addOrReplaceChild("armor_legs_r",
+                CubeListBuilder.create().texOffs(1960, 4).addBox(-49F, 6F, -50F, 98.0F, 92.0F, 100.0F),
+                PartPose.ZERO);
+        rightLeg.addOrReplaceChild("armor_feet_r",
+                CubeListBuilder.create().texOffs(2372, 280).addBox(-56F, 198F, -82F, 112.0F, 56.0F, 146.0F),
+                PartPose.ZERO);
+        PartDefinition leftLeg = buildLeftLeg(root);
+        leftLeg.addOrReplaceChild("armor_legs_l",
+                CubeListBuilder.create().texOffs(1960, 4).addBox(-49F, 6F, -50F, 98.0F, 92.0F, 100.0F),
+                PartPose.ZERO);
+        leftLeg.addOrReplaceChild("armor_feet_l",
+                CubeListBuilder.create().texOffs(2372, 280).addBox(-56F, 198F, -82F, 112.0F, 56.0F, 146.0F),
+                PartPose.ZERO);
         PartDefinition body = buildBody(root);
+        body.addOrReplaceChild("armor_chest",
+                CubeListBuilder.create().texOffs(4, 4).addBox(-106F, -256F, -76F, 212.0F, 148.0F, 152.0F),
+                PartPose.ZERO);
         buildBackpack(body);
-        buildHead(body);
+        PartDefinition head = buildHead(body);
+        head.addOrReplaceChild("armor_head",
+                CubeListBuilder.create().texOffs(2372, 280).addBox(-74F, -144F, -74F, 148.0F, 64.0F, 148.0F),
+                PartPose.ZERO);
         buildRightArm(body);
         buildLeftArm(body);
         return LayerDefinition.create(mesh, 4096, 4096);
     }
 
-    private static void buildRightLeg(PartDefinition parent) {
+    private static PartDefinition buildRightLeg(PartDefinition parent) {
         CubeListBuilder b = CubeListBuilder.create();
         b.texOffs(1960, 4).addBox(-44F, 0F, -44F, 88.0F, 102.0F, 88.0F);
         b.texOffs(2564, 1030).addBox(-36F, 10F, -52F, 72.0F, 76.0F, 10.0F);
@@ -103,10 +145,10 @@ public class GolemModel extends EntityModel<GolemRenderState> {
         b.texOffs(2696, 1212).addBox(-32F, 204F, -72F, 64.0F, 18.0F, 24.0F);
         b.texOffs(1940, 1212).addBox(-36F, 216F, 54F, 72.0F, 30.0F, 16.0F);
         b.texOffs(3364, 1274).addBox(-8F, 222F, 66F, 16.0F, 16.0F, 12.0F);
-        parent.addOrReplaceChild("right_leg", b, PartPose.offset(-60F, -228F, 0F));
+        return parent.addOrReplaceChild("right_leg", b, PartPose.offset(-60F, -228F, 0F));
     }
 
-    private static void buildLeftLeg(PartDefinition parent) {
+    private static PartDefinition buildLeftLeg(PartDefinition parent) {
         CubeListBuilder b = CubeListBuilder.create();
         b.texOffs(1604, 4).addBox(-44F, 0F, -44F, 88.0F, 102.0F, 88.0F);
         b.texOffs(2396, 1030).addBox(-36F, 10F, -52F, 72.0F, 76.0F, 10.0F);
@@ -140,7 +182,7 @@ public class GolemModel extends EntityModel<GolemRenderState> {
         b.texOffs(2876, 1212).addBox(-32F, 204F, -72F, 64.0F, 18.0F, 24.0F);
         b.texOffs(2120, 1212).addBox(-36F, 216F, 54F, 72.0F, 30.0F, 16.0F);
         b.texOffs(3424, 1274).addBox(-8F, 222F, 66F, 16.0F, 16.0F, 12.0F);
-        parent.addOrReplaceChild("left_leg", b, PartPose.offset(60F, -228F, 0F));
+        return parent.addOrReplaceChild("left_leg", b, PartPose.offset(60F, -228F, 0F));
     }
 
     private static PartDefinition buildBody(PartDefinition parent) {
@@ -211,7 +253,7 @@ public class GolemModel extends EntityModel<GolemRenderState> {
         parent.addOrReplaceChild("backpack", b, PartPose.offset(0F, -192F, 78F));
     }
 
-    private static void buildHead(PartDefinition parent) {
+    private static PartDefinition buildHead(PartDefinition parent) {
         CubeListBuilder b = CubeListBuilder.create();
         b.texOffs(664, 4).addBox(-58F, -100F, -58F, 116.0F, 100.0F, 116.0F);
         b.texOffs(1448, 1274).addBox(-40F, -36F, -64F, 8.0F, 30.0F, 8.0F);
@@ -243,7 +285,7 @@ public class GolemModel extends EntityModel<GolemRenderState> {
         b.texOffs(2944, 1134).addBox(-8F, -216F, -24F, 16.0F, 10.0F, 52.0F);
         b.texOffs(492, 1134).addBox(-12F, -192F, 38F, 24.0F, 48.0F, 24.0F);
         b.texOffs(3544, 1134).addBox(-10F, -156F, 52F, 20.0F, 42.0F, 18.0F);
-        parent.addOrReplaceChild("head", b, PartPose.offset(0F, -288F, 0F));
+        return parent.addOrReplaceChild("head", b, PartPose.offset(0F, -288F, 0F));
     }
 
     private static void buildRightArm(PartDefinition parent) {
@@ -315,6 +357,22 @@ public class GolemModel extends EntityModel<GolemRenderState> {
     @Override
     public void setupAnim(GolemRenderState state) {
         this.root().getAllParts().forEach(ModelPart::resetPose);
+        this.armorHead.visible = state.hasHeadArmor;
+        this.armorChest.visible = state.hasChestArmor;
+        this.armorLegsR.visible = state.hasLegsArmor;
+        this.armorLegsL.visible = state.hasLegsArmor;
+        this.armorFeetR.visible = state.hasFeetArmor;
+        this.armorFeetL.visible = state.hasFeetArmor;
+
+        if (state.isDisabled) {
+            this.body.xRot = 0.26F;
+            this.head.xRot = 0.65F;
+            this.head.yRot = -0.14F;
+            this.rightArm.xRot = -0.18F;
+            this.leftArm.xRot = -0.18F;
+            return;
+        }
+
         this.head.yRot = state.yRot * Mth.DEG_TO_RAD;
         this.head.xRot = state.xRot * Mth.DEG_TO_RAD;
         this.idleAnim.apply(state.idleAnimationState, state.ageInTicks, 1.0F);

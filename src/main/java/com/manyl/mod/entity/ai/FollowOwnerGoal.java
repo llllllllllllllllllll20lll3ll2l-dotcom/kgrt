@@ -29,7 +29,7 @@ public class FollowOwnerGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (golem.isSitting() || golem.isWorking()) return false;
+        if (golem.isDisabled() || golem.isSitting() || golem.isWorking()) return false;
         if (!golem.getOwnerSettings().isFollowOwner()) return false;
         LivingEntity living = golem.getOwnerEntity();
         if (living == null || living.isSpectator()) return false;
@@ -40,7 +40,7 @@ public class FollowOwnerGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        if (golem.isSitting() || golem.isWorking()) return false;
+        if (golem.isDisabled() || golem.isSitting() || golem.isWorking()) return false;
         if (owner == null || !owner.isAlive()) return false;
         if (!golem.getOwnerSettings().isFollowOwner()) return false;
         return golem.distanceToSqr(owner) > (double) (stopDistance * stopDistance);

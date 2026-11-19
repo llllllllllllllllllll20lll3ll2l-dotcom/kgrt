@@ -6,7 +6,7 @@ import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.world.entity.AnimationState;
 
 /**
- * Состояние рендера голема-воина.
+ * Состояние рендера стража-голема.
  */
 public class GolemRenderState extends LivingEntityRenderState {
     public GolemRole role = GolemRole.WARRIOR;
@@ -14,8 +14,17 @@ public class GolemRenderState extends LivingEntityRenderState {
     public boolean isSitting = false;
     public boolean isCarrying = false;
     public boolean isWorking = false;
+    public boolean isDisabled = false;
+    public boolean isDaydreaming = false;
+    public int daydreamTicks = 0;
+
+    public boolean hasHeadArmor = false;
+    public boolean hasChestArmor = false;
+    public boolean hasLegsArmor = false;
+    public boolean hasFeetArmor = false;
 
     public final ItemStackRenderState heldItem = new ItemStackRenderState();
+    public final ItemStackRenderState offhandItem = new ItemStackRenderState();
 
     public final AnimationState idleAnimationState = new AnimationState();
     public final AnimationState workAnimationState = new AnimationState();

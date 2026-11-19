@@ -2,11 +2,13 @@ package com.manyl.mod.client.renderer;
 
 import com.manyl.mod.client.model.ValkyrieModel;
 import com.manyl.mod.entity.BaseGolemEntity;
+import com.manyl.mod.entity.ValkyrieGolemEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemDisplayContext;
 
 /**
@@ -20,6 +22,7 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
         this.itemModelResolver = context.getItemModelResolver();
         this.addLayer(new ValkyrieGlowLayer(this));
         this.addLayer(new ValkyrieHeldItemLayer(this));
+        this.addLayer(new ValkyrieLeftHandLayer(this));
     }
 
     @Override
@@ -35,11 +38,30 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
         state.isSitting = entity.isSitting();
         state.isCarrying = entity.isCarrying();
         state.isWorking = entity.isWorking();
+        state.isDisabled = entity.isDisabled();
+        if (entity instanceof ValkyrieGolemEntity valkyrie) {
+            state.isDaydreaming = valkyrie.isDaydreaming();
+            state.daydreamTicks = valkyrie.getDaydreamTicks();
+        } else {
+            state.isDaydreaming = false;
+            state.daydreamTicks = 0;
+        }
+
+        state.hasHeadArmor = !entity.getItemBySlot(EquipmentSlot.HEAD).isEmpty();
+        state.hasChestArmor = !entity.getItemBySlot(EquipmentSlot.CHEST).isEmpty();
+        state.hasLegsArmor = !entity.getItemBySlot(EquipmentSlot.LEGS).isEmpty();
+        state.hasFeetArmor = !entity.getItemBySlot(EquipmentSlot.FEET).isEmpty();
 
         this.itemModelResolver.updateForLiving(
                 state.heldItem,
                 entity.getDisplayItem(),
                 ItemDisplayContext.THIRD_PERSON_RIGHT_HAND,
+                entity
+        );
+        this.itemModelResolver.updateForLiving(
+                state.offhandItem,
+                entity.getOffhandItem(),
+                ItemDisplayContext.THIRD_PERSON_LEFT_HAND,
                 entity
         );
 

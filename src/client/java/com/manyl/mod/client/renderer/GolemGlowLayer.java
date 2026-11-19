@@ -21,6 +21,9 @@ public class GolemGlowLayer extends RenderLayer<GolemRenderState, GolemModel> {
     @Override
     public void submit(PoseStack matrices, SubmitNodeCollector commandQueue, int light,
                        GolemRenderState state, float limbAngle, float limbDistance) {
+        if (state.isDisabled) {
+            return;
+        }
         commandQueue.order(1).submitModel(
                 this.getParentModel(),
                 state,

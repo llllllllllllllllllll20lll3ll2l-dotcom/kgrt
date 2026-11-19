@@ -1,8 +1,10 @@
 package com.manyl.mod.entity;
 
 import com.manyl.mod.data.ManylSavedData;
+import com.manyl.mod.registry.ModItems;
 import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -23,12 +25,18 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CampfireBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 
@@ -65,6 +73,10 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_JEALOUSY =
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_VOW_BOUND =
+            SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_DAYDREAM_TICKS =
+            SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
 
     private long lastTalkTick = -1000L;
     private long lastComplimentTick = -1000L;
@@ -74,7 +86,10 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     private long lastJealousWarnTick = -1000L;
     private long lastCareHealTick = -1000L;
     private long lastShareFoodTick = -1000L;
+    private long lastCampfireEventTick = -20000L;
+    private long lastFlowerEventTick = -10000L;
     private int rescueCooldownTicks = 0;
+    private int daydreamCooldownTicks = 200;
 
     // Сценарий удара рукой от ревности со скрытием меча + антиспам-кулдаун
     private int weaponHideTicks = 0;
@@ -102,6 +117,28 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         builder.define(DATA_AFFECTION, 0);
         builder.define(DATA_ROMANCE_STAGE, STAGE_STRANGER_ALLY);
         builder.define(DATA_JEALOUSY, 0);
+        builder.define(DATA_VOW_BOUND, false);
+        builder.define(DATA_DAYDREAM_TICKS, 0);
+    }
+
+    public boolean isVowBound() {
+        return entityData.get(DATA_VOW_BOUND);
+    }
+
+    public void setVowBound(boolean bound) {
+        entityData.set(DATA_VOW_BOUND, bound);
+    }
+
+    public int getDaydreamTicks() {
+        return entityData.get(DATA_DAYDREAM_TICKS);
+    }
+
+    public void setDaydreamTicks(int ticks) {
+        entityData.set(DATA_DAYDREAM_TICKS, Math.max(0, ticks));
+    }
+
+    public boolean isDaydreaming() {
+        return getDaydreamTicks() > 0;
     }
 
     public int getAffection() {
@@ -292,7 +329,13 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         String responseKey = null;
         SoundEvent giftSound = ModSounds.VALKYRIE_GIFT_LOVE;
 
-        if (held.is(ItemTags.FLOWERS)) {
+        if (held.is(ModItems.VOW_RING)) {
+            if (!player.getAbilities().instabuild) {
+                held.shrink(1);
+            }
+            applyVowRing(player);
+            return Component.translatable("dialogue.manyl_mod.valkyrie.gift.vow_ring").getString();
+        } else if (held.is(ItemTags.FLOWERS)) {
             gain = 16;
             jealousyDrop = 55;
             responseKey = "dialogue.manyl_mod.valkyrie.gift.flower";
@@ -342,6 +385,20 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         return Component.translatable(responseKey).getString();
     }
 
+    public void applyVowRing(ServerPlayer player) {
+        setVowBound(true);
+        setRomanceStage(STAGE_BELOVED);
+        setAffection(MAX_AFFECTION);
+        setJealousy(0);
+        heal(getMaxHealth());
+        spawnHeartBurst(20);
+        if (level() instanceof ServerLevel sl) {
+            sl.sendParticles(ModParticles.SUMMON_RUNE, getX(), getY() + 1.2D, getZ(), 22, 0.5D, 0.6D, 0.5D, 0.05D);
+            sl.playSound(null, getX(), getY(), getZ(), ModSounds.VALKYRIE_VOW, getSoundSource(), 0.90F, 1.0F);
+        }
+        player.displayClientMessage(Component.translatable("msg.manyl_mod.vow_ring_accepted"), false);
+    }
+
     private boolean isSweetGift(ItemStack stack) {
         return stack.is(Items.APPLE)
                 || stack.is(Items.GOLDEN_APPLE)
@@ -384,9 +441,14 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public void aiStep() {
         super.aiStep();
         if (level().isClientSide()) return;
+        if (isDisabled()) {
+            setDaydreamTicks(0);
+            return;
+        }
 
         if (rescueCooldownTicks > 0) rescueCooldownTicks--;
         if (slapCooldownTicks > 0) slapCooldownTicks--;
+        if (daydreamCooldownTicks > 0) daydreamCooldownTicks--;
 
         // Таймер скрытия меча и возврат меча в руку после шлепка ревности
         if (weaponHideTicks > 0) {
@@ -404,19 +466,29 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             }
         }
 
-        if (!isTamed()) return;
+        if (!isTamed()) {
+            setDaydreamTicks(0);
+            return;
+        }
 
         ServerLevel sl = (ServerLevel) level();
         LivingEntity owner = getOwnerEntity();
 
+        // 0. Анимация мечтательного снятия шлема и вздоха (игроки в Spectator НЕ прерывают!)
+        tickDaydreaming(sl);
+
         // 1. Плюшки за уровень влюблённости (забота, подпитка и спасение при низком ХП)
         tickRomanceCarePerks(sl, owner);
 
-        // 2. Ревность (активируется при стадии 1+ и наличии >1 девушки в отряде)
+        // 2. Романтические события: вечер у костра и цветок в пути
+        tickRomanticEvents(sl, owner);
+
+        // 3. Ревность (активируется при стадии 1+ и наличии >1 девушки в отряде, блокируется Кольцом Обета)
         tickJealousySystem(sl, owner);
 
-        // 3. Если ревность достигла 100% И прошёл перерыв — подходит, прячет меч и легонько бьёт рукой
+        // 4. Если ревность достигла 100% И прошёл перерыв — подходит, прячет меч и легонько бьёт рукой
         if (getJealousy() >= MAX_JEALOUSY
+                && !isVowBound()
                 && slapCooldownTicks <= 0
                 && pendingSlapTicks == 0
                 && owner instanceof ServerPlayer serverOwner
@@ -433,6 +505,105 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 getNavigation().moveTo(serverOwner, 1.20D);
             }
         }
+    }
+
+    private void tickDaydreaming(ServerLevel sl) {
+        if (getTarget() != null || getAttackTicks() > 0 || hurtTime > 0 || isWorking()) {
+            setDaydreamTicks(0);
+            return;
+        }
+
+        boolean nonSpectatorWatching = false;
+        List<? extends Player> players = sl.players();
+        for (Player p : players) {
+            if (!p.isAlive() || p.isSpectator()) continue; // Spectator НЕ мешает и видит анимацию!
+            if (p.distanceToSqr(this) <= 400.0D && isPlayerLookingAtMe(p)) {
+                nonSpectatorWatching = true;
+                break;
+            }
+        }
+
+        if (nonSpectatorWatching) {
+            if (getDaydreamTicks() > 0) {
+                setDaydreamTicks(0);
+                daydreamCooldownTicks = 240;
+                playSound(ModSounds.VALKYRIE_SHY, 0.72F, 1.05F);
+                sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.18D, 0.12D, 0.18D, 0.01D);
+            }
+            return;
+        }
+
+        int current = getDaydreamTicks();
+        if (current > 0) {
+            setDaydreamTicks(current - 1);
+            if (current == 110 || current == 55) {
+                sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.95D, getZ(), 1, 0.15D, 0.1D, 0.15D, 0.01D);
+            }
+        } else if (daydreamCooldownTicks <= 0 && tickCount % 40 == 0 && random.nextFloat() < 0.35F) {
+            setDaydreamTicks(160);
+            daydreamCooldownTicks = 500;
+            playSound(ModSounds.VALKYRIE_DAYDREAM, 0.65F, 1.0F);
+        }
+    }
+
+    private boolean isPlayerLookingAtMe(Player player) {
+        Vec3 view = player.getViewVector(1.0F).normalize();
+        Vec3 toEntity = new Vec3(getX() - player.getX(), getEyeY() - player.getEyeY(), getZ() - player.getZ());
+        double len = toEntity.length();
+        if (len < 0.01D) return true;
+        double dot = view.dot(toEntity.scale(1.0D / len));
+        return dot > 0.68D && player.hasLineOfSight(this);
+    }
+
+    private void tickRomanticEvents(ServerLevel sl, LivingEntity owner) {
+        if (!(owner instanceof ServerPlayer sp) || !sp.isAlive() || tickCount % 80 != 0) return;
+        double distSq = distanceToSqr(sp);
+        if (distSq > 64.0D || getTarget() != null) return;
+
+        long now = sl.getGameTime();
+        long dayTime = sl.getDayTime() % 24000L;
+
+        // Вечернее событие у костра (ночь + тёплый костёр рядом)
+        if (dayTime >= 12500L && dayTime <= 23500L && now - lastCampfireEventTick >= 12000L) {
+            BlockPos campfire = findLitCampfire(5);
+            if (campfire != null) {
+                lastCampfireEventTick = now;
+                getLookControl().setLookAt(sp, 30.0F, 30.0F);
+                addAffection(12);
+                spawnHeartBurst(10);
+                playSound(ModSounds.VALKYRIE_CAMPFIRE, 0.85F, 1.0F);
+                sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_campfire_event"), false);
+                return;
+            }
+        }
+
+        // Дневной романтический подарок: цветок в путешествии (при стадии 1+)
+        if (getRomanceStage() >= STAGE_FRIEND && dayTime < 12000L && now - lastFlowerEventTick >= 6000L
+                && random.nextFloat() < 0.14F) {
+            lastFlowerEventTick = now;
+            Item[] flowers = {Items.POPPY, Items.DANDELION, Items.CORNFLOWER, Items.LILY_OF_THE_VALLEY, Items.PINK_TULIP};
+            ItemStack flower = new ItemStack(flowers[random.nextInt(flowers.length)]);
+            if (!sp.getInventory().add(flower)) {
+                sp.drop(flower, false);
+            }
+            addAffection(8);
+            spawnHeartBurst(8);
+            playSound(ModSounds.VALKYRIE_LOVE, 0.80F, 1.0F);
+            sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_flower_event"), false);
+        }
+    }
+
+    private BlockPos findLitCampfire(int radius) {
+        BlockPos center = blockPosition();
+        for (BlockPos pos : BlockPos.betweenClosed(center.offset(-radius, -2, -radius), center.offset(radius, 2, radius))) {
+            BlockState st = level().getBlockState(pos);
+            if ((st.is(Blocks.CAMPFIRE) || st.is(Blocks.SOUL_CAMPFIRE))
+                    && st.hasProperty(CampfireBlock.LIT)
+                    && st.getValue(CampfireBlock.LIT)) {
+                return pos.immutable();
+            }
+        }
+        return null;
     }
 
     private void tickRomanceCarePerks(ServerLevel sl, LivingEntity owner) {
@@ -504,7 +675,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     }
 
     private boolean consumeAnyFoodFromInventory() {
-        for (int i = 0; i < INVENTORY_SIZE; i++) {
+        for (int i = 0; i < CARGO_END; i++) {
             ItemStack s = inventory.getItem(i);
             if (!s.isEmpty() && s.has(DataComponents.FOOD)) {
                 s.shrink(1);
@@ -520,8 +691,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         // Проверка каждые 3 секунды (60 тиков) — спокойный, комфортный ритм без постоянного спама ударами
         if (tickCount % 60 != 0) return;
 
-        if (getRomanceStage() < STAGE_FRIEND || getOwnerUuid() == null) {
-            if (getJealousy() > 0) addJealousy(-4);
+        if (isVowBound() || getRomanceStage() < STAGE_FRIEND || getOwnerUuid() == null) {
+            if (getJealousy() > 0) setJealousy(0);
             return;
         }
 
@@ -585,15 +756,17 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         out.putInt("ValkyrieAffection", getAffection());
         out.putInt("ValkyrieRomanceStage", getRomanceStage());
         out.putInt("ValkyrieJealousy", getJealousy());
+        out.putBoolean("ValkyrieVowBound", isVowBound());
         out.putInt("ValkyrieRescueCd", rescueCooldownTicks);
     }
 
     @Override
     protected void readAdditionalSaveData(ValueInput in) {
         super.readAdditionalSaveData(in);
+        setVowBound(in.getBooleanOr("ValkyrieVowBound", false));
         setRomanceStage(in.getIntOr("ValkyrieRomanceStage", STAGE_STRANGER_ALLY));
         setAffection(in.getIntOr("ValkyrieAffection", 0));
-        setJealousy(in.getIntOr("ValkyrieJealousy", 0));
+        setJealousy(isVowBound() ? 0 : in.getIntOr("ValkyrieJealousy", 0));
         this.rescueCooldownTicks = in.getIntOr("ValkyrieRescueCd", 0);
     }
 }

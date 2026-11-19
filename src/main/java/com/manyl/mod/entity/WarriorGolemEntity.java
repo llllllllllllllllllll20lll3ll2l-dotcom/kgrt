@@ -2,10 +2,15 @@ package com.manyl.mod.entity;
 
 import com.manyl.mod.data.PlayerGolemSettings;
 import com.manyl.mod.entity.ai.FollowOwnerGoal;
+import com.manyl.mod.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -21,11 +26,14 @@ import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.Level;
 
 /**
- * Голем-воин (без ограничений по количеству).
- * Автоматически берёт в руку лучшее оружие из своего инвентаря (отображается в 3D и усиливает удар),
- * никогда не атакует своего владельца и союзных стражей.
+ * Голем-воин (без ограничений по количеству):
+ * - Мужская озвучка приказов, приветствия, боя и ранений;
+ * - Броня, щит и лучшее оружие из инвентаря;
+ * - Никогда не атакует владельца и союзных стражей.
  */
 public class WarriorGolemEntity extends BaseGolemEntity {
+    private long lastWarriorAttackVoiceTick = -1000L;
+
     public WarriorGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
     }
@@ -57,7 +65,7 @@ public class WarriorGolemEntity extends BaseGolemEntity {
 
     @Override
     public void setTarget(LivingEntity target) {
-        if (target != null && isFriendlyEntity(target)) {
+        if (isDisabled() || (target != null && isFriendlyEntity(target))) {
             return;
         }
         super.setTarget(target);
@@ -74,7 +82,7 @@ public class WarriorGolemEntity extends BaseGolemEntity {
         ItemStack best = ItemStack.EMPTY;
         double bestScore = -1.0D;
 
-        for (int i = 1; i < INVENTORY_SIZE; i++) {
+        for (int i = 1; i < CARGO_END; i++) {
             ItemStack s = inventory.getItem(i);
             if (s.isEmpty() || s.has(DataComponents.FOOD)) continue;
 
@@ -110,14 +118,42 @@ public class WarriorGolemEntity extends BaseGolemEntity {
     }
 
     @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return ModSounds.WARRIOR_HURT;
+    }
+
+    @Override
+    public boolean doHurtTarget(ServerLevel level, Entity target) {
+        if (getRole() == GolemRole.WARRIOR) {
+            long now = level.getGameTime();
+            if (now - lastWarriorAttackVoiceTick >= 60L && random.nextFloat() < 0.55F) {
+                lastWarriorAttackVoiceTick = now;
+                playSound(ModSounds.WARRIOR_ATTACK, 0.72F, 0.96F + random.nextFloat() * 0.08F);
+            }
+        }
+        return super.doHurtTarget(level, target);
+    }
+
+    @Override
     protected void registerGoals() {
         super.registerGoals();
-        this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.25D, true));
+        this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.25D, true) {
+            @Override
+            public boolean canUse() {
+                return !isDisabled() && super.canUse();
+            }
+
+            @Override
+            public boolean canContinueToUse() {
+                return !isDisabled() && super.canContinueToUse();
+            }
+        });
         this.goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.15D, 5.0F, 2.5F));
 
         this.targetSelector.addGoal(1, new HurtByTargetGoal(this) {
             @Override
             public boolean canUse() {
+                if (isDisabled()) return false;
                 LivingEntity lastHurt = WarriorGolemEntity.this.getLastHurtByMob();
                 if (lastHurt != null && isFriendlyEntity(lastHurt)) {
                     WarriorGolemEntity.this.setLastHurtByMob(null);
@@ -127,7 +163,7 @@ public class WarriorGolemEntity extends BaseGolemEntity {
             }
         });
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Monster.class, 10, true, false,
-                (target, level) -> matchesTargetFilter(target)));
+                (target, level) -> !isDisabled() && matchesTargetFilter(target)));
     }
 
     private boolean matchesTargetFilter(LivingEntity target) {
@@ -141,9 +177,8 @@ public class WarriorGolemEntity extends BaseGolemEntity {
     @Override
     public void aiStep() {
         super.aiStep();
-        if (level().isClientSide()) return;
+        if (level().isClientSide() || isDisabled()) return;
 
-        // Сброс цели, если по каким-то причинам целью оказался владелец или союзник
         LivingEntity curTarget = getTarget();
         if (curTarget != null && isFriendlyEntity(curTarget)) {
             super.setTarget(null);

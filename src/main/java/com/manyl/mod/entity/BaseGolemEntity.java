@@ -7,6 +7,7 @@ import com.manyl.mod.network.ModNetworking;
 import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -47,6 +48,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import java.util.EnumSet;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -59,12 +62,18 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Базовый класс всех прислужников-големов Manyl_mod (~0.8 блока высотой).
+ * Базовый класс всех прислужников-големов Manyl_mod (2 блока высотой).
  */
 public abstract class BaseGolemEntity extends PathfinderMob {
     public static final int MAX_HUNGER = 100;
     public static final int FOOD_SLOT = 0;
-    public static final int INVENTORY_SIZE = 7; // 1 слот еды + 6 слотов груза/снаряжения
+    public static final int CARGO_END = 7; // слоты 1..6: груз и оружие
+    public static final int ARMOR_HEAD_SLOT = 7;
+    public static final int ARMOR_CHEST_SLOT = 8;
+    public static final int ARMOR_LEGS_SLOT = 9;
+    public static final int ARMOR_FEET_SLOT = 10;
+    public static final int SHIELD_SLOT = 11;
+    public static final int INVENTORY_SIZE = 12; // 1 еда + 6 груз + 4 броня + 1 щит
 
     private static final EntityDataAccessor<Integer> DATA_HUNGER =
             SynchedEntityData.defineId(BaseGolemEntity.class, EntityDataSerializers.INT);
@@ -82,6 +91,10 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             SynchedEntityData.defineId(BaseGolemEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<ItemStack> DATA_DISPLAY_ITEM =
             SynchedEntityData.defineId(BaseGolemEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Boolean> DATA_DISABLED =
+            SynchedEntityData.defineId(BaseGolemEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_KILLS =
+            SynchedEntityData.defineId(BaseGolemEntity.class, EntityDataSerializers.INT);
 
     public final AnimationState idleAnimationState = new AnimationState();
     public final AnimationState workAnimationState = new AnimationState();
@@ -98,11 +111,13 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     private int hungerTickCounter = 0;
     private int starveTickCounter = 0;
     private int hungrySoundCooldown = 0;
+    private int repairProgress = 0;
 
     protected BaseGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
         this.inventory.addListener(container -> {
             updateCarryingFlag();
+            syncArmorAndShieldSlots();
             onInventoryChanged();
         });
     }
@@ -111,6 +126,15 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
     protected void onInventoryChanged() {
         // Переопределяется подклассами (например, WarriorGolemEntity для экипировки оружия)
+    }
+
+    protected void syncArmorAndShieldSlots() {
+        if (level().isClientSide()) return;
+        this.setItemSlot(EquipmentSlot.HEAD, inventory.getItem(ARMOR_HEAD_SLOT).copy());
+        this.setItemSlot(EquipmentSlot.CHEST, inventory.getItem(ARMOR_CHEST_SLOT).copy());
+        this.setItemSlot(EquipmentSlot.LEGS, inventory.getItem(ARMOR_LEGS_SLOT).copy());
+        this.setItemSlot(EquipmentSlot.FEET, inventory.getItem(ARMOR_FEET_SLOT).copy());
+        this.setItemSlot(EquipmentSlot.OFFHAND, inventory.getItem(SHIELD_SLOT).copy());
     }
 
     public static AttributeSupplier.Builder createGolemAttributes(GolemRole role) {
@@ -133,6 +157,8 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         builder.define(DATA_EAT_TICKS, 0);
         builder.define(DATA_ATTACK_TICKS, 0);
         builder.define(DATA_DISPLAY_ITEM, ItemStack.EMPTY);
+        builder.define(DATA_DISABLED, false);
+        builder.define(DATA_KILLS, 0);
     }
 
     public static boolean checkGuardianSpawnRules(
@@ -156,18 +182,28 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         this.goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.85D) {
             @Override
             public boolean canUse() {
-                if (isSitting()) return false;
+                if (isDisabled() || isSitting()) return false;
                 if (getOwnerUuid() != null && getOwnerSettings().isFollowOwner()) return false;
                 return super.canUse();
             }
         });
-        this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 6.0F) {
+            @Override
+            public boolean canUse() {
+                return !isDisabled() && super.canUse();
+            }
+        });
+        this.goalSelector.addGoal(9, new RandomLookAroundGoal(this) {
+            @Override
+            public boolean canUse() {
+                return !isDisabled() && super.canUse();
+            }
+        });
     }
 
     @Override
     public boolean removeWhenFarAway(double distanceToClosestPlayer) {
-        return getOwnerUuid() == null && distanceToClosestPlayer > 128.0D;
+        return !isDisabled() && getOwnerUuid() == null && distanceToClosestPlayer > 128.0D;
     }
 
     public boolean isTamed() {
@@ -175,6 +211,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     }
 
     public void recruitBy(ServerPlayer player) {
+        setDisabled(false);
         setOwnerUuid(player.getUUID());
         setSitting(false);
         if (getHomePos() == null) {
@@ -183,8 +220,11 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         if (level() instanceof ServerLevel sl) {
             sl.sendParticles(ModParticles.SUMMON_RUNE, getX(), getY() + 0.9D, getZ(), 16, 0.35D, 0.45D, 0.35D, 0.04D);
             sl.sendParticles(ModParticles.CORE_HEART, getX(), getY() + 1.4D, getZ(), 8, 0.3D, 0.3D, 0.3D, 0.03D);
-            sl.playSound(null, getX(), getY(), getZ(), ModSounds.GOLEM_SUMMON, getSoundSource(), 0.75F,
-                    this instanceof ValkyrieGolemEntity ? 1.18F : 1.0F);
+            if (!(this instanceof ValkyrieGolemEntity)) {
+                sl.playSound(null, getX(), getY(), getZ(), ModSounds.WARRIOR_GREET, getSoundSource(), 0.82F, 1.0F);
+            } else {
+                sl.playSound(null, getX(), getY(), getZ(), ModSounds.GOLEM_SUMMON, getSoundSource(), 0.75F, 1.18F);
+            }
         }
         player.displayClientMessage(Component.translatable("msg.manyl_mod.recruited",
                 Component.translatable(getRole().getTranslationKey())), true);
@@ -197,6 +237,16 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
         if (level().isClientSide()) {
             updateClientAnimations();
+            return;
+        }
+
+        if (isDisabled()) {
+            getNavigation().stop();
+            setDeltaMovement(0.0D, Math.min(0.0D, getDeltaMovement().y), 0.0D);
+            if (tickCount % 25 == 0 && level() instanceof ServerLevel sl) {
+                sl.sendParticles(ParticleTypes.ELECTRIC_SPARK,
+                        getX(), getY() + 1.1D, getZ(), 3, 0.25D, 0.3D, 0.25D, 0.02D);
+            }
             return;
         }
 
@@ -281,7 +331,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     public boolean tryEatFromInventory() {
         ItemStack stack = inventory.getItem(FOOD_SLOT);
         if (stack.isEmpty()) {
-            for (int i = 1; i < INVENTORY_SIZE; i++) {
+            for (int i = 1; i < CARGO_END; i++) {
                 ItemStack s = inventory.getItem(i);
                 if (!s.isEmpty() && isFoodItem(s)) {
                     inventory.setItem(FOOD_SLOT, s.copy());
@@ -316,7 +366,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         if (stack.isEmpty()) return ItemStack.EMPTY;
         ItemStack remaining = stack.copy();
 
-        for (int i = 1; i < INVENTORY_SIZE; i++) {
+        for (int i = 1; i < CARGO_END; i++) {
             ItemStack slot = inventory.getItem(i);
             if (!slot.isEmpty() && ItemStack.isSameItemSameComponents(slot, remaining)) {
                 int space = Math.min(slot.getMaxStackSize(), inventory.getMaxStackSize()) - slot.getCount();
@@ -329,7 +379,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
                 }
             }
         }
-        for (int i = 1; i < INVENTORY_SIZE; i++) {
+        for (int i = 1; i < CARGO_END; i++) {
             if (inventory.getItem(i).isEmpty()) {
                 inventory.setItem(i, remaining.copy());
                 inventory.setChanged();
@@ -387,7 +437,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     }
 
     private boolean canFitInCargo(ItemStack stack) {
-        for (int i = 1; i < INVENTORY_SIZE; i++) {
+        for (int i = 1; i < CARGO_END; i++) {
             ItemStack slot = inventory.getItem(i);
             if (slot.isEmpty()) return true;
             if (ItemStack.isSameItemSameComponents(slot, stack)
@@ -454,7 +504,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     }
 
     public boolean hasCargo() {
-        for (int i = 1; i < INVENTORY_SIZE; i++) {
+        for (int i = 1; i < CARGO_END; i++) {
             if (isProtectedGearSlot(i)) continue;
             if (!inventory.getItem(i).isEmpty()) return true;
         }
@@ -462,7 +512,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     }
 
     public boolean isCargoFull() {
-        for (int i = 1; i < INVENTORY_SIZE; i++) {
+        for (int i = 1; i < CARGO_END; i++) {
             ItemStack s = inventory.getItem(i);
             if (s.isEmpty() || s.getCount() < s.getMaxStackSize()) return false;
         }
@@ -477,7 +527,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
     public boolean depositCargoIntoContainer(Container target) {
         boolean movedAny = false;
-        for (int i = 1; i < INVENTORY_SIZE; i++) {
+        for (int i = 1; i < CARGO_END; i++) {
             if (isProtectedGearSlot(i)) continue;
             ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
@@ -543,7 +593,28 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         }
         ItemStack held = player.getItemInHand(hand);
         if (!level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+            if (isDisabled()) {
+                return handleDisabledInteract(serverPlayer, held);
+            }
+
+            if (held.is(Items.NAME_TAG) && held.has(DataComponents.CUSTOM_NAME)) {
+                setCustomName(held.get(DataComponents.CUSTOM_NAME));
+                setCustomNameVisible(true);
+                if (!player.getAbilities().instabuild) {
+                    held.shrink(1);
+                }
+                playSound(SoundEvents.ANVIL_USE, 0.4F, 1.4F);
+                return InteractionResult.SUCCESS;
+            }
+
             if (this instanceof ValkyrieGolemEntity valkyrie) {
+                if (isTamed() && held.is(ModItems.VOW_RING)) {
+                    if (!player.getAbilities().instabuild) {
+                        held.shrink(1);
+                    }
+                    valkyrie.applyVowRing(serverPlayer);
+                    return InteractionResult.SUCCESS;
+                }
                 if (isTamed() && player.isShiftKeyDown()) {
                     openGolemMenu(player);
                     return InteractionResult.SUCCESS;
@@ -560,6 +631,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             if (player.isShiftKeyDown()) {
                 setSitting(!isSitting());
                 playSound(ModSounds.GOLEM_STEP, 0.16F, isSitting() ? 0.8F : 1.2F);
+                playSound(ModSounds.WARRIOR_ORDER, 0.72F, 1.0F);
                 serverPlayer.displayClientMessage(Component.translatable(
                         isSitting() ? "msg.manyl_mod.mode_stay" : "msg.manyl_mod.mode_follow",
                         Component.translatable(getRole().getTranslationKey())), true);
@@ -583,6 +655,43 @@ public abstract class BaseGolemEntity extends PathfinderMob {
                 return InteractionResult.SUCCESS;
             }
             openGolemMenu(player);
+        }
+        return InteractionResult.SUCCESS;
+    }
+
+    private InteractionResult handleDisabledInteract(ServerPlayer player, ItemStack held) {
+        int step = 0;
+        if (held.is(Items.DIAMOND)) step = 2;
+        else if (held.is(Items.IRON_INGOT) || held.is(Items.REDSTONE)) step = 1;
+
+        if (step <= 0) {
+            player.displayClientMessage(Component.translatable("msg.manyl_mod.repair_hint", repairProgress, 2), true);
+            playSound(ModSounds.GOLEM_HURT, 0.45F, 0.75F);
+            return InteractionResult.SUCCESS;
+        }
+
+        if (!player.getAbilities().instabuild) {
+            held.shrink(1);
+        }
+        repairProgress += step;
+        playSound(SoundEvents.ANVIL_USE, 0.55F, 1.2F);
+        if (level() instanceof ServerLevel sl) {
+            sl.sendParticles(ModParticles.GOLEM_SPARK, getX(), getY() + 1.0D, getZ(), 10, 0.3D, 0.3D, 0.3D, 0.04D);
+        }
+
+        if (repairProgress >= 2) {
+            repairProgress = 0;
+            setDisabled(false);
+            setHealth(getMaxHealth());
+            setHunger(MAX_HUNGER);
+            recruitBy(player);
+            if (this instanceof ValkyrieGolemEntity) {
+                playSound(ModSounds.VALKYRIE_REPAIRED, 0.85F, 1.0F);
+            }
+            player.displayClientMessage(Component.translatable("msg.manyl_mod.repaired",
+                    Component.translatable(getRole().getTranslationKey())), false);
+        } else {
+            player.displayClientMessage(Component.translatable("msg.manyl_mod.repair_progress", repairProgress, 2), true);
         }
         return InteractionResult.SUCCESS;
     }
@@ -627,13 +736,36 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     }
 
     @Override
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        if (isDisabled() && source.getEntity() instanceof Player) {
+            return false; // Игрок не сломает случайно спящего стража из руин
+        }
+        ItemStack shield = inventory.getItem(SHIELD_SLOT);
+        if (!shield.isEmpty() && shield.is(Items.SHIELD) && source.getEntity() != null && random.nextFloat() < 0.30F) {
+            amount *= 0.60F;
+            playSound(SoundEvents.SHIELD_BLOCK.value(), 0.75F, 0.95F + random.nextFloat() * 0.1F);
+        }
+        return super.hurtServer(level, source, amount);
+    }
+
+    @Override
     public boolean doHurtTarget(ServerLevel level, Entity target) {
         setAttackTicks(12);
         playSound(ModSounds.GOLEM_ATTACK, 0.50F, 0.95F + random.nextFloat() * 0.15F);
         level.sendParticles(ModParticles.GOLEM_SPARK,
                 target.getX(), target.getY() + target.getBbHeight() * 0.5D, target.getZ(),
                 6, 0.2D, 0.2D, 0.2D, 0.05D);
-        return super.doHurtTarget(level, target);
+        boolean hit = super.doHurtTarget(level, target);
+        if (hit && target instanceof LivingEntity living) {
+            float bonus = getRankBonusDamage();
+            if (bonus > 0.0F && living.isAlive()) {
+                living.hurtServer(level, damageSources().mobAttack(this), bonus);
+            }
+            if (living.isDeadOrDying()) {
+                addKill();
+            }
+        }
+        return hit;
     }
 
     public PlayerGolemSettings getOwnerSettings() {
@@ -664,6 +796,9 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         super.addAdditionalSaveData(out);
         out.putInt("Hunger", getHunger());
         out.putBoolean("Sitting", isSitting());
+        out.putBoolean("Disabled", isDisabled());
+        out.putInt("RepairProgress", repairProgress);
+        out.putInt("Kills", getKills());
         if (ownerUuid != null) out.putString("Owner", ownerUuid.toString());
         if (homePos != null) out.store("HomePos", BlockPos.CODEC, homePos);
         List<ItemStack> items = new ArrayList<>(INVENTORY_SIZE);
@@ -676,6 +811,9 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         super.readAdditionalSaveData(in);
         setHunger(in.getIntOr("Hunger", MAX_HUNGER));
         setSitting(in.getBooleanOr("Sitting", false));
+        setDisabled(in.getBooleanOr("Disabled", false));
+        this.repairProgress = in.getIntOr("RepairProgress", 0);
+        setKills(in.getIntOr("Kills", 0));
         in.getString("Owner").ifPresent(s -> {
             try { this.ownerUuid = UUID.fromString(s); } catch (IllegalArgumentException ignored) {}
         });
@@ -685,6 +823,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
                 inventory.setItem(i, list.get(i));
             }
             updateCarryingFlag();
+            syncArmorAndShieldSlots();
             onInventoryChanged();
         });
     }
@@ -719,6 +858,75 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     public ItemStack getDisplayItem() { return entityData.get(DATA_DISPLAY_ITEM); }
     public void setDisplayItem(ItemStack stack) { entityData.set(DATA_DISPLAY_ITEM, stack == null ? ItemStack.EMPTY : stack.copy()); }
 
+    public boolean isDisabled() { return entityData.get(DATA_DISABLED); }
+    public void setDisabled(boolean disabled) { entityData.set(DATA_DISABLED, disabled); }
+
+    public int getKills() { return entityData.get(DATA_KILLS); }
+    public void setKills(int kills) { entityData.set(DATA_KILLS, Math.max(0, kills)); }
+    public void addKill() { setKills(getKills() + 1); }
+
+    public int getRankTier() {
+        int k = getKills();
+        if (k >= 30) return 3;
+        if (k >= 15) return 2;
+        if (k >= 5) return 1;
+        return 0;
+    }
+
+    public float getRankBonusDamage() {
+        return switch (getRankTier()) {
+            case 3 -> 4.0F;
+            case 2 -> 2.5F;
+            case 1 -> 1.0F;
+            default -> 0.0F;
+        };
+    }
+
+    public String getRankTranslationKey() {
+        return switch (getRankTier()) {
+            case 3 -> "rank.manyl_mod.master";
+            case 2 -> "rank.manyl_mod.veteran";
+            case 1 -> "rank.manyl_mod.guard";
+            default -> "rank.manyl_mod.recruit";
+        };
+    }
+
+    @Override
+    public Component getDisplayName() {
+        Component base = super.getDisplayName();
+        if (isDisabled()) {
+            return Component.literal("[×] ").withStyle(ChatFormatting.DARK_GRAY)
+                    .append(base.copy().withStyle(ChatFormatting.GRAY));
+        }
+        if (!isTamed()) {
+            return base;
+        }
+        net.minecraft.network.chat.MutableComponent result = base.copy();
+        int tier = getRankTier();
+        if (tier > 0) {
+            String stars = switch (tier) {
+                case 3 -> " ★★★";
+                case 2 -> " ★★";
+                default -> " ★";
+            };
+            ChatFormatting starColor = switch (tier) {
+                case 3 -> ChatFormatting.AQUA;
+                case 2 -> ChatFormatting.GOLD;
+                default -> ChatFormatting.YELLOW;
+            };
+            result.append(Component.literal(stars).withStyle(starColor));
+        }
+        if (this instanceof ValkyrieGolemEntity valkyrie) {
+            if (valkyrie.isVowBound()) {
+                result.append(Component.literal(" ♥★").withStyle(ChatFormatting.LIGHT_PURPLE));
+            } else if (valkyrie.getRomanceStage() > 0) {
+                String hearts = " " + "♥".repeat(Math.min(3, valkyrie.getRomanceStage()));
+                result.append(Component.literal(hearts).withStyle(ChatFormatting.LIGHT_PURPLE));
+            }
+        }
+        return result;
+    }
+
     protected static class PickupFoodAndToolGoal extends Goal {
         private final BaseGolemEntity golem;
         private ItemEntity targetItem;
@@ -731,7 +939,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
         @Override
         public boolean canUse() {
-            if (golem.isSitting() || golem.isWorking()) return false;
+            if (golem.isDisabled() || golem.isSitting() || golem.isWorking()) return false;
             if (scanCooldown > 0) {
                 scanCooldown--;
                 return false;
@@ -743,7 +951,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
         @Override
         public boolean canContinueToUse() {
-            if (golem.isSitting() || golem.isWorking()) return false;
+            if (golem.isDisabled() || golem.isSitting() || golem.isWorking()) return false;
             return targetItem != null && targetItem.isAlive()
                     && !targetItem.hasPickUpDelay()
                     && golem.canAcceptFoodOrTool(targetItem.getItem())

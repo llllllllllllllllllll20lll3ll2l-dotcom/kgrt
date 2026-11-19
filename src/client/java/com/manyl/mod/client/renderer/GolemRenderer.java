@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemDisplayContext;
 
 /**
@@ -20,6 +21,7 @@ public class GolemRenderer extends MobRenderer<BaseGolemEntity, GolemRenderState
         this.itemModelResolver = context.getItemModelResolver();
         this.addLayer(new GolemGlowLayer(this));
         this.addLayer(new GolemHeldItemLayer(this));
+        this.addLayer(new GolemLeftHandLayer(this));
     }
 
     @Override
@@ -35,11 +37,25 @@ public class GolemRenderer extends MobRenderer<BaseGolemEntity, GolemRenderState
         state.isSitting = entity.isSitting();
         state.isCarrying = entity.isCarrying();
         state.isWorking = entity.isWorking();
+        state.isDisabled = entity.isDisabled();
+        state.isDaydreaming = false;
+        state.daydreamTicks = 0;
+
+        state.hasHeadArmor = !entity.getItemBySlot(EquipmentSlot.HEAD).isEmpty();
+        state.hasChestArmor = !entity.getItemBySlot(EquipmentSlot.CHEST).isEmpty();
+        state.hasLegsArmor = !entity.getItemBySlot(EquipmentSlot.LEGS).isEmpty();
+        state.hasFeetArmor = !entity.getItemBySlot(EquipmentSlot.FEET).isEmpty();
 
         this.itemModelResolver.updateForLiving(
                 state.heldItem,
                 entity.getDisplayItem(),
                 ItemDisplayContext.THIRD_PERSON_RIGHT_HAND,
+                entity
+        );
+        this.itemModelResolver.updateForLiving(
+                state.offhandItem,
+                entity.getOffhandItem(),
+                ItemDisplayContext.THIRD_PERSON_LEFT_HAND,
                 entity
         );
 

@@ -35,6 +35,7 @@ public class ManylMod implements ModInitializer {
         ModItems.init();
         ModEntities.init();
         ModMenus.init();
+        ModWorldgen.init();
 
         ModNetworking.registerPayloads();
         ModNetworking.registerServerReceivers();
@@ -46,6 +47,7 @@ public class ManylMod implements ModInitializer {
                 .displayItems((ctx, entries) -> {
                     entries.accept(ModItems.WARRIOR_SPAWN_EGG);
                     entries.accept(ModItems.VALKYRIE_SPAWN_EGG);
+                    entries.accept(ModItems.VOW_RING);
                 })
                 .build());
 

@@ -6,6 +6,7 @@ import com.manyl.mod.data.PlayerGolemSettings;
 import com.manyl.mod.entity.BaseGolemEntity;
 import com.manyl.mod.entity.GolemRole;
 import com.manyl.mod.entity.ValkyrieGolemEntity;
+import com.manyl.mod.entity.WarriorGolemEntity;
 import com.manyl.mod.registry.ModEntities;
 import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
@@ -21,6 +22,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
@@ -175,6 +177,38 @@ public final class ModNetworking {
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
+    public record RenameGolemPayload(int entityId, String name) implements CustomPacketPayload {
+        public static final Type<RenameGolemPayload> TYPE = new Type<>(ManylMod.id("rename_golem"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, RenameGolemPayload> CODEC = StreamCodec.of(
+                (buf, p) -> {
+                    buf.writeVarInt(p.entityId);
+                    buf.writeUtf(p.name == null ? "" : p.name, 48);
+                },
+                buf -> new RenameGolemPayload(buf.readVarInt(), buf.readUtf(48))
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record SquadOrderPayload(int orderType, int targetEntityId) implements CustomPacketPayload {
+        public static final int ORDER_FOLLOW = 0;
+        public static final int ORDER_HOLD = 1;
+        public static final int ORDER_ATTACK = 2;
+
+        public static final Type<SquadOrderPayload> TYPE = new Type<>(ManylMod.id("squad_order"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SquadOrderPayload> CODEC = StreamCodec.of(
+                (buf, p) -> {
+                    buf.writeVarInt(p.orderType);
+                    buf.writeVarInt(p.targetEntityId);
+                },
+                buf -> new SquadOrderPayload(buf.readVarInt(), buf.readVarInt())
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
     public static void registerPayloads() {
         PayloadTypeRegistry.playS2C().register(OpenStaffMenuPayload.TYPE, OpenStaffMenuPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncGolemStatePayload.TYPE, SyncGolemStatePayload.CODEC);
@@ -187,6 +221,8 @@ public final class ModNetworking {
         PayloadTypeRegistry.playC2S().register(ValkyrieRomanceActionPayload.TYPE, ValkyrieRomanceActionPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ToggleGolemSitPayload.TYPE, ToggleGolemSitPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(DismissGolemPayload.TYPE, DismissGolemPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(RenameGolemPayload.TYPE, RenameGolemPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(SquadOrderPayload.TYPE, SquadOrderPayload.CODEC);
     }
 
     public static void registerServerReceivers() {
@@ -281,6 +317,98 @@ public final class ModNetworking {
                 }
             });
         });
+
+        ServerPlayNetworking.registerGlobalReceiver(RenameGolemPayload.TYPE, (payload, ctx) -> {
+            ServerPlayer player = ctx.player();
+            int entityId = payload.entityId();
+            String rawName = payload.name() == null ? "" : payload.name().trim();
+            ctx.server().execute(() -> {
+                Entity entity = player.level().getEntity(entityId);
+                if (entity instanceof BaseGolemEntity golem && golem.isAlive()
+                        && player.getUUID().equals(golem.getOwnerUuid())
+                        && golem.distanceToSqr(player) <= 100.0D) {
+                    if (rawName.isEmpty()) {
+                        golem.setCustomName(null);
+                        golem.setCustomNameVisible(false);
+                    } else {
+                        String clipped = rawName.length() > 32 ? rawName.substring(0, 32) : rawName;
+                        golem.setCustomName(Component.literal(clipped));
+                        golem.setCustomNameVisible(true);
+                    }
+                }
+            });
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(SquadOrderPayload.TYPE, (payload, ctx) -> {
+            ServerPlayer player = ctx.player();
+            int orderType = payload.orderType();
+            int targetEntityId = payload.targetEntityId();
+            ctx.server().execute(() -> handleSquadOrder(player, orderType, targetEntityId));
+        });
+    }
+
+    private static void handleSquadOrder(ServerPlayer player, int orderType, int targetEntityId) {
+        ServerLevel level = (ServerLevel) player.level();
+        MinecraftServer server = level.getServer();
+        List<BaseGolemEntity> golems = ManylSavedData.getPlayerGolems(server, player.getUUID());
+        if (golems.isEmpty()) {
+            player.displayClientMessage(Component.translatable("msg.manyl_mod.no_squad"), true);
+            return;
+        }
+
+        if (orderType == SquadOrderPayload.ORDER_ATTACK) {
+            Entity target = level.getEntity(targetEntityId);
+            if (!(target instanceof LivingEntity living) || !living.isAlive()) {
+                player.displayClientMessage(Component.translatable("msg.manyl_mod.no_target"), true);
+                return;
+            }
+            int assigned = 0;
+            boolean warriorSpoke = false;
+            boolean valkyrieSpoke = false;
+            for (BaseGolemEntity golem : golems) {
+                if (golem.isDisabled() || golem.distanceToSqr(player) > 2500.0D) continue;
+                if (golem instanceof WarriorGolemEntity wg && wg.isFriendlyEntity(living)) continue;
+                golem.setSitting(false);
+                golem.setTarget(living);
+                assigned++;
+                if (golem instanceof ValkyrieGolemEntity && !valkyrieSpoke) {
+                    valkyrieSpoke = true;
+                    golem.playSound(ModSounds.VALKYRIE_ATTACK, 0.78F, 1.0F);
+                } else if (golem.getRole() == GolemRole.WARRIOR && !warriorSpoke) {
+                    warriorSpoke = true;
+                    golem.playSound(ModSounds.WARRIOR_ATTACK, 0.78F, 1.0F);
+                }
+            }
+            if (assigned > 0) {
+                player.displayClientMessage(Component.translatable("msg.manyl_mod.order_attack", living.getDisplayName()), true);
+            }
+            return;
+        }
+
+        boolean hold = (orderType == SquadOrderPayload.ORDER_HOLD);
+        ManylSavedData data = ManylSavedData.get(server);
+        PlayerGolemSettings cur = data.getSettings(player.getUUID());
+        data.updateWarriorSettings(player.getUUID(), !hold, hold ? "stay" : "follow", cur.getTargetFilter());
+
+        boolean warriorSpoke = false;
+        boolean valkyrieSpoke = false;
+        for (BaseGolemEntity golem : golems) {
+            if (golem.isDisabled()) continue;
+            golem.setSitting(hold);
+            if (hold) {
+                golem.setTarget(null);
+            }
+            if (golem instanceof ValkyrieGolemEntity && !valkyrieSpoke) {
+                valkyrieSpoke = true;
+                golem.playSound(hold ? ModSounds.VALKYRIE_SIGH : ModSounds.VALKYRIE_GREET, 0.72F, 1.0F);
+            } else if (golem.getRole() == GolemRole.WARRIOR && !warriorSpoke) {
+                warriorSpoke = true;
+                golem.playSound(ModSounds.WARRIOR_ORDER, 0.75F, 1.0F);
+            }
+        }
+        player.displayClientMessage(Component.translatable(
+                hold ? "msg.manyl_mod.order_hold" : "msg.manyl_mod.order_follow"), true);
+        sendStateSync(player);
     }
 
     public static void sendOpenValkyrieDialogue(ServerPlayer player, ValkyrieGolemEntity valkyrie) {
