@@ -40,6 +40,8 @@ public class GolemRenderer extends MobRenderer<BaseGolemEntity, GolemRenderState
         state.isDisabled = entity.isDisabled();
         state.isDaydreaming = false;
         state.daydreamTicks = 0;
+        state.bathPhase = 0;
+        state.bathTicks = 0;
 
         state.hasHeadArmor = !entity.getItemBySlot(EquipmentSlot.HEAD).isEmpty();
         state.hasChestArmor = !entity.getItemBySlot(EquipmentSlot.CHEST).isEmpty();

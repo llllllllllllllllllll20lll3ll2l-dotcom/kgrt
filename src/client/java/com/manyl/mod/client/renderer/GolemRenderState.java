@@ -17,6 +17,8 @@ public class GolemRenderState extends LivingEntityRenderState {
     public boolean isDisabled = false;
     public boolean isDaydreaming = false;
     public int daydreamTicks = 0;
+    public int bathPhase = 0;
+    public int bathTicks = 0;
 
     public boolean hasHeadArmor = false;
     public boolean hasChestArmor = false;

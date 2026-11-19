@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
@@ -67,6 +68,13 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public static final int ACTION_TOGGLE_SIT = 5;
     public static final int ACTION_OPEN_INVENTORY = 6;
 
+    public static final int PHASE_NONE = 0;
+    public static final int PHASE_LOOK_AROUND = 1;
+    public static final int PHASE_STRIP_ARMOR = 2;
+    public static final int PHASE_WALK_TO_WATER = 3;
+    public static final int PHASE_BATHING_SIT = 4;
+    public static final int PHASE_REST_UNARMORED = 5;
+
     private static final EntityDataAccessor<Integer> DATA_AFFECTION =
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ROMANCE_STAGE =
@@ -75,13 +83,16 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_VOW_BOUND =
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.BOOLEAN);
-    private static final EntityDataAccessor<Integer> DATA_DAYDREAM_TICKS =
+    private static final EntityDataAccessor<Integer> DATA_BATH_PHASE =
+            SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_BATH_TICKS =
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
 
     private long lastTalkTick = -1000L;
     private long lastComplimentTick = -1000L;
     private long lastHeartParticleTick = 0L;
     private long lastAttackVoiceTick = -1000L;
+    private long lastHurtVoiceTick = -1000L;
     private long lastGreetVoiceTick = -1000L;
     private long lastJealousWarnTick = -1000L;
     private long lastCareHealTick = -1000L;
@@ -89,7 +100,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     private long lastCampfireEventTick = -20000L;
     private long lastFlowerEventTick = -10000L;
     private int rescueCooldownTicks = 0;
-    private int daydreamCooldownTicks = 200;
+    private int daydreamCooldownTicks = 180;
+    private BlockPos targetWaterPos = null;
 
     // Сценарий удара рукой от ревности со скрытием меча + антиспам-кулдаун
     private int weaponHideTicks = 0;
@@ -108,7 +120,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
 
     @Override
     protected boolean isWeaponHidden() {
-        return weaponHideTicks > 0;
+        return weaponHideTicks > 0 || getBathPhase() >= PHASE_STRIP_ARMOR;
     }
 
     @Override
@@ -118,7 +130,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         builder.define(DATA_ROMANCE_STAGE, STAGE_STRANGER_ALLY);
         builder.define(DATA_JEALOUSY, 0);
         builder.define(DATA_VOW_BOUND, false);
-        builder.define(DATA_DAYDREAM_TICKS, 0);
+        builder.define(DATA_BATH_PHASE, PHASE_NONE);
+        builder.define(DATA_BATH_TICKS, 0);
     }
 
     public boolean isVowBound() {
@@ -129,16 +142,32 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         entityData.set(DATA_VOW_BOUND, bound);
     }
 
-    public int getDaydreamTicks() {
-        return entityData.get(DATA_DAYDREAM_TICKS);
+    public int getBathPhase() {
+        return entityData.get(DATA_BATH_PHASE);
     }
 
-    public void setDaydreamTicks(int ticks) {
-        entityData.set(DATA_DAYDREAM_TICKS, Math.max(0, ticks));
+    public void setBathPhase(int phase) {
+        entityData.set(DATA_BATH_PHASE, phase);
+        onInventoryChanged();
     }
 
-    public boolean isDaydreaming() {
-        return getDaydreamTicks() > 0;
+    public int getBathTicks() {
+        return entityData.get(DATA_BATH_TICKS);
+    }
+
+    public void setBathTicks(int ticks) {
+        entityData.set(DATA_BATH_TICKS, Math.max(0, ticks));
+    }
+
+    @Override
+    public boolean isBusyWithRoutine() {
+        return getBathPhase() != PHASE_NONE;
+    }
+
+    public boolean isInSwimsuit() {
+        int p = getBathPhase();
+        return p == PHASE_WALK_TO_WATER || p == PHASE_BATHING_SIT || p == PHASE_REST_UNARMORED
+                || (p == PHASE_STRIP_ARMOR && getBathTicks() >= 45);
     }
 
     public int getAffection() {
@@ -194,16 +223,16 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
 
     public void playGreetVoice() {
         long now = level().getGameTime();
-        if (now - lastGreetVoiceTick >= 60L) {
+        if (now - lastGreetVoiceTick >= 20L) {
             lastGreetVoiceTick = now;
             if (!isTamed()) {
-                playSound(ModSounds.VALKYRIE_WILD_GREET, 0.80F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_WILD_GREET, 0.80F, 1.0F);
             } else if (getJealousy() >= 70) {
-                playSound(ModSounds.VALKYRIE_JEALOUS, 0.80F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_JEALOUS, 0.80F, 1.0F);
             } else if (getRomanceStage() >= STAGE_BELOVED) {
-                playSound(ModSounds.VALKYRIE_LOVE, 0.78F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_LOVE, 0.78F, 1.0F);
             } else {
-                playSound(ModSounds.VALKYRIE_GREET, 0.78F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_GREET, 0.78F, 1.0F);
             }
         }
     }
@@ -229,14 +258,14 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 recruitBy(player);
                 if (getAffection() < 10) setAffection(10);
                 spawnHeartBurst(10);
-                playSound(ModSounds.VALKYRIE_RECRUITED, 0.85F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_RECRUITED, 0.85F, 1.0F);
                 return Component.translatable("dialogue.manyl_mod.valkyrie.recruited").getString();
             }
             return getGreetingLine(true);
         }
 
         if (!isTamed()) {
-            playSound(ModSounds.VALKYRIE_WILD_GREET, 0.78F, 1.0F);
+            playVoice(ModSounds.VALKYRIE_WILD_GREET, 0.78F, 1.0F);
             return Component.translatable("dialogue.manyl_mod.valkyrie.need_recruit").getString();
         }
 
@@ -255,7 +284,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                     case STAGE_FRIEND -> ModSounds.VALKYRIE_TALK_FRIEND;
                     default -> ModSounds.VALKYRIE_TALK_ALLY;
                 };
-                playSound(talkVoice, 0.82F, 1.0F);
+                playVoice(talkVoice, 0.82F, 1.0F);
                 String key = switch (getRomanceStage()) {
                     case STAGE_BELOVED -> "dialogue.manyl_mod.valkyrie.talk.beloved.0";
                     case STAGE_CRUSH -> "dialogue.manyl_mod.valkyrie.talk.crush.0";
@@ -271,7 +300,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                     addJealousy(-30);
                     spawnHeartBurst(7);
                 }
-                playSound(ModSounds.VALKYRIE_LAUGH, 0.82F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_LAUGH, 0.82F, 1.0F);
                 int variant = random.nextInt(2);
                 String key = switch (getRomanceStage()) {
                     case STAGE_BELOVED -> "dialogue.manyl_mod.valkyrie.compliment.beloved." + variant;
@@ -286,11 +315,11 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case ACTION_CONFESS -> {
                 if (getRomanceStage() >= STAGE_BELOVED) {
                     spawnHeartBurst(10);
-                    playSound(ModSounds.VALKYRIE_LOVE, 0.82F, 1.0F);
+                    playVoice(ModSounds.VALKYRIE_LOVE, 0.82F, 1.0F);
                     return Component.translatable("dialogue.manyl_mod.valkyrie.confess_already").getString();
                 }
                 if (getAffection() < CONFESS_THRESHOLD) {
-                    playSound(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
+                    playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
                     return Component.translatable("dialogue.manyl_mod.valkyrie.confess_too_early").getString();
                 }
                 setRomanceStage(STAGE_BELOVED);
@@ -299,14 +328,14 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 spawnHeartBurst(18);
                 if (level() instanceof ServerLevel sl) {
                     sl.sendParticles(ModParticles.SUMMON_RUNE, getX(), getY() + 1.2D, getZ(), 18, 0.45D, 0.55D, 0.45D, 0.04D);
-                    sl.playSound(null, getX(), getY(), getZ(), ModSounds.VALKYRIE_CONFESS, getSoundSource(), 0.88F, 1.0F);
                 }
+                playVoice(ModSounds.VALKYRIE_CONFESS, 0.88F, 1.0F);
                 return Component.translatable("dialogue.manyl_mod.valkyrie.confess_success").getString();
             }
             case ACTION_TOGGLE_SIT -> {
                 setSitting(!isSitting());
                 playSound(ModSounds.GOLEM_STEP, 0.18F, isSitting() ? 0.85F : 1.25F);
-                playSound(isSitting() ? ModSounds.VALKYRIE_SIGH : ModSounds.VALKYRIE_GREET, 0.72F, 1.0F);
+                playVoice(isSitting() ? ModSounds.VALKYRIE_SIGH : ModSounds.VALKYRIE_GREET, 0.72F, 1.0F);
                 return Component.translatable(
                         isSitting() ? "dialogue.manyl_mod.valkyrie.mode_stay" : "dialogue.manyl_mod.valkyrie.mode_follow"
                 ).getString();
@@ -320,7 +349,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     private String handleGift(ServerPlayer player) {
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) {
-            playSound(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
+            playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
             return Component.translatable("dialogue.manyl_mod.valkyrie.gift_hint").getString();
         }
 
@@ -369,7 +398,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         }
 
         if (gain <= 0) {
-            playSound(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
+            playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
             return Component.translatable("dialogue.manyl_mod.valkyrie.gift_hint").getString();
         }
 
@@ -380,7 +409,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         addJealousy(-jealousyDrop);
         heal(4.0F);
         setEatTicks(16);
-        playSound(giftSound, 0.82F, 1.0F);
+        playVoice(giftSound, 0.82F, 1.0F);
         spawnHeartBurst(12);
         return Component.translatable(responseKey).getString();
     }
@@ -394,8 +423,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         spawnHeartBurst(20);
         if (level() instanceof ServerLevel sl) {
             sl.sendParticles(ModParticles.SUMMON_RUNE, getX(), getY() + 1.2D, getZ(), 22, 0.5D, 0.6D, 0.5D, 0.05D);
-            sl.playSound(null, getX(), getY(), getZ(), ModSounds.VALKYRIE_VOW, getSoundSource(), 0.90F, 1.0F);
         }
+        playVoice(ModSounds.VALKYRIE_VOW, 0.90F, 1.0F);
         player.displayClientMessage(Component.translatable("msg.manyl_mod.vow_ring_accepted"), false);
     }
 
@@ -424,7 +453,23 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
 
     @Override
     protected SoundEvent getHurtSound(DamageSource source) {
-        return ModSounds.VALKYRIE_HURT;
+        return ModSounds.GOLEM_HURT;
+    }
+
+    @Override
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        boolean hurt = super.hurtServer(level, source, amount);
+        if (hurt && !isDisabled()) {
+            long now = level.getGameTime();
+            if (now - lastHurtVoiceTick >= 25L) {
+                lastHurtVoiceTick = now;
+                playVoice(ModSounds.VALKYRIE_HURT, 0.75F, 1.0F);
+            }
+            if (getBathPhase() != PHASE_NONE) {
+                cancelBathRoutine(level, false);
+            }
+        }
+        return hurt;
     }
 
     @Override
@@ -432,7 +477,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         long now = level.getGameTime();
         if (now - lastAttackVoiceTick >= 45L && random.nextFloat() < 0.60F) {
             lastAttackVoiceTick = now;
-            playSound(ModSounds.VALKYRIE_ATTACK, 0.72F, 0.98F + random.nextFloat() * 0.08F);
+            playVoice(ModSounds.VALKYRIE_ATTACK, 0.72F, 0.98F + random.nextFloat() * 0.08F);
         }
         return super.doHurtTarget(level, target);
     }
@@ -442,7 +487,10 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         super.aiStep();
         if (level().isClientSide()) return;
         if (isDisabled()) {
-            setDaydreamTicks(0);
+            if (getBathPhase() != PHASE_NONE) {
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+            }
             return;
         }
 
@@ -467,15 +515,19 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         }
 
         if (!isTamed()) {
-            setDaydreamTicks(0);
+            if (getBathPhase() != PHASE_NONE) {
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+            }
             return;
         }
 
         ServerLevel sl = (ServerLevel) level();
         LivingEntity owner = getOwnerEntity();
 
-        // 0. Анимация мечтательного снятия шлема и вздоха (игроки в Spectator НЕ прерывают!)
-        tickDaydreaming(sl);
+        // 0. Переработанная анимация: оглядеться -> снять броню (купальник) -> зайти и сесть в водоём 3x3+
+        //    Игроки в Spectator НЕ прерывают и НЕ блокируют анимацию!
+        tickBathAndArmorRoutine(sl);
 
         // 1. Плюшки за уровень влюблённости (забота, подпитка и спасение при низком ХП)
         tickRomanceCarePerks(sl, owner);
@@ -493,13 +545,16 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 && pendingSlapTicks == 0
                 && owner instanceof ServerPlayer serverOwner
                 && serverOwner.isAlive()) {
+            if (getBathPhase() != PHASE_NONE) {
+                cancelBathRoutine(sl, false);
+            }
             double distSq = distanceToSqr(serverOwner);
             if (distSq <= 6.25D) {
                 getNavigation().stop();
                 getLookControl().setLookAt(serverOwner, 30.0F, 30.0F);
-                weaponHideTicks = 34; // прячем меч на ~1.7 сек
-                onInventoryChanged(); // убираем меч из руки
-                pendingSlapTicks = 6; // через 0.3 сек бьём голой рукой!
+                weaponHideTicks = 34;
+                onInventoryChanged();
+                pendingSlapTicks = 6;
             } else if (distSq <= 625.0D && !isSitting()) {
                 getLookControl().setLookAt(serverOwner, 30.0F, 30.0F);
                 getNavigation().moveTo(serverOwner, 1.20D);
@@ -507,16 +562,16 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         }
     }
 
-    private void tickDaydreaming(ServerLevel sl) {
+    private void tickBathAndArmorRoutine(ServerLevel sl) {
         if (getTarget() != null || getAttackTicks() > 0 || hurtTime > 0 || isWorking()) {
-            setDaydreamTicks(0);
+            if (getBathPhase() != PHASE_NONE) cancelBathRoutine(sl, false);
             return;
         }
 
+        // Проверяем только не-Spectator игроков (Spectator не засчитывается за смотрящего!)
         boolean nonSpectatorWatching = false;
-        List<? extends Player> players = sl.players();
-        for (Player p : players) {
-            if (!p.isAlive() || p.isSpectator()) continue; // Spectator НЕ мешает и видит анимацию!
+        for (Player p : sl.players()) {
+            if (!p.isAlive() || p.isSpectator()) continue;
             if (p.distanceToSqr(this) <= 400.0D && isPlayerLookingAtMe(p)) {
                 nonSpectatorWatching = true;
                 break;
@@ -524,26 +579,147 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         }
 
         if (nonSpectatorWatching) {
-            if (getDaydreamTicks() > 0) {
-                setDaydreamTicks(0);
-                daydreamCooldownTicks = 240;
-                playSound(ModSounds.VALKYRIE_SIGH, 0.72F, 1.05F);
-                sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.18D, 0.12D, 0.18D, 0.01D);
+            if (getBathPhase() != PHASE_NONE) {
+                cancelBathRoutine(sl, true);
             }
             return;
         }
 
-        int current = getDaydreamTicks();
-        if (current > 0) {
-            setDaydreamTicks(current - 1);
-            if (current == 110 || current == 55) {
-                sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.95D, getZ(), 1, 0.15D, 0.1D, 0.15D, 0.01D);
+        int phase = getBathPhase();
+        int ticks = getBathTicks() + 1;
+
+        switch (phase) {
+            case PHASE_NONE -> {
+                if (!isSitting() && daydreamCooldownTicks <= 0 && tickCount % 40 == 0 && random.nextFloat() < 0.45F) {
+                    targetWaterPos = findWaterPoolCenter(10);
+                    setBathPhase(PHASE_LOOK_AROUND);
+                    setBathTicks(0);
+                    getNavigation().stop();
+                }
             }
-        } else if (daydreamCooldownTicks <= 0 && tickCount % 40 == 0 && random.nextFloat() < 0.35F) {
-            setDaydreamTicks(160);
-            daydreamCooldownTicks = 500;
-            playSound(ModSounds.VALKYRIE_DAYDREAM, 0.65F, 1.0F);
+            case PHASE_LOOK_AROUND -> {
+                getNavigation().stop();
+                setBathTicks(ticks);
+                if (ticks >= 40) { // Огляделась по сторонам (2 сек) -> снимает броню
+                    setBathPhase(PHASE_STRIP_ARMOR);
+                    setBathTicks(0);
+                    playVoice(ModSounds.VALKYRIE_DAYDREAM, 0.65F, 1.0F);
+                }
+            }
+            case PHASE_STRIP_ARMOR -> {
+                getNavigation().stop();
+                setBathTicks(ticks);
+                if (ticks >= 60) { // Броня снята (одета в скромный закрытый купальник)
+                    if (targetWaterPos != null && isValid3x3WaterPool(targetWaterPos)) {
+                        setBathPhase(PHASE_WALK_TO_WATER);
+                        setBathTicks(0);
+                    } else {
+                        setBathPhase(PHASE_REST_UNARMORED);
+                        setBathTicks(0);
+                    }
+                }
+            }
+            case PHASE_WALK_TO_WATER -> {
+                setBathTicks(ticks);
+                if (isInWater()) {
+                    Vec3 dm = getDeltaMovement();
+                    if (dm.y < 0.0D) {
+                        setDeltaMovement(dm.x, Math.max(dm.y, 0.02D), dm.z);
+                    }
+                }
+                if (targetWaterPos == null || !isValid3x3WaterPool(targetWaterPos) || ticks > 160) {
+                    setBathPhase(PHASE_REST_UNARMORED);
+                    setBathTicks(0);
+                    break;
+                }
+                double dx = targetWaterPos.getX() + 0.5D - getX();
+                double dz = targetWaterPos.getZ() + 0.5D - getZ();
+                double distHorizSq = dx * dx + dz * dz;
+                if (distHorizSq <= 1.6D || (isInWater() && distHorizSq <= 3.2D)) {
+                    getNavigation().stop();
+                    setBathPhase(PHASE_BATHING_SIT);
+                    setBathTicks(0);
+                    playVoice(ModSounds.VALKYRIE_LAUGH, 0.72F, 1.0F);
+                    sl.sendParticles(ParticleTypes.SPLASH, getX(), getY() + 0.3D, getZ(), 10, 0.3D, 0.15D, 0.3D, 0.05D);
+                } else {
+                    getNavigation().moveTo(targetWaterPos.getX() + 0.5D, targetWaterPos.getY(), targetWaterPos.getZ() + 0.5D, 1.05D);
+                }
+            }
+            case PHASE_BATHING_SIT -> {
+                getNavigation().stop();
+                setBathTicks(ticks);
+                if (isInWater()) {
+                    // Мягкая плавучесть, чтобы во время сидения в воде не тонула на дно
+                    boolean waterAbove = level().getFluidState(blockPosition().above()).is(FluidTags.WATER);
+                    Vec3 dm = getDeltaMovement();
+                    double targetVy = waterAbove ? 0.05D : Math.max(dm.y, -0.005D);
+                    setDeltaMovement(dm.x * 0.45D, targetVy, dm.z * 0.45D);
+                }
+                if (ticks % 20 == 0) {
+                    sl.sendParticles(ParticleTypes.BUBBLE, getX(), getY() + 0.45D, getZ(), 3, 0.25D, 0.1D, 0.25D, 0.02D);
+                    sl.sendParticles(ParticleTypes.SPLASH, getX(), getY() + 0.55D, getZ(), 2, 0.30D, 0.05D, 0.30D, 0.02D);
+                }
+                if (ticks % 90 == 0) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.6D, getZ(), 2, 0.2D, 0.15D, 0.2D, 0.01D);
+                }
+                if (ticks >= 300) { // Накупалась (15 сек) -> спокойно одевается
+                    cancelBathRoutine(sl, false);
+                }
+            }
+            case PHASE_REST_UNARMORED -> {
+                getNavigation().stop();
+                setBathTicks(ticks);
+                if (ticks % 60 == 0) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.9D, getZ(), 1, 0.15D, 0.1D, 0.15D, 0.01D);
+                }
+                if (ticks >= 160) {
+                    cancelBathRoutine(sl, false);
+                }
+            }
         }
+    }
+
+    private void cancelBathRoutine(ServerLevel sl, boolean shySpotted) {
+        setBathPhase(PHASE_NONE);
+        setBathTicks(0);
+        targetWaterPos = null;
+        daydreamCooldownTicks = shySpotted ? 260 : 500;
+        if (shySpotted) {
+            playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.05F);
+            sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.18D, 0.12D, 0.18D, 0.01D);
+        }
+    }
+
+    private BlockPos findWaterPoolCenter(int radius) {
+        BlockPos origin = blockPosition();
+        BlockPos best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dy = -3; dy <= 2; dy++) {
+                    BlockPos candidate = origin.offset(dx, dy, dz);
+                    if (isValid3x3WaterPool(candidate)) {
+                        double d = candidate.distSqr(origin);
+                        if (d < bestDist) {
+                            bestDist = d;
+                            best = candidate.immutable();
+                        }
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private boolean isValid3x3WaterPool(BlockPos center) {
+        for (int ox = -1; ox <= 1; ox++) {
+            for (int oz = -1; oz <= 1; oz++) {
+                BlockPos p = center.offset(ox, 0, oz);
+                if (!level().getFluidState(p).is(FluidTags.WATER)) return false;
+                if (!level().isEmptyBlock(p.above()) && !level().getFluidState(p.above()).is(FluidTags.WATER)) return false;
+            }
+        }
+        return true;
     }
 
     private boolean isPlayerLookingAtMe(Player player) {
@@ -571,7 +747,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 getLookControl().setLookAt(sp, 30.0F, 30.0F);
                 addAffection(12);
                 spawnHeartBurst(10);
-                playSound(ModSounds.VALKYRIE_CAMPFIRE, 0.85F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_CAMPFIRE, 0.85F, 1.0F);
                 sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_campfire_event"), false);
                 return;
             }
@@ -588,7 +764,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             }
             addAffection(8);
             spawnHeartBurst(8);
-            playSound(ModSounds.VALKYRIE_LOVE, 0.80F, 1.0F);
+            playVoice(ModSounds.VALKYRIE_LOVE, 0.80F, 1.0F);
             sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_flower_event"), false);
         }
     }
@@ -635,7 +811,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 owner.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 200, 0, false, true, true));
                 sl.sendParticles(ParticleTypes.HEART, owner.getX(), owner.getY() + 1.2D, owner.getZ(), 14, 0.45D, 0.5D, 0.45D, 0.03D);
                 sl.sendParticles(ModParticles.SUMMON_RUNE, owner.getX(), owner.getY() + 0.8D, owner.getZ(), 14, 0.4D, 0.4D, 0.4D, 0.04D);
-                playSound(ModSounds.VALKYRIE_RESCUE, 0.90F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_RESCUE, 0.90F, 1.0F);
                 if (owner instanceof ServerPlayer sp) {
                     sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_rescue"), true);
                 }
@@ -654,7 +830,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             owner.heal(2.0F);
             owner.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, true, false, true));
             spawnHeartBurst(5);
-            playSound(ModSounds.VALKYRIE_LOVE, 0.72F, 1.0F);
+            playVoice(ModSounds.VALKYRIE_LOVE, 0.72F, 1.0F);
             if (owner instanceof ServerPlayer sp && stage >= STAGE_FRIEND) {
                 sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_care_heal"), true);
             }
@@ -668,7 +844,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 sp.getFoodData().eat(3, 0.4F);
                 if (getHunger() >= 60) setHunger(getHunger() - 10);
                 spawnHeartBurst(4);
-                playSound(ModSounds.VALKYRIE_GIFT_SWEET, 0.72F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_GIFT_SWEET, 0.72F, 1.0F);
                 sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_share_food"), true);
             }
         }
@@ -720,7 +896,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             long now = sl.getGameTime();
             if (now - lastJealousWarnTick >= 400L) {
                 lastJealousWarnTick = now;
-                playSound(ModSounds.VALKYRIE_JEALOUS, 0.78F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_JEALOUS, 0.78F, 1.0F);
                 if (owner instanceof ServerPlayer sp) {
                     sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_jealous_warn"), true);
                 }
@@ -741,7 +917,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         sp.knockback(0.25D, getX() - sp.getX(), getZ() - sp.getZ());
 
         sl.playSound(null, getX(), getY(), getZ(), SoundEvents.PLAYER_ATTACK_WEAK, getSoundSource(), 0.7F, 1.15F);
-        playSound(ModSounds.VALKYRIE_JEALOUS, 0.85F, 1.02F);
+        playVoice(ModSounds.VALKYRIE_JEALOUS, 0.85F, 1.02F);
         sl.sendParticles(ParticleTypes.ANGRY_VILLAGER, getX(), getY() + 1.85D, getZ(), 5, 0.25D, 0.2D, 0.25D, 0.02D);
 
         // Шкала ревности падает на 25% (100% -> 75%) + 45 сек спокойствия

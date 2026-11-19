@@ -40,9 +40,13 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
         state.isWorking = entity.isWorking();
         state.isDisabled = entity.isDisabled();
         if (entity instanceof ValkyrieGolemEntity valkyrie) {
-            state.isDaydreaming = valkyrie.isDaydreaming();
-            state.daydreamTicks = valkyrie.getDaydreamTicks();
+            state.bathPhase = valkyrie.getBathPhase();
+            state.bathTicks = valkyrie.getBathTicks();
+            state.isDaydreaming = valkyrie.isInSwimsuit();
+            state.daydreamTicks = valkyrie.getBathTicks();
         } else {
+            state.bathPhase = 0;
+            state.bathTicks = 0;
             state.isDaydreaming = false;
             state.daydreamTicks = 0;
         }

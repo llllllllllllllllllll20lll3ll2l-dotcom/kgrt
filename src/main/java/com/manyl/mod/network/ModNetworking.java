@@ -209,10 +209,35 @@ public final class ModNetworking {
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
+    public record PlayVoicePayload(
+            int entityId, net.minecraft.resources.Identifier soundId, float volume, float pitch, double x, double y, double z
+    ) implements CustomPacketPayload {
+        public static final Type<PlayVoicePayload> TYPE = new Type<>(ManylMod.id("play_voice"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PlayVoicePayload> CODEC = StreamCodec.of(
+                (buf, p) -> {
+                    buf.writeVarInt(p.entityId);
+                    buf.writeIdentifier(p.soundId);
+                    buf.writeFloat(p.volume);
+                    buf.writeFloat(p.pitch);
+                    buf.writeDouble(p.x);
+                    buf.writeDouble(p.y);
+                    buf.writeDouble(p.z);
+                },
+                buf -> new PlayVoicePayload(
+                        buf.readVarInt(), buf.readIdentifier(), buf.readFloat(), buf.readFloat(),
+                        buf.readDouble(), buf.readDouble(), buf.readDouble()
+                )
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
     public static void registerPayloads() {
         PayloadTypeRegistry.playS2C().register(OpenStaffMenuPayload.TYPE, OpenStaffMenuPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncGolemStatePayload.TYPE, SyncGolemStatePayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenValkyrieDialoguePayload.TYPE, OpenValkyrieDialoguePayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(PlayVoicePayload.TYPE, PlayVoicePayload.CODEC);
 
         PayloadTypeRegistry.playC2S().register(SummonGolemPayload.TYPE, SummonGolemPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(RecallGolemsPayload.TYPE, RecallGolemsPayload.CODEC);
@@ -373,10 +398,10 @@ public final class ModNetworking {
                 assigned++;
                 if (golem instanceof ValkyrieGolemEntity && !valkyrieSpoke) {
                     valkyrieSpoke = true;
-                    golem.playSound(ModSounds.VALKYRIE_ATTACK, 0.78F, 1.0F);
+                    golem.playVoice(ModSounds.VALKYRIE_ATTACK, 0.78F, 1.0F);
                 } else if (golem.getRole() == GolemRole.WARRIOR && !warriorSpoke) {
                     warriorSpoke = true;
-                    golem.playSound(ModSounds.WARRIOR_ATTACK, 0.78F, 1.0F);
+                    golem.playVoice(ModSounds.WARRIOR_ATTACK, 0.78F, 1.0F);
                 }
             }
             if (assigned > 0) {
@@ -400,10 +425,10 @@ public final class ModNetworking {
             }
             if (golem instanceof ValkyrieGolemEntity && !valkyrieSpoke) {
                 valkyrieSpoke = true;
-                golem.playSound(hold ? ModSounds.VALKYRIE_SIGH : ModSounds.VALKYRIE_GREET, 0.72F, 1.0F);
+                golem.playVoice(hold ? ModSounds.VALKYRIE_SIGH : ModSounds.VALKYRIE_GREET, 0.72F, 1.0F);
             } else if (golem.getRole() == GolemRole.WARRIOR && !warriorSpoke) {
                 warriorSpoke = true;
-                golem.playSound(ModSounds.WARRIOR_ORDER, 0.75F, 1.0F);
+                golem.playVoice(ModSounds.WARRIOR_ORDER, 0.75F, 1.0F);
             }
         }
         player.displayClientMessage(Component.translatable(

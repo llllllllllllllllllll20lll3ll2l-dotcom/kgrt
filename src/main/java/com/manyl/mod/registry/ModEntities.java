@@ -5,8 +5,6 @@ import com.manyl.mod.entity.BaseGolemEntity;
 import com.manyl.mod.entity.GolemRole;
 import com.manyl.mod.entity.ValkyrieGolemEntity;
 import com.manyl.mod.entity.WarriorGolemEntity;
-import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
-import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -19,7 +17,9 @@ import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
- * Регистрация сущностей големов (Воин и Воительница) и их естественного спавна в мире.
+ * Регистрация сущностей големов (Воин и Воительница).
+ * Естественный спавн активных стражей в мире отключён — в дикой природе
+ * встречаются только сломанные/отключённые стражи в Древних руинах.
  */
 public final class ModEntities {
     public static final EntityType<WarriorGolemEntity> WARRIOR_GOLEM = register(
@@ -60,19 +60,6 @@ public final class ModEntities {
                 SpawnPlacementTypes.ON_GROUND,
                 Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 BaseGolemEntity::checkGuardianSpawnRules
-        );
-
-        BiomeModifications.addSpawn(
-                BiomeSelectors.foundInOverworld(),
-                MobCategory.CREATURE,
-                WARRIOR_GOLEM,
-                6, 1, 1
-        );
-        BiomeModifications.addSpawn(
-                BiomeSelectors.foundInOverworld(),
-                MobCategory.CREATURE,
-                VALKYRIE_GOLEM,
-                6, 1, 1
         );
     }
 }

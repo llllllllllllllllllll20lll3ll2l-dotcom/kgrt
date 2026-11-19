@@ -12,7 +12,8 @@ import net.minecraft.client.model.geom.builders.*;
 import net.minecraft.util.Mth;
 
 /**
- * Мастер-HD 3D-модель 2-блочного Голема-Воительницы (187 скульптурных элементов, 24x геометрия, текстура 4096x4096).
+ * Ультра-детализированная 3D-модель Воительницы (191 скульптурный элемент, 24x геометрия, текстура 4096x4096)
+ * с модульной съёмной бронёй, скромным закрытым купальником, румянцем и 6-фазной анимацией купания.
  */
 public class ValkyrieModel extends EntityModel<GolemRenderState> {
     public static final ModelLayerLocation LAYER_LOCATION =
@@ -23,16 +24,23 @@ public class ValkyrieModel extends EntityModel<GolemRenderState> {
     private final ModelPart head;
     private final ModelPart helmet;
     private final ModelPart blush;
+    private final ModelPart closedEyes;
+    private final ModelPart backpack;
+    private final ModelPart armorTorso;
     private final ModelPart rightArm;
     private final ModelPart leftArm;
+    private final ModelPart armorRightArm;
+    private final ModelPart armorLeftArm;
     private final ModelPart rightLeg;
     private final ModelPart leftLeg;
-    private final ModelPart armorHead;
-    private final ModelPart armorChest;
-    private final ModelPart armorLegsR;
-    private final ModelPart armorLegsL;
-    private final ModelPart armorFeetR;
-    private final ModelPart armorFeetL;
+    private final ModelPart armorRightLeg;
+    private final ModelPart armorLeftLeg;
+    private final ModelPart extraHead;
+    private final ModelPart extraChest;
+    private final ModelPart extraLegsR;
+    private final ModelPart extraLegsL;
+    private final ModelPart extraFeetR;
+    private final ModelPart extraFeetL;
 
     private final KeyframeAnimation idleAnim;
     private final KeyframeAnimation walkAnim;
@@ -50,16 +58,23 @@ public class ValkyrieModel extends EntityModel<GolemRenderState> {
         this.head = this.body.getChild("head");
         this.helmet = this.head.getChild("helmet");
         this.blush = this.head.getChild("blush");
+        this.closedEyes = this.head.getChild("closed_eyes");
+        this.backpack = this.body.getChild("backpack");
+        this.armorTorso = this.body.getChild("armor_torso");
         this.rightArm = this.body.getChild("right_arm");
         this.leftArm = this.body.getChild("left_arm");
+        this.armorRightArm = this.rightArm.getChild("armor_right_arm");
+        this.armorLeftArm = this.leftArm.getChild("armor_left_arm");
         this.rightLeg = this.root.getChild("right_leg");
         this.leftLeg = this.root.getChild("left_leg");
-        this.armorHead = this.head.getChild("armor_head");
-        this.armorChest = this.body.getChild("armor_chest");
-        this.armorLegsR = this.rightLeg.getChild("armor_legs_r");
-        this.armorLegsL = this.leftLeg.getChild("armor_legs_l");
-        this.armorFeetR = this.rightLeg.getChild("armor_feet_r");
-        this.armorFeetL = this.leftLeg.getChild("armor_feet_l");
+        this.armorRightLeg = this.rightLeg.getChild("armor_right_leg");
+        this.armorLeftLeg = this.leftLeg.getChild("armor_left_leg");
+        this.extraHead = this.head.getChild("extra_head");
+        this.extraChest = this.body.getChild("extra_chest");
+        this.extraLegsR = this.rightLeg.getChild("extra_legs_right_leg");
+        this.extraLegsL = this.leftLeg.getChild("extra_legs_left_leg");
+        this.extraFeetR = this.rightLeg.getChild("extra_feet_right_leg");
+        this.extraFeetL = this.leftLeg.getChild("extra_feet_left_leg");
 
         this.idleAnim = GolemAnimations.IDLE.bake(root);
         this.walkAnim = GolemAnimations.WALK.bake(root);
@@ -86,286 +101,297 @@ public class ValkyrieModel extends EntityModel<GolemRenderState> {
     public static LayerDefinition createBodyLayer() {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition rootPart = mesh.getRoot();
-        PartDefinition root = rootPart.addOrReplaceChild("root", CubeListBuilder.create(), PartPose.offset(0.0F, 0.0F, 0.0F));
-        PartDefinition rightLeg = buildRightLeg(root);
-        rightLeg.addOrReplaceChild("armor_legs_r",
-                CubeListBuilder.create().texOffs(3132, 206).addBox(-43F, 4F, -44F, 86.0F, 92.0F, 88.0F),
-                PartPose.ZERO);
-        rightLeg.addOrReplaceChild("armor_feet_r",
-                CubeListBuilder.create().texOffs(3020, 4).addBox(-42F, 206F, -68F, 84.0F, 56.0F, 118.0F),
-                PartPose.ZERO);
-        PartDefinition leftLeg = buildLeftLeg(root);
-        leftLeg.addOrReplaceChild("armor_legs_l",
-                CubeListBuilder.create().texOffs(2824, 206).addBox(-43F, 4F, -44F, 86.0F, 92.0F, 88.0F),
-                PartPose.ZERO);
-        leftLeg.addOrReplaceChild("armor_feet_l",
-                CubeListBuilder.create().texOffs(3360, 4).addBox(-42F, 206F, -68F, 84.0F, 56.0F, 118.0F),
-                PartPose.ZERO);
-        PartDefinition body = buildBody(root);
-        body.addOrReplaceChild("armor_chest",
-                CubeListBuilder.create().texOffs(888, 4).addBox(-86F, -252F, -58F, 172.0F, 92.0F, 116.0F),
-                PartPose.ZERO);
-        buildBackpack(body);
-        PartDefinition head = buildHead(body);
-        head.addOrReplaceChild("armor_head",
-                CubeListBuilder.create().texOffs(2372, 206).addBox(-62F, -142F, -62F, 124.0F, 46.0F, 124.0F),
-                PartPose.ZERO);
-        buildRightArm(body);
-        buildLeftArm(body);
+        PartDefinition part_root = rootPart.addOrReplaceChild("root", CubeListBuilder.create(), PartPose.ZERO);
+        CubeListBuilder b_0 = CubeListBuilder.create();
+        b_0.texOffs(2340, 594).addBox(-27.0F, 0.0F, -27.0F, 54.0F, 24.0F, 54.0F);
+        b_0.texOffs(2168, 204).addBox(-24.0F, 22.0F, -24.0F, 48.0F, 86.0F, 48.0F);
+        b_0.texOffs(3676, 688).addBox(-20.0F, 102.0F, -22.0F, 40.0F, 26.0F, 44.0F);
+        b_0.texOffs(1816, 204).addBox(-21.0F, 126.0F, -22.0F, 42.0F, 92.0F, 44.0F);
+        b_0.texOffs(4, 594).addBox(-22.0F, 214.0F, -34.0F, 44.0F, 26.0F, 64.0F);
+        b_0.texOffs(3636, 594).addBox(-23.0F, 232.0F, -36.0F, 46.0F, 8.0F, 68.0F);
+        b_0.texOffs(3288, 768).addBox(-18.0F, 212.0F, -24.0F, 36.0F, 6.0F, 46.0F);
+        PartDefinition part_right_leg = part_root.addOrReplaceChild("right_leg", b_0, PartPose.offset(-32.0F, -240.0F, 0.0F));
+        CubeListBuilder b_1 = CubeListBuilder.create();
+        b_1.texOffs(1296, 204).addBox(-32.0F, 6.0F, -32.0F, 64.0F, 72.0F, 64.0F);
+        b_1.texOffs(4, 480).addBox(-36.0F, 12.0F, -26.0F, 12.0F, 58.0F, 52.0F);
+        b_1.texOffs(636, 768).addBox(-38.0F, 22.0F, -16.0F, 6.0F, 36.0F, 32.0F);
+        b_1.texOffs(2328, 842).addBox(-39.0F, 32.0F, -8.0F, 4.0F, 16.0F, 16.0F);
+        b_1.texOffs(2224, 768).addBox(-28.0F, 88.0F, -36.0F, 56.0F, 40.0F, 16.0F);
+        b_1.texOffs(200, 842).addBox(-22.0F, 94.0F, -44.0F, 44.0F, 28.0F, 12.0F);
+        b_1.texOffs(312, 890).addBox(-10.0F, 99.0F, -49.0F, 20.0F, 18.0F, 8.0F);
+        b_1.texOffs(2764, 688).addBox(-30.0F, 84.0F, -30.0F, 60.0F, 10.0F, 60.0F);
+        b_1.texOffs(3084, 4).addBox(-28.0F, 124.0F, -30.0F, 56.0F, 86.0F, 60.0F);
+        b_1.texOffs(632, 594).addBox(-24.0F, 130.0F, -35.0F, 48.0F, 74.0F, 10.0F);
+        b_1.texOffs(1960, 688).addBox(-6.0F, 132.0F, -39.0F, 12.0F, 68.0F, 6.0F);
+        b_1.texOffs(476, 688).addBox(-22.0F, 136.0F, 26.0F, 44.0F, 66.0F, 10.0F);
+        b_1.texOffs(2892, 204).addBox(-30.0F, 206.0F, -54.0F, 60.0F, 34.0F, 92.0F);
+        b_1.texOffs(508, 480).addBox(-32.0F, 232.0F, -58.0F, 64.0F, 10.0F, 98.0F);
+        b_1.texOffs(3832, 768).addBox(-22.0F, 212.0F, -68.0F, 44.0F, 24.0F, 20.0F);
+        b_1.texOffs(152, 890).addBox(-14.0F, 216.0F, -74.0F, 28.0F, 16.0F, 10.0F);
+        b_1.texOffs(796, 842).addBox(-18.0F, 198.0F, -40.0F, 36.0F, 14.0F, 22.0F);
+        PartDefinition part_armor_right_leg = part_right_leg.addOrReplaceChild("armor_right_leg", b_1, PartPose.ZERO);
+        CubeListBuilder b_2 = CubeListBuilder.create();
+        b_2.texOffs(2220, 4).addBox(-35.0F, 4.0F, -35.0F, 70.0F, 80.0F, 70.0F);
+        PartDefinition part_extra_legs_right_leg = part_right_leg.addOrReplaceChild("extra_legs_right_leg", b_2, PartPose.ZERO);
+        CubeListBuilder b_3 = CubeListBuilder.create();
+        b_3.texOffs(3556, 4).addBox(-34.0F, 204.0F, -62.0F, 68.0F, 38.0F, 106.0F);
+        PartDefinition part_extra_feet_right_leg = part_right_leg.addOrReplaceChild("extra_feet_right_leg", b_3, PartPose.ZERO);
+        CubeListBuilder b_4 = CubeListBuilder.create();
+        b_4.texOffs(2560, 594).addBox(-27.0F, 0.0F, -27.0F, 54.0F, 24.0F, 54.0F);
+        b_4.texOffs(2364, 204).addBox(-24.0F, 22.0F, -24.0F, 48.0F, 86.0F, 48.0F);
+        b_4.texOffs(3848, 688).addBox(-20.0F, 102.0F, -22.0F, 40.0F, 26.0F, 44.0F);
+        b_4.texOffs(1992, 204).addBox(-21.0F, 126.0F, -22.0F, 42.0F, 92.0F, 44.0F);
+        b_4.texOffs(224, 594).addBox(-22.0F, 214.0F, -34.0F, 44.0F, 26.0F, 64.0F);
+        b_4.texOffs(4, 688).addBox(-23.0F, 232.0F, -36.0F, 46.0F, 8.0F, 68.0F);
+        b_4.texOffs(3456, 768).addBox(-18.0F, 212.0F, -24.0F, 36.0F, 6.0F, 46.0F);
+        PartDefinition part_left_leg = part_root.addOrReplaceChild("left_leg", b_4, PartPose.offset(32.0F, -240.0F, 0.0F));
+        CubeListBuilder b_5 = CubeListBuilder.create();
+        b_5.texOffs(1556, 204).addBox(-32.0F, 6.0F, -32.0F, 64.0F, 72.0F, 64.0F);
+        b_5.texOffs(136, 480).addBox(26.0F, 12.0F, -26.0F, 12.0F, 58.0F, 52.0F);
+        b_5.texOffs(716, 768).addBox(34.0F, 22.0F, -16.0F, 6.0F, 36.0F, 32.0F);
+        b_5.texOffs(2372, 842).addBox(37.0F, 32.0F, -8.0F, 4.0F, 16.0F, 16.0F);
+        b_5.texOffs(2372, 768).addBox(-28.0F, 88.0F, -36.0F, 56.0F, 40.0F, 16.0F);
+        b_5.texOffs(316, 842).addBox(-22.0F, 94.0F, -44.0F, 44.0F, 28.0F, 12.0F);
+        b_5.texOffs(372, 890).addBox(-10.0F, 99.0F, -49.0F, 20.0F, 18.0F, 8.0F);
+        b_5.texOffs(3008, 688).addBox(-30.0F, 84.0F, -30.0F, 60.0F, 10.0F, 60.0F);
+        b_5.texOffs(3320, 4).addBox(-28.0F, 124.0F, -30.0F, 56.0F, 86.0F, 60.0F);
+        b_5.texOffs(752, 594).addBox(-24.0F, 130.0F, -35.0F, 48.0F, 74.0F, 10.0F);
+        b_5.texOffs(2000, 688).addBox(-6.0F, 132.0F, -39.0F, 12.0F, 68.0F, 6.0F);
+        b_5.texOffs(588, 688).addBox(-22.0F, 136.0F, 26.0F, 44.0F, 66.0F, 10.0F);
+        b_5.texOffs(3200, 204).addBox(-30.0F, 206.0F, -54.0F, 60.0F, 34.0F, 92.0F);
+        b_5.texOffs(836, 480).addBox(-32.0F, 232.0F, -58.0F, 64.0F, 10.0F, 98.0F);
+        b_5.texOffs(3964, 768).addBox(-22.0F, 212.0F, -68.0F, 44.0F, 24.0F, 20.0F);
+        b_5.texOffs(232, 890).addBox(-14.0F, 216.0F, -74.0F, 28.0F, 16.0F, 10.0F);
+        b_5.texOffs(916, 842).addBox(-18.0F, 198.0F, -40.0F, 36.0F, 14.0F, 22.0F);
+        PartDefinition part_armor_left_leg = part_left_leg.addOrReplaceChild("armor_left_leg", b_5, PartPose.ZERO);
+        CubeListBuilder b_6 = CubeListBuilder.create();
+        b_6.texOffs(2504, 4).addBox(-35.0F, 4.0F, -35.0F, 70.0F, 80.0F, 70.0F);
+        PartDefinition part_extra_legs_left_leg = part_left_leg.addOrReplaceChild("extra_legs_left_leg", b_6, PartPose.ZERO);
+        CubeListBuilder b_7 = CubeListBuilder.create();
+        b_7.texOffs(4, 204).addBox(-34.0F, 204.0F, -62.0F, 68.0F, 38.0F, 106.0F);
+        PartDefinition part_extra_feet_left_leg = part_left_leg.addOrReplaceChild("extra_feet_left_leg", b_7, PartPose.ZERO);
+        CubeListBuilder b_8 = CubeListBuilder.create();
+        b_8.texOffs(2040, 688).addBox(-17.0F, -288.0F, -17.0F, 34.0F, 38.0F, 34.0F);
+        b_8.texOffs(2180, 688).addBox(-48.0F, -254.0F, -26.0F, 96.0F, 18.0F, 52.0F);
+        b_8.texOffs(1476, 768).addBox(-40.0F, -260.0F, -24.0F, 80.0F, 10.0F, 48.0F);
+        b_8.texOffs(2560, 204).addBox(-50.0F, -238.0F, -32.0F, 100.0F, 62.0F, 64.0F);
+        b_8.texOffs(700, 688).addBox(-42.0F, -246.0F, -30.0F, 84.0F, 14.0F, 60.0F);
+        b_8.texOffs(1072, 594).addBox(-44.0F, -248.0F, -31.0F, 16.0F, 18.0F, 62.0F);
+        b_8.texOffs(1232, 594).addBox(28.0F, -248.0F, -31.0F, 16.0F, 18.0F, 62.0F);
+        b_8.texOffs(1864, 480).addBox(-42.0F, -178.0F, -29.0F, 84.0F, 44.0F, 58.0F);
+        b_8.texOffs(780, 352).addBox(-39.0F, -136.0F, -27.0F, 78.0F, 68.0F, 54.0F);
+        b_8.texOffs(2480, 688).addBox(-41.0F, -112.0F, -29.0F, 82.0F, 12.0F, 58.0F);
+        b_8.texOffs(432, 890).addBox(-10.0F, -116.0F, -32.0F, 20.0F, 18.0F, 8.0F);
+        b_8.texOffs(1164, 480).addBox(-48.0F, -70.0F, -31.0F, 96.0F, 46.0F, 62.0F);
+        b_8.texOffs(2152, 480).addBox(-54.0F, -28.0F, -33.0F, 108.0F, 30.0F, 66.0F);
+        b_8.texOffs(3272, 594).addBox(-56.0F, -4.0F, -34.0F, 112.0F, 8.0F, 68.0F);
+        PartDefinition part_body = part_root.addOrReplaceChild("body", b_8, PartPose.offset(0.0F, -240.0F, 0.0F));
+        CubeListBuilder b_9 = CubeListBuilder.create();
+        b_9.texOffs(2688, 352).addBox(-64.0F, -260.0F, -44.0F, 128.0F, 22.0F, 88.0F);
+        b_9.texOffs(876, 4).addBox(-70.0F, -244.0F, -48.0F, 140.0F, 68.0F, 96.0F);
+        b_9.texOffs(140, 768).addBox(-62.0F, -236.0F, -56.0F, 56.0F, 54.0F, 14.0F);
+        b_9.texOffs(284, 768).addBox(6.0F, -236.0F, -56.0F, 56.0F, 54.0F, 14.0F);
+        b_9.texOffs(4, 768).addBox(-26.0F, -226.0F, -62.0F, 52.0F, 56.0F, 14.0F);
+        b_9.texOffs(3744, 768).addBox(-16.0F, -216.0F, -68.0F, 32.0F, 36.0F, 10.0F);
+        b_9.texOffs(3080, 842).addBox(-10.0F, -210.0F, -72.0F, 20.0F, 24.0F, 6.0F);
+        b_9.texOffs(1484, 480).addBox(-56.0F, -180.0F, -38.0F, 112.0F, 30.0F, 76.0F);
+        b_9.texOffs(2788, 4).addBox(-42.0F, -152.0F, -31.0F, 84.0F, 84.0F, 62.0F);
+        b_9.texOffs(1392, 594).addBox(-44.0F, -140.0F, -34.0F, 88.0F, 10.0F, 68.0F);
+        b_9.texOffs(1708, 594).addBox(-44.0F, -112.0F, -34.0F, 88.0F, 10.0F, 68.0F);
+        b_9.texOffs(2024, 594).addBox(-44.0F, -84.0F, -34.0F, 88.0F, 10.0F, 68.0F);
+        b_9.texOffs(2660, 480).addBox(-48.0F, -68.0F, -36.0F, 96.0F, 22.0F, 72.0F);
+        b_9.texOffs(88, 842).addBox(-20.0F, -72.0F, -44.0F, 40.0F, 28.0F, 14.0F);
+        b_9.texOffs(540, 890).addBox(-10.0F, -64.0F, -48.0F, 20.0F, 14.0F, 8.0F);
+        b_9.texOffs(812, 204).addBox(-74.0F, -46.0F, -46.0F, 148.0F, 44.0F, 92.0F);
+        b_9.texOffs(1492, 352).addBox(-28.0F, -42.0F, -52.0F, 56.0F, 104.0F, 12.0F);
+        b_9.texOffs(3136, 842).addBox(-32.0F, 54.0F, -54.0F, 64.0F, 14.0F, 14.0F);
+        b_9.texOffs(3904, 352).addBox(-28.0F, -42.0F, 42.0F, 56.0F, 98.0F, 12.0F);
+        b_9.texOffs(3296, 842).addBox(-32.0F, 48.0F, 40.0F, 64.0F, 14.0F, 14.0F);
+        b_9.texOffs(1352, 4).addBox(-90.0F, -40.0F, -44.0F, 18.0F, 72.0F, 88.0F);
+        b_9.texOffs(356, 204).addBox(-98.0F, 8.0F, -48.0F, 16.0F, 48.0F, 96.0F);
+        b_9.texOffs(1632, 352).addBox(-100.0F, 50.0F, -50.0F, 14.0F, 14.0F, 100.0F);
+        b_9.texOffs(1132, 768).addBox(-100.0F, 16.0F, -16.0F, 10.0F, 28.0F, 32.0F);
+        b_9.texOffs(1568, 4).addBox(74.0F, -40.0F, -44.0F, 18.0F, 72.0F, 88.0F);
+        b_9.texOffs(584, 204).addBox(86.0F, 8.0F, -48.0F, 16.0F, 48.0F, 96.0F);
+        b_9.texOffs(1864, 352).addBox(90.0F, 50.0F, -50.0F, 14.0F, 14.0F, 100.0F);
+        b_9.texOffs(1220, 768).addBox(94.0F, 16.0F, -16.0F, 10.0F, 28.0F, 32.0F);
+        PartDefinition part_armor_torso = part_body.addOrReplaceChild("armor_torso", b_9, PartPose.ZERO);
+        CubeListBuilder b_10 = CubeListBuilder.create();
+        b_10.texOffs(4, 4).addBox(-76.0F, -248.0F, -56.0F, 152.0F, 84.0F, 112.0F);
+        PartDefinition part_extra_chest = part_body.addOrReplaceChild("extra_chest", b_10, PartPose.ZERO);
+        CubeListBuilder b_11 = CubeListBuilder.create();
+        b_11.texOffs(1288, 352).addBox(-36.0F, -42.0F, -8.0F, 72.0F, 88.0F, 28.0F);
+        b_11.texOffs(428, 768).addBox(-22.0F, -26.0F, 16.0F, 44.0F, 56.0F, 12.0F);
+        b_11.texOffs(432, 842).addBox(-12.0F, -14.0F, 24.0F, 24.0F, 32.0F, 8.0F);
+        b_11.texOffs(1992, 768).addBox(-16.0F, -52.0F, 6.0F, 40.0F, 42.0F, 16.0F);
+        b_11.texOffs(1736, 768).addBox(8.0F, -88.0F, 12.0F, 48.0F, 44.0F, 14.0F);
+        b_11.texOffs(2672, 768).addBox(38.0F, -122.0F, 16.0F, 54.0F, 40.0F, 14.0F);
+        b_11.texOffs(1884, 842).addBox(66.0F, -158.0F, 20.0F, 68.0F, 22.0F, 10.0F);
+        b_11.texOffs(600, 890).addBox(162.0F, -154.0F, 22.0F, 20.0F, 14.0F, 6.0F);
+        b_11.texOffs(1172, 842).addBox(42.0F, -122.0F, 18.0F, 78.0F, 22.0F, 10.0F);
+        b_11.texOffs(656, 890).addBox(158.0F, -118.0F, 20.0F, 20.0F, 14.0F, 6.0F);
+        b_11.texOffs(1532, 842).addBox(20.0F, -84.0F, 16.0F, 76.0F, 22.0F, 10.0F);
+        b_11.texOffs(712, 890).addBox(132.0F, -80.0F, 18.0F, 20.0F, 14.0F, 6.0F);
+        b_11.texOffs(2416, 842).addBox(2.0F, -48.0F, 14.0F, 68.0F, 20.0F, 10.0F);
+        b_11.texOffs(968, 890).addBox(98.0F, -44.0F, 16.0F, 20.0F, 12.0F, 6.0F);
+        b_11.texOffs(2736, 842).addBox(-10.0F, -16.0F, 10.0F, 56.0F, 20.0F, 10.0F);
+        b_11.texOffs(1024, 890).addBox(62.0F, -12.0F, 12.0F, 20.0F, 12.0F, 6.0F);
+        b_11.texOffs(3456, 842).addBox(-14.0F, 14.0F, 8.0F, 44.0F, 18.0F, 10.0F);
+        b_11.texOffs(1222, 890).addBox(34.0F, 18.0F, 10.0F, 20.0F, 10.0F, 6.0F);
+        b_11.texOffs(2108, 768).addBox(24.0F, -52.0F, 6.0F, 40.0F, 42.0F, 16.0F);
+        b_11.texOffs(1864, 768).addBox(56.0F, -88.0F, 12.0F, 48.0F, 44.0F, 14.0F);
+        b_11.texOffs(2812, 768).addBox(92.0F, -122.0F, 16.0F, 54.0F, 40.0F, 14.0F);
+        b_11.texOffs(2044, 842).addBox(134.0F, -158.0F, 20.0F, 68.0F, 22.0F, 10.0F);
+        b_11.texOffs(768, 890).addBox(182.0F, -154.0F, 22.0F, 20.0F, 14.0F, 6.0F);
+        b_11.texOffs(1352, 842).addBox(120.0F, -122.0F, 18.0F, 78.0F, 22.0F, 10.0F);
+        b_11.texOffs(824, 890).addBox(178.0F, -118.0F, 20.0F, 20.0F, 14.0F, 6.0F);
+        b_11.texOffs(1708, 842).addBox(96.0F, -84.0F, 16.0F, 76.0F, 22.0F, 10.0F);
+        b_11.texOffs(880, 890).addBox(152.0F, -80.0F, 18.0F, 20.0F, 14.0F, 6.0F);
+        b_11.texOffs(2576, 842).addBox(70.0F, -48.0F, 14.0F, 68.0F, 20.0F, 10.0F);
+        b_11.texOffs(1080, 890).addBox(118.0F, -44.0F, 16.0F, 20.0F, 12.0F, 6.0F);
+        b_11.texOffs(2872, 842).addBox(46.0F, -16.0F, 10.0F, 56.0F, 20.0F, 10.0F);
+        b_11.texOffs(1136, 890).addBox(82.0F, -12.0F, 12.0F, 20.0F, 12.0F, 6.0F);
+        b_11.texOffs(3568, 842).addBox(30.0F, 14.0F, 8.0F, 44.0F, 18.0F, 10.0F);
+        b_11.texOffs(1278, 890).addBox(54.0F, 18.0F, 10.0F, 20.0F, 10.0F, 6.0F);
+        PartDefinition part_backpack = part_body.addOrReplaceChild("backpack", b_11, PartPose.offset(0.0F, -190.0F, 44.0F));
+        CubeListBuilder b_12 = CubeListBuilder.create();
+        b_12.texOffs(536, 4).addBox(-42.0F, -88.0F, -42.0F, 84.0F, 88.0F, 84.0F);
+        b_12.texOffs(1192, 890).addBox(-4.0F, -34.0F, -46.0F, 8.0F, 12.0F, 5.0F);
+        b_12.texOffs(4, 890).addBox(-28.0F, -10.0F, -43.0F, 56.0F, 10.0F, 16.0F);
+        b_12.texOffs(2320, 352).addBox(-46.0F, -96.0F, -44.0F, 92.0F, 22.0F, 90.0F);
+        b_12.texOffs(3660, 352).addBox(-48.0F, -86.0F, 28.0F, 96.0F, 86.0F, 24.0F);
+        b_12.texOffs(1104, 842).addBox(-44.0F, -84.0F, -48.0F, 22.0F, 24.0F, 10.0F);
+        b_12.texOffs(3784, 842).addBox(-24.0F, -86.0F, -49.0F, 24.0F, 18.0F, 10.0F);
+        b_12.texOffs(3008, 842).addBox(0.0F, -84.0F, -49.0F, 24.0F, 20.0F, 10.0F);
+        b_12.texOffs(1036, 842).addBox(22.0F, -84.0F, -48.0F, 22.0F, 26.0F, 10.0F);
+        b_12.texOffs(1048, 352).addBox(-50.0F, -80.0F, -38.0F, 12.0F, 76.0F, 46.0F);
+        b_12.texOffs(1168, 352).addBox(38.0F, -80.0F, -38.0F, 12.0F, 76.0F, 46.0F);
+        b_12.texOffs(2520, 768).addBox(-48.0F, -10.0F, -34.0F, 14.0F, 34.0F, 22.0F);
+        b_12.texOffs(2596, 768).addBox(34.0F, -10.0F, -34.0F, 14.0F, 34.0F, 22.0F);
+        b_12.texOffs(3140, 594).addBox(-22.0F, -78.0F, 44.0F, 44.0F, 58.0F, 20.0F);
+        b_12.texOffs(796, 768).addBox(-18.0F, -22.0F, 52.0F, 36.0F, 48.0F, 18.0F);
+        b_12.texOffs(2204, 842).addBox(-20.0F, 22.0F, 56.0F, 40.0F, 12.0F, 20.0F);
+        b_12.texOffs(544, 768).addBox(-14.0F, 32.0F, 58.0F, 28.0F, 52.0F, 16.0F);
+        b_12.texOffs(3680, 842).addBox(-16.0F, 80.0F, 60.0F, 32.0F, 10.0F, 18.0F);
+        b_12.texOffs(3216, 768).addBox(-10.0F, 88.0F, 62.0F, 20.0F, 40.0F, 14.0F);
+        PartDefinition part_head = part_body.addOrReplaceChild("head", b_12, PartPose.offset(0.0F, -284.0F, 0.0F));
+        CubeListBuilder b_13 = CubeListBuilder.create();
+        b_13.texOffs(1438, 890).addBox(-36.0F, -34.0F, -43.0F, 14.0F, 7.0F, 2.0F);
+        b_13.texOffs(1474, 890).addBox(22.0F, -34.0F, -43.0F, 14.0F, 7.0F, 2.0F);
+        PartDefinition part_blush = part_head.addOrReplaceChild("blush", b_13, PartPose.ZERO);
+        CubeListBuilder b_14 = CubeListBuilder.create();
+        b_14.texOffs(1334, 890).addBox(-34.0F, -50.0F, -43.0F, 22.0F, 14.0F, 2.0F);
+        b_14.texOffs(1386, 890).addBox(12.0F, -50.0F, -43.0F, 22.0F, 14.0F, 2.0F);
+        PartDefinition part_closed_eyes = part_head.addOrReplaceChild("closed_eyes", b_14, PartPose.ZERO);
+        CubeListBuilder b_15 = CubeListBuilder.create();
+        b_15.texOffs(4, 352).addBox(-50.0F, -102.0F, -50.0F, 100.0F, 24.0F, 100.0F);
+        b_15.texOffs(408, 352).addBox(-46.0F, -128.0F, -46.0F, 92.0F, 30.0F, 92.0F);
+        b_15.texOffs(3000, 480).addBox(-38.0F, -140.0F, -38.0F, 76.0F, 16.0F, 76.0F);
+        b_15.texOffs(4, 842).addBox(-14.0F, -120.0F, -56.0F, 28.0F, 32.0F, 12.0F);
+        b_15.texOffs(492, 890).addBox(-8.0F, -114.0F, -60.0F, 16.0F, 20.0F, 6.0F);
+        b_15.texOffs(936, 890).addBox(-4.0F, -84.0F, -50.0F, 8.0F, 14.0F, 6.0F);
+        b_15.texOffs(444, 594).addBox(-12.0F, -154.0F, -32.0F, 24.0F, 18.0F, 68.0F);
+        b_15.texOffs(2504, 480).addBox(-8.0F, -188.0F, -26.0F, 16.0F, 36.0F, 60.0F);
+        b_15.texOffs(236, 688).addBox(28.0F, -104.0F, -18.0F, 18.0F, 36.0F, 40.0F);
+        b_15.texOffs(1752, 688).addBox(40.0F, -136.0F, -4.0F, 18.0F, 42.0F, 32.0F);
+        b_15.texOffs(1308, 768).addBox(52.0F, -164.0F, 10.0F, 16.0F, 36.0F, 24.0F);
+        b_15.texOffs(684, 842).addBox(66.0F, -180.0F, 16.0F, 10.0F, 22.0F, 16.0F);
+        b_15.texOffs(356, 688).addBox(46.0F, -104.0F, -18.0F, 18.0F, 36.0F, 40.0F);
+        b_15.texOffs(1856, 688).addBox(58.0F, -136.0F, -4.0F, 18.0F, 42.0F, 32.0F);
+        b_15.texOffs(1392, 768).addBox(68.0F, -164.0F, 10.0F, 16.0F, 36.0F, 24.0F);
+        b_15.texOffs(740, 842).addBox(76.0F, -180.0F, 16.0F, 10.0F, 22.0F, 16.0F);
+        PartDefinition part_helmet = part_head.addOrReplaceChild("helmet", b_15, PartPose.ZERO);
+        CubeListBuilder b_16 = CubeListBuilder.create();
+        b_16.texOffs(1784, 4).addBox(-54.0F, -132.0F, -54.0F, 108.0F, 42.0F, 108.0F);
+        PartDefinition part_extra_head = part_head.addOrReplaceChild("extra_head", b_16, PartPose.ZERO);
+        CubeListBuilder b_17 = CubeListBuilder.create();
+        b_17.texOffs(2952, 768).addBox(-16.0F, -12.0F, -16.0F, 32.0F, 22.0F, 32.0F);
+        b_17.texOffs(268, 480).addBox(-14.0F, 6.0F, -15.0F, 28.0F, 80.0F, 30.0F);
+        b_17.texOffs(2096, 352).addBox(-13.0F, 82.0F, -14.0F, 26.0F, 86.0F, 28.0F);
+        b_17.texOffs(908, 768).addBox(-13.0F, 166.0F, -14.0F, 26.0F, 34.0F, 28.0F);
+        b_17.texOffs(500, 842).addBox(-10.0F, 198.0F, -12.0F, 20.0F, 14.0F, 24.0F);
+        PartDefinition part_right_arm = part_body.addOrReplaceChild("right_arm", b_17, PartPose.offset(-68.0F, -238.0F, 0.0F));
+        CubeListBuilder b_18 = CubeListBuilder.create();
+        b_18.texOffs(3124, 352).addBox(-28.0F, -30.0F, -34.0F, 64.0F, 42.0F, 68.0F);
+        b_18.texOffs(3308, 480).addBox(-32.0F, -6.0F, -38.0F, 72.0F, 14.0F, 76.0F);
+        b_18.texOffs(1400, 688).addBox(-18.0F, -44.0F, -26.0F, 34.0F, 22.0F, 52.0F);
+        b_18.texOffs(3856, 842).addBox(4.0F, -26.0F, -42.0F, 18.0F, 18.0F, 10.0F);
+        b_18.texOffs(992, 688).addBox(-22.0F, 74.0F, -26.0F, 48.0F, 22.0F, 52.0F);
+        b_18.texOffs(3508, 204).addBox(-20.0F, 94.0F, -26.0F, 44.0F, 74.0F, 52.0F);
+        b_18.texOffs(872, 594).addBox(6.0F, 104.0F, -18.0F, 12.0F, 48.0F, 36.0F);
+        b_18.texOffs(3624, 768).addBox(16.0F, 114.0F, -10.0F, 8.0F, 28.0F, 20.0F);
+        b_18.texOffs(3252, 688).addBox(-22.0F, 164.0F, -28.0F, 48.0F, 14.0F, 56.0F);
+        b_18.texOffs(2780, 594).addBox(-18.0F, 176.0F, -24.0F, 40.0F, 30.0F, 48.0F);
+        PartDefinition part_armor_right_arm = part_right_arm.addOrReplaceChild("armor_right_arm", b_18, PartPose.ZERO);
+        CubeListBuilder b_19 = CubeListBuilder.create();
+        b_19.texOffs(3084, 768).addBox(-16.0F, -12.0F, -16.0F, 32.0F, 22.0F, 32.0F);
+        b_19.texOffs(388, 480).addBox(-14.0F, 6.0F, -15.0F, 28.0F, 80.0F, 30.0F);
+        b_19.texOffs(2208, 352).addBox(-13.0F, 82.0F, -14.0F, 26.0F, 86.0F, 28.0F);
+        b_19.texOffs(1020, 768).addBox(-13.0F, 166.0F, -14.0F, 26.0F, 34.0F, 28.0F);
+        b_19.texOffs(592, 842).addBox(-10.0F, 198.0F, -12.0F, 20.0F, 14.0F, 24.0F);
+        PartDefinition part_left_arm = part_body.addOrReplaceChild("left_arm", b_19, PartPose.offset(68.0F, -238.0F, 0.0F));
+        CubeListBuilder b_20 = CubeListBuilder.create();
+        b_20.texOffs(3392, 352).addBox(-28.0F, -30.0F, -34.0F, 64.0F, 42.0F, 68.0F);
+        b_20.texOffs(3608, 480).addBox(-32.0F, -6.0F, -38.0F, 72.0F, 14.0F, 76.0F);
+        b_20.texOffs(1576, 688).addBox(16.0F, -44.0F, -26.0F, 34.0F, 22.0F, 52.0F);
+        b_20.texOffs(3916, 842).addBox(22.0F, -26.0F, -42.0F, 18.0F, 18.0F, 10.0F);
+        b_20.texOffs(1196, 688).addBox(-22.0F, 74.0F, -26.0F, 48.0F, 22.0F, 52.0F);
+        b_20.texOffs(3704, 204).addBox(-20.0F, 94.0F, -26.0F, 44.0F, 74.0F, 52.0F);
+        b_20.texOffs(972, 594).addBox(18.0F, 104.0F, -18.0F, 12.0F, 48.0F, 36.0F);
+        b_20.texOffs(3684, 768).addBox(24.0F, 114.0F, -10.0F, 8.0F, 28.0F, 20.0F);
+        b_20.texOffs(3464, 688).addBox(-22.0F, 164.0F, -28.0F, 48.0F, 14.0F, 56.0F);
+        b_20.texOffs(2960, 594).addBox(-18.0F, 176.0F, -24.0F, 40.0F, 30.0F, 48.0F);
+        PartDefinition part_armor_left_arm = part_left_arm.addOrReplaceChild("armor_left_arm", b_20, PartPose.ZERO);
         return LayerDefinition.create(mesh, 4096, 4096);
     }
 
-    private static PartDefinition buildRightLeg(PartDefinition parent) {
-        CubeListBuilder b = CubeListBuilder.create();
-        b.texOffs(3132, 206).addBox(-38F, 0F, -38F, 76.0F, 56.0F, 76.0F);
-        b.texOffs(1924, 346).addBox(-34F, 54F, -34F, 68.0F, 46.0F, 68.0F);
-        b.texOffs(1252, 586).addBox(-42F, -4F, -36F, 84.0F, 16.0F, 72.0F);
-        b.texOffs(3696, 680).addBox(-30F, 92F, -46F, 60.0F, 38.0F, 16.0F);
-        b.texOffs(1804, 754).addBox(-24F, 98F, -54F, 48.0F, 26.0F, 10.0F);
-        b.texOffs(2020, 806).addBox(-12F, 103F, -60F, 24.0F, 16.0F, 8.0F);
-        b.texOffs(3612, 806).addBox(-6F, 106F, -64F, 12.0F, 10.0F, 5.0F);
-        b.texOffs(1996, 476).addBox(-38F, 118F, -38F, 76.0F, 18.0F, 76.0F);
-        b.texOffs(2468, 4).addBox(-34F, 134F, -34F, 68.0F, 74.0F, 68.0F);
-        b.texOffs(3836, 586).addBox(-26F, 140F, -40F, 52.0F, 62.0F, 12.0F);
-        b.texOffs(2604, 680).addBox(-6F, 142F, -44F, 12.0F, 56.0F, 6.0F);
-        b.texOffs(1852, 680).addBox(-24F, 144F, 26F, 48.0F, 52.0F, 12.0F);
-        b.texOffs(3688, 806).addBox(-22F, 144F, -42F, 6.0F, 6.0F, 4.0F);
-        b.texOffs(3712, 806).addBox(16F, 144F, -42F, 6.0F, 6.0F, 4.0F);
-        b.texOffs(2304, 476).addBox(-32F, 200F, -40F, 64.0F, 14.0F, 80.0F);
-        b.texOffs(3020, 4).addBox(-34F, 212F, -54F, 68.0F, 38.0F, 100.0F);
-        b.texOffs(912, 346).addBox(-38F, 250F, -62F, 76.0F, 14.0F, 106.0F);
-        b.texOffs(2856, 680).addBox(-28F, 224F, -78F, 56.0F, 32.0F, 28.0F);
-        b.texOffs(2960, 754).addBox(-20F, 230F, -86F, 40.0F, 22.0F, 12.0F);
-        b.texOffs(1080, 754).addBox(-22F, 214F, -60F, 44.0F, 16.0F, 22.0F);
-        b.texOffs(1712, 680).addBox(-24F, 218F, 34F, 48.0F, 46.0F, 20.0F);
-        return parent.addOrReplaceChild("right_leg", b, PartPose.offset(-42F, -240F, 0F));
-    }
-
-    private static PartDefinition buildLeftLeg(PartDefinition parent) {
-        CubeListBuilder b = CubeListBuilder.create();
-        b.texOffs(2824, 206).addBox(-38F, 0F, -38F, 76.0F, 56.0F, 76.0F);
-        b.texOffs(1648, 346).addBox(-34F, 54F, -34F, 68.0F, 46.0F, 68.0F);
-        b.texOffs(936, 586).addBox(-42F, -4F, -36F, 84.0F, 16.0F, 72.0F);
-        b.texOffs(3540, 680).addBox(-30F, 92F, -46F, 60.0F, 38.0F, 16.0F);
-        b.texOffs(1924, 754).addBox(-24F, 98F, -54F, 48.0F, 26.0F, 10.0F);
-        b.texOffs(2088, 806).addBox(-12F, 103F, -60F, 24.0F, 16.0F, 8.0F);
-        b.texOffs(3650, 806).addBox(-6F, 106F, -64F, 12.0F, 10.0F, 5.0F);
-        b.texOffs(1688, 476).addBox(-38F, 118F, -38F, 76.0F, 18.0F, 76.0F);
-        b.texOffs(2744, 4).addBox(-34F, 134F, -34F, 68.0F, 74.0F, 68.0F);
-        b.texOffs(3704, 586).addBox(-26F, 140F, -40F, 52.0F, 62.0F, 12.0F);
-        b.texOffs(2644, 680).addBox(-6F, 142F, -44F, 12.0F, 56.0F, 6.0F);
-        b.texOffs(1976, 680).addBox(-24F, 144F, 26F, 48.0F, 52.0F, 12.0F);
-        b.texOffs(3736, 806).addBox(-22F, 144F, -42F, 6.0F, 6.0F, 4.0F);
-        b.texOffs(3760, 806).addBox(16F, 144F, -42F, 6.0F, 6.0F, 4.0F);
-        b.texOffs(2596, 476).addBox(-32F, 200F, -40F, 64.0F, 14.0F, 80.0F);
-        b.texOffs(3360, 4).addBox(-34F, 212F, -54F, 68.0F, 38.0F, 100.0F);
-        b.texOffs(1280, 346).addBox(-38F, 250F, -62F, 76.0F, 14.0F, 106.0F);
-        b.texOffs(2684, 680).addBox(-28F, 224F, -78F, 56.0F, 32.0F, 28.0F);
-        b.texOffs(2852, 754).addBox(-20F, 230F, -86F, 40.0F, 22.0F, 12.0F);
-        b.texOffs(1216, 754).addBox(-22F, 214F, -60F, 44.0F, 16.0F, 22.0F);
-        b.texOffs(1572, 680).addBox(-24F, 218F, 34F, 48.0F, 46.0F, 20.0F);
-        return parent.addOrReplaceChild("left_leg", b, PartPose.offset(42F, -240F, 0F));
-    }
-
-    private static PartDefinition buildBody(PartDefinition parent) {
-        CubeListBuilder b = CubeListBuilder.create();
-        b.texOffs(948, 476).addBox(-34F, -290F, -30F, 68.0F, 38.0F, 60.0F);
-        b.texOffs(268, 346).addBox(-68F, -264F, -52F, 136.0F, 20.0F, 104.0F);
-        b.texOffs(1340, 806).addBox(-52F, -252F, -56F, 104.0F, 14.0F, 14.0F);
-        b.texOffs(888, 4).addBox(-80F, -248F, -50F, 160.0F, 56.0F, 100.0F);
-        b.texOffs(2520, 346).addBox(-62F, -192F, -42F, 124.0F, 26.0F, 84.0F);
-        b.texOffs(4, 586).addBox(-46F, -166F, -34F, 92.0F, 22.0F, 68.0F);
-        b.texOffs(1776, 586).addBox(-72F, -238F, -70F, 62.0F, 62.0F, 24.0F);
-        b.texOffs(1952, 586).addBox(10F, -238F, -70F, 62.0F, 62.0F, 24.0F);
-        b.texOffs(3292, 680).addBox(-66F, -230F, -76F, 50.0F, 46.0F, 10.0F);
-        b.texOffs(3416, 680).addBox(16F, -230F, -76F, 50.0F, 46.0F, 10.0F);
-        b.texOffs(3196, 586).addBox(-30F, -224F, -80F, 60.0F, 62.0F, 16.0F);
-        b.texOffs(3992, 680).addBox(-20F, -214F, -86F, 40.0F, 42.0F, 10.0F);
-        b.texOffs(188, 806).addBox(-12F, -206F, -91F, 24.0F, 26.0F, 6.0F);
-        b.texOffs(2124, 206).addBox(-34F, -144F, -27F, 68.0F, 80.0F, 54.0F);
-        b.texOffs(4, 680).addBox(-37F, -132F, -30F, 74.0F, 10.0F, 60.0F);
-        b.texOffs(748, 680).addBox(-36F, -104F, -29F, 72.0F, 10.0F, 58.0F);
-        b.texOffs(276, 680).addBox(-37F, -78F, -30F, 74.0F, 10.0F, 60.0F);
-        b.texOffs(2628, 586).addBox(-42F, -66F, -33F, 84.0F, 18.0F, 66.0F);
-        b.texOffs(344, 754).addBox(-24F, -68F, -44F, 48.0F, 30.0F, 14.0F);
-        b.texOffs(1948, 806).addBox(-13F, -60F, -50F, 26.0F, 16.0F, 8.0F);
-        b.texOffs(536, 476).addBox(-62F, -48F, -40F, 124.0F, 20.0F, 80.0F);
-        b.texOffs(4, 206).addBox(-82F, -28F, -50F, 164.0F, 36.0F, 100.0F);
-        b.texOffs(3440, 206).addBox(-30F, -34F, -58F, 60.0F, 114.0F, 14.0F);
-        b.texOffs(3316, 754).addBox(-36F, 72F, -60F, 72.0F, 14.0F, 18.0F);
-        b.texOffs(752, 346).addBox(-32F, -34F, 46F, 64.0F, 108.0F, 14.0F);
-        b.texOffs(3124, 754).addBox(-38F, 66F, 44F, 76.0F, 14.0F, 18.0F);
-        b.texOffs(648, 4).addBox(-90F, -28F, -50F, 18.0F, 60.0F, 100.0F);
-        b.texOffs(1668, 4).addBox(-102F, 20F, -54F, 18.0F, 48.0F, 108.0F);
-        b.texOffs(3592, 206).addBox(-105F, 62F, -56F, 18.0F, 14.0F, 112.0F);
-        b.texOffs(3488, 586).addBox(-108F, 10F, -20F, 12.0F, 36.0F, 40.0F);
-        b.texOffs(72, 754).addBox(-112F, 16F, -12F, 8.0F, 22.0F, 24.0F);
-        b.texOffs(408, 4).addBox(72F, -28F, -50F, 18.0F, 60.0F, 100.0F);
-        b.texOffs(1412, 4).addBox(84F, 20F, -54F, 18.0F, 48.0F, 108.0F);
-        b.texOffs(4, 346).addBox(87F, 62F, -56F, 18.0F, 14.0F, 112.0F);
-        b.texOffs(3596, 586).addBox(92F, 10F, -20F, 12.0F, 36.0F, 40.0F);
-        b.texOffs(208, 754).addBox(98F, 16F, -12F, 8.0F, 22.0F, 24.0F);
-        return parent.addOrReplaceChild("body", b, PartPose.offset(0F, -240F, 0F));
-    }
-
-    private static void buildBackpack(PartDefinition parent) {
-        CubeListBuilder b = CubeListBuilder.create();
-        b.texOffs(3700, 4).addBox(-42F, -48F, -12F, 84.0F, 102.0F, 36.0F);
-        b.texOffs(2128, 586).addBox(-28F, -34F, 20F, 56.0F, 72.0F, 14.0F);
-        b.texOffs(3852, 680).addBox(-16F, -20F, 28F, 32.0F, 44.0F, 10.0F);
-        b.texOffs(3068, 754).addBox(-10F, -12F, 34F, 20.0F, 28.0F, 6.0F);
-        b.texOffs(2356, 680).addBox(-74F, -50F, 8F, 42.0F, 44.0F, 18.0F);
-        b.texOffs(2100, 680).addBox(-108F, -82F, 14F, 46.0F, 46.0F, 16.0F);
-        b.texOffs(3028, 680).addBox(-140F, -114F, 18F, 48.0F, 42.0F, 16.0F);
-        b.texOffs(592, 754).addBox(-168F, -138F, 22F, 44.0F, 30.0F, 14.0F);
-        b.texOffs(2612, 754).addBox(-194F, -148F, 24F, 46.0F, 22.0F, 12.0F);
-        b.texOffs(2940, 806).addBox(-202F, -142F, 28F, 50.0F, 12.0F, 8.0F);
-        b.texOffs(2472, 754).addBox(-168F, -104F, 20F, 56.0F, 22.0F, 12.0F);
-        b.texOffs(2424, 806).addBox(-174F, -98F, 24F, 56.0F, 12.0F, 8.0F);
-        b.texOffs(2188, 754).addBox(-142F, -68F, 16F, 58.0F, 22.0F, 12.0F);
-        b.texOffs(2292, 806).addBox(-146F, -62F, 20F, 56.0F, 12.0F, 8.0F);
-        b.texOffs(3636, 754).addBox(-116F, -34F, 14F, 54.0F, 20.0F, 12.0F);
-        b.texOffs(3060, 806).addBox(-118F, -28F, 18F, 50.0F, 11.0F, 8.0F);
-        b.texOffs(3892, 754).addBox(-88F, -8F, 10F, 46.0F, 20.0F, 12.0F);
-        b.texOffs(3300, 806).addBox(-88F, -4F, 14F, 40.0F, 10.0F, 8.0F);
-        b.texOffs(2480, 680).addBox(32F, -50F, 8F, 42.0F, 44.0F, 18.0F);
-        b.texOffs(2228, 680).addBox(62F, -82F, 14F, 46.0F, 46.0F, 16.0F);
-        b.texOffs(3160, 680).addBox(92F, -114F, 18F, 48.0F, 42.0F, 16.0F);
-        b.texOffs(472, 754).addBox(124F, -138F, 22F, 44.0F, 30.0F, 14.0F);
-        b.texOffs(2732, 754).addBox(148F, -148F, 24F, 46.0F, 22.0F, 12.0F);
-        b.texOffs(2820, 806).addBox(152F, -142F, 28F, 50.0F, 12.0F, 8.0F);
-        b.texOffs(2332, 754).addBox(112F, -104F, 20F, 56.0F, 22.0F, 12.0F);
-        b.texOffs(2556, 806).addBox(118F, -98F, 24F, 56.0F, 12.0F, 8.0F);
-        b.texOffs(2044, 754).addBox(84F, -68F, 16F, 58.0F, 22.0F, 12.0F);
-        b.texOffs(2688, 806).addBox(90F, -62F, 20F, 56.0F, 12.0F, 8.0F);
-        b.texOffs(3500, 754).addBox(62F, -34F, 14F, 54.0F, 20.0F, 12.0F);
-        b.texOffs(3180, 806).addBox(68F, -28F, 18F, 50.0F, 11.0F, 8.0F);
-        b.texOffs(3772, 754).addBox(42F, -8F, 10F, 46.0F, 20.0F, 12.0F);
-        b.texOffs(3400, 806).addBox(48F, -4F, 14F, 40.0F, 10.0F, 8.0F);
-        parent.addOrReplaceChild("backpack", b, PartPose.offset(0F, -186F, 54F));
-    }
-
-    private static PartDefinition buildHead(PartDefinition parent) {
-        CubeListBuilder b = CubeListBuilder.create();
-        b.texOffs(4, 4).addBox(-50F, -98F, -50F, 100.0F, 98.0F, 100.0F);
-        b.texOffs(2156, 806).addBox(-36F, -66F, -54F, 24.0F, 14.0F, 8.0F);
-        b.texOffs(2224, 806).addBox(12F, -66F, -54F, 24.0F, 14.0F, 8.0F);
-        b.texOffs(2360, 346).addBox(-58F, -60F, -54F, 18.0F, 54.0F, 60.0F);
-        b.texOffs(2200, 346).addBox(40F, -60F, -54F, 18.0F, 54.0F, 60.0F);
-        b.texOffs(1488, 754).addBox(-38F, -20F, -56F, 76.0F, 20.0F, 16.0F);
-        b.texOffs(784, 586).addBox(-26F, -100F, 48F, 52.0F, 68.0F, 22.0F);
-        b.texOffs(3352, 586).addBox(-22F, -36F, 60F, 44.0F, 56.0F, 22.0F);
-        b.texOffs(932, 754).addBox(-24F, 12F, 68F, 48.0F, 14.0F, 24.0F);
-        b.texOffs(2512, 586).addBox(-18F, 24F, 76F, 36.0F, 66.0F, 20.0F);
-        b.texOffs(1676, 754).addBox(-20F, 82F, 78F, 40.0F, 14.0F, 22.0F);
-        b.texOffs(3968, 586).addBox(-14F, 94F, 84F, 28.0F, 56.0F, 18.0F);
-        b.texOffs(4, 754).addBox(-9F, 144F, 88F, 18.0F, 34.0F, 14.0F);
-        PartDefinition headPart = parent.addOrReplaceChild("head", b, PartPose.offset(0F, -288F, 0F));
-
-        // Съёмный крылатый шлем Валькирии
-        CubeListBuilder h = CubeListBuilder.create();
-        h.texOffs(3940, 680).addBox(-7F, -86F, -58F, 14.0F, 44.0F, 10.0F);
-        h.texOffs(2372, 206).addBox(-56F, -112F, -56F, 112.0F, 20.0F, 112.0F);
-        h.texOffs(712, 754).addBox(-14F, -128F, -62F, 28.0F, 32.0F, 12.0F);
-        h.texOffs(1900, 806).addBox(-8F, -122F, -66F, 16.0F, 20.0F, 6.0F);
-        h.texOffs(536, 206).addBox(-52F, -140F, -52F, 104.0F, 32.0F, 104.0F);
-        h.texOffs(4, 476).addBox(-44F, -154F, -44F, 88.0F, 18.0F, 88.0F);
-        h.texOffs(3064, 586).addBox(-72F, -108F, -20F, 20.0F, 40.0F, 44.0F);
-        h.texOffs(2392, 586).addBox(-84F, -144F, -6F, 20.0F, 48.0F, 38.0F);
-        h.texOffs(548, 680).addBox(-88F, -176F, 10F, 18.0F, 40.0F, 30.0F);
-        h.texOffs(276, 754).addBox(-86F, -166F, 16F, 12.0F, 26.0F, 20.0F);
-        h.texOffs(864, 754).addBox(-90F, -192F, 20F, 12.0F, 24.0F, 20.0F);
-        h.texOffs(2932, 586).addBox(52F, -108F, -20F, 20.0F, 40.0F, 44.0F);
-        h.texOffs(2272, 586).addBox(64F, -144F, -6F, 20.0F, 48.0F, 38.0F);
-        h.texOffs(648, 680).addBox(70F, -176F, 10F, 18.0F, 40.0F, 30.0F);
-        h.texOffs(140, 754).addBox(74F, -166F, 16F, 12.0F, 26.0F, 20.0F);
-        h.texOffs(796, 754).addBox(78F, -192F, 20F, 12.0F, 24.0F, 20.0F);
-        h.texOffs(1568, 586).addBox(-14F, -168F, -36F, 28.0F, 14.0F, 74.0F);
-        h.texOffs(360, 476).addBox(-10F, -204F, -30F, 20.0F, 38.0F, 66.0F);
-        headPart.addOrReplaceChild("helmet", h, PartPose.ZERO);
-
-        // Лёгкий розовый румянец на щеках (UV 3856, 692)
-        CubeListBuilder blushBuilder = CubeListBuilder.create();
-        blushBuilder.texOffs(3856, 692).addBox(-42F, -48F, -53F, 16.0F, 8.0F, 3.0F);
-        blushBuilder.texOffs(3856, 692).addBox(26F, -48F, -53F, 16.0F, 8.0F, 3.0F);
-        headPart.addOrReplaceChild("blush", blushBuilder, PartPose.ZERO);
-
-        return headPart;
-    }
-
-    private static void buildRightArm(PartDefinition parent) {
-        CubeListBuilder b = CubeListBuilder.create();
-        b.texOffs(1764, 206).addBox(-64F, -36F, -44F, 90.0F, 46.0F, 88.0F);
-        b.texOffs(3340, 346).addBox(-70F, -6F, -48F, 102.0F, 14.0F, 96.0F);
-        b.texOffs(556, 586).addBox(-74F, -50F, -34F, 42.0F, 20.0F, 70.0F);
-        b.texOffs(4, 806).addBox(-36F, -30F, -50F, 32.0F, 20.0F, 12.0F);
-        b.texOffs(3556, 806).addBox(-30F, -25F, -54F, 20.0F, 10.0F, 6.0F);
-        b.texOffs(1180, 206).addBox(-44F, 12F, -30F, 50.0F, 76.0F, 60.0F);
-        b.texOffs(1204, 680).addBox(-40F, 72F, -26F, 42.0F, 16.0F, 52.0F);
-        b.texOffs(2888, 476).addBox(-54F, 78F, -36F, 70.0F, 22.0F, 72.0F);
-        b.texOffs(2196, 4).addBox(-50F, 98F, -36F, 62.0F, 82.0F, 72.0F);
-        b.texOffs(3740, 346).addBox(-62F, 108F, -24F, 16.0F, 60.0F, 48.0F);
-        b.texOffs(1396, 680).addBox(-67F, 118F, -15F, 12.0F, 38.0F, 30.0F);
-        b.texOffs(3760, 476).addBox(-54F, 174F, -38F, 70.0F, 16.0F, 76.0F);
-        b.texOffs(1208, 476).addBox(-46F, 188F, -32F, 54.0F, 34.0F, 64.0F);
-        b.texOffs(1580, 806).addBox(-50F, 194F, -36F, 62.0F, 12.0F, 16.0F);
-        b.texOffs(462, 806).addBox(-42F, 220F, -26F, 22.0F, 20.0F, 11.0F);
-        b.texOffs(944, 806).addBox(-18F, 220F, -26F, 20.0F, 18.0F, 11.0F);
-        b.texOffs(392, 806).addBox(-42F, 220F, -12F, 22.0F, 20.0F, 11.0F);
-        b.texOffs(1274, 806).addBox(-18F, 220F, -12F, 20.0F, 18.0F, 11.0F);
-        b.texOffs(322, 806).addBox(-42F, 220F, 2F, 22.0F, 20.0F, 11.0F);
-        b.texOffs(1208, 806).addBox(-18F, 220F, 2F, 20.0F, 18.0F, 11.0F);
-        b.texOffs(532, 806).addBox(-42F, 220F, 16F, 22.0F, 20.0F, 11.0F);
-        b.texOffs(1010, 806).addBox(-18F, 220F, 16F, 20.0F, 18.0F, 11.0F);
-        b.texOffs(1352, 754).addBox(-4F, 200F, -30F, 16.0F, 22.0F, 16.0F);
-        parent.addOrReplaceChild("right_arm", b, PartPose.offset(-99F, -246F, 0F));
-    }
-
-    private static void buildLeftArm(PartDefinition parent) {
-        CubeListBuilder b = CubeListBuilder.create();
-        b.texOffs(1404, 206).addBox(-26F, -36F, -44F, 90.0F, 46.0F, 88.0F);
-        b.texOffs(2940, 346).addBox(-32F, -6F, -48F, 102.0F, 14.0F, 96.0F);
-        b.texOffs(328, 586).addBox(26F, -50F, -34F, 42.0F, 20.0F, 70.0F);
-        b.texOffs(96, 806).addBox(2F, -30F, -50F, 32.0F, 20.0F, 12.0F);
-        b.texOffs(3500, 806).addBox(8F, -25F, -54F, 20.0F, 10.0F, 6.0F);
-        b.texOffs(956, 206).addBox(-6F, 12F, -30F, 50.0F, 76.0F, 60.0F);
-        b.texOffs(1012, 680).addBox(-2F, 72F, -26F, 42.0F, 16.0F, 52.0F);
-        b.texOffs(3176, 476).addBox(-16F, 78F, -36F, 70.0F, 22.0F, 72.0F);
-        b.texOffs(1924, 4).addBox(-12F, 98F, -36F, 62.0F, 82.0F, 72.0F);
-        b.texOffs(3872, 346).addBox(46F, 108F, -24F, 16.0F, 60.0F, 48.0F);
-        b.texOffs(1484, 680).addBox(52F, 118F, -15F, 12.0F, 38.0F, 30.0F);
-        b.texOffs(3464, 476).addBox(-16F, 174F, -38F, 70.0F, 16.0F, 76.0F);
-        b.texOffs(1448, 476).addBox(-8F, 188F, -32F, 54.0F, 34.0F, 64.0F);
-        b.texOffs(1740, 806).addBox(-12F, 194F, -36F, 62.0F, 12.0F, 16.0F);
-        b.texOffs(742, 806).addBox(-4F, 220F, -26F, 22.0F, 20.0F, 11.0F);
-        b.texOffs(812, 806).addBox(20F, 220F, -26F, 20.0F, 18.0F, 11.0F);
-        b.texOffs(672, 806).addBox(-4F, 220F, -12F, 22.0F, 20.0F, 11.0F);
-        b.texOffs(1142, 806).addBox(20F, 220F, -12F, 20.0F, 18.0F, 11.0F);
-        b.texOffs(602, 806).addBox(-4F, 220F, 2F, 22.0F, 20.0F, 11.0F);
-        b.texOffs(1076, 806).addBox(20F, 220F, 2F, 20.0F, 18.0F, 11.0F);
-        b.texOffs(252, 806).addBox(-4F, 220F, 16F, 22.0F, 20.0F, 11.0F);
-        b.texOffs(878, 806).addBox(20F, 220F, 16F, 20.0F, 18.0F, 11.0F);
-        b.texOffs(1420, 754).addBox(-20F, 200F, -30F, 16.0F, 22.0F, 16.0F);
-        parent.addOrReplaceChild("left_arm", b, PartPose.offset(99F, -246F, 0F));
+    private static void setPartScaleAndFade(ModelPart part, float progress) {
+        if (progress <= 0.0F) {
+            part.visible = true;
+            part.xScale = 1.0F;
+            part.yScale = 1.0F;
+            part.zScale = 1.0F;
+            return;
+        }
+        if (progress >= 0.95F) {
+            part.visible = false;
+            return;
+        }
+        part.visible = true;
+        float sc = Math.max(0.02F, 1.0F - progress);
+        part.xScale = sc;
+        part.yScale = sc;
+        part.zScale = sc;
+        part.y -= 28.0F * progress;
     }
 
     @Override
     public void setupAnim(GolemRenderState state) {
         this.root().getAllParts().forEach(ModelPart::resetPose);
-        this.helmet.visible = true;
-        this.helmet.xScale = 1.0F;
-        this.helmet.yScale = 1.0F;
-        this.helmet.zScale = 1.0F;
-        this.blush.visible = false;
 
-        this.armorHead.visible = state.hasHeadArmor && !state.isDaydreaming;
-        this.armorChest.visible = state.hasChestArmor;
-        this.armorLegsR.visible = state.hasLegsArmor;
-        this.armorLegsL.visible = state.hasLegsArmor;
-        this.armorFeetR.visible = state.hasFeetArmor;
-        this.armorFeetL.visible = state.hasFeetArmor;
+        boolean swimsuitReady = state.bathPhase >= 3 || (state.bathPhase == 2 && state.bathTicks >= 45);
+        boolean showBaseArmor = !swimsuitReady;
+
+        this.helmet.visible = showBaseArmor;
+        this.armorTorso.visible = showBaseArmor;
+        this.backpack.visible = showBaseArmor;
+        this.armorRightArm.visible = showBaseArmor;
+        this.armorLeftArm.visible = showBaseArmor;
+        this.armorRightLeg.visible = showBaseArmor;
+        this.armorLeftLeg.visible = showBaseArmor;
+
+        this.extraHead.visible = state.hasHeadArmor && showBaseArmor;
+        this.extraChest.visible = state.hasChestArmor && showBaseArmor;
+        this.extraLegsR.visible = state.hasLegsArmor && showBaseArmor;
+        this.extraLegsL.visible = state.hasLegsArmor && showBaseArmor;
+        this.extraFeetR.visible = state.hasFeetArmor && showBaseArmor;
+        this.extraFeetL.visible = state.hasFeetArmor && showBaseArmor;
+
+        this.blush.visible = false;
+        this.closedEyes.visible = false;
 
         if (state.isDisabled) {
+            this.closedEyes.visible = true;
             this.body.xRot = 0.22F;
             this.head.xRot = 0.62F;
             this.head.yRot = 0.14F;
@@ -377,7 +403,9 @@ public class ValkyrieModel extends EntityModel<GolemRenderState> {
         this.head.yRot = state.yRot * Mth.DEG_TO_RAD;
         this.head.xRot = state.xRot * Mth.DEG_TO_RAD;
         this.idleAnim.apply(state.idleAnimationState, state.ageInTicks, 1.0F);
-        this.walkAnim.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, 2.2F, 2.4F);
+        if (state.bathPhase != 4) {
+            this.walkAnim.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, 2.2F, 2.4F);
+        }
         this.workAnim.apply(state.workAnimationState, state.ageInTicks, 1.0F);
         this.attackAnim.apply(state.attackAnimationState, state.ageInTicks, 1.0F);
         this.carryAnim.apply(state.carryAnimationState, state.ageInTicks, 1.0F);
@@ -385,32 +413,65 @@ public class ValkyrieModel extends EntityModel<GolemRenderState> {
         this.summonAnim.apply(state.summonAnimationState, state.ageInTicks, 1.0F);
         this.eatAnim.apply(state.eatAnimationState, state.ageInTicks, 1.0F);
 
-        if (state.isDaydreaming) {
-            int dt = state.daydreamTicks;
-            float p;
-            if (dt > 142) {
-                p = (160 - dt) / 18.0F;
-            } else if (dt < 18) {
-                p = dt / 18.0F;
-            } else {
-                p = 1.0F;
+        if (state.bathPhase == 1) {
+            // Фаза 1: осторожно оглядывается по сторонам (0..40 тиков)
+            float t = Mth.clamp(state.bathTicks / 40.0F, 0.0F, 1.0F);
+            this.head.yRot += Mth.sin(t * Mth.TWO_PI) * 0.68F;
+            this.head.zRot += Mth.sin(t * Mth.TWO_PI) * 0.08F;
+            this.rightArm.xRot -= 0.18F;
+            this.leftArm.xRot -= 0.18F;
+        } else if (state.bathPhase == 2) {
+            // Фаза 2: плавно снимает шлем, крылья и броню, оставаясь в скромном купальнике
+            float p = Mth.clamp(state.bathTicks / 45.0F, 0.0F, 1.0F);
+            this.blush.visible = p > 0.25F;
+            this.head.zRot += 0.10F * Mth.sin(p * Mth.PI);
+            this.rightArm.xRot -= 0.55F * Mth.sin(p * Mth.PI);
+            this.leftArm.xRot -= 0.55F * Mth.sin(p * Mth.PI);
+            this.rightArm.zRot += 0.20F * Mth.sin(p * Mth.PI);
+            this.leftArm.zRot -= 0.20F * Mth.sin(p * Mth.PI);
+
+            setPartScaleAndFade(this.helmet, Mth.clamp(p * 1.8F, 0.0F, 1.0F));
+            setPartScaleAndFade(this.backpack, Mth.clamp((p - 0.15F) * 1.6F, 0.0F, 1.0F));
+            setPartScaleAndFade(this.armorRightArm, Mth.clamp((p - 0.20F) * 1.6F, 0.0F, 1.0F));
+            setPartScaleAndFade(this.armorLeftArm, Mth.clamp((p - 0.20F) * 1.6F, 0.0F, 1.0F));
+            setPartScaleAndFade(this.armorTorso, Mth.clamp((p - 0.35F) * 1.6F, 0.0F, 1.0F));
+            setPartScaleAndFade(this.armorRightLeg, Mth.clamp((p - 0.45F) * 1.85F, 0.0F, 1.0F));
+            setPartScaleAndFade(this.armorLeftLeg, Mth.clamp((p - 0.45F) * 1.85F, 0.0F, 1.0F));
+            if (state.hasHeadArmor) setPartScaleAndFade(this.extraHead, Mth.clamp(p * 1.8F, 0.0F, 1.0F));
+            if (state.hasChestArmor) setPartScaleAndFade(this.extraChest, Mth.clamp((p - 0.35F) * 1.6F, 0.0F, 1.0F));
+            if (state.hasLegsArmor) {
+                setPartScaleAndFade(this.extraLegsR, Mth.clamp((p - 0.45F) * 1.85F, 0.0F, 1.0F));
+                setPartScaleAndFade(this.extraLegsL, Mth.clamp((p - 0.45F) * 1.85F, 0.0F, 1.0F));
             }
-            p = Mth.clamp(p, 0.0F, 1.0F);
-
-            this.helmet.y = -110.0F * p;
-            this.helmet.z = 70.0F * p;
-            this.helmet.xRot = -0.45F * p;
-            float sc = Math.max(0.01F, 1.0F - p * 0.99F);
-            this.helmet.xScale = sc;
-            this.helmet.yScale = sc;
-            this.helmet.zScale = sc;
-            this.helmet.visible = (p < 0.92F);
-            this.blush.visible = (p > 0.35F);
-
-            this.head.zRot += 0.14F * p;
-            this.head.xRot -= 0.08F * p;
-            this.rightArm.xRot -= 0.42F * p;
-            this.rightArm.zRot += 0.18F * p;
+            if (state.hasFeetArmor) {
+                setPartScaleAndFade(this.extraFeetR, Mth.clamp((p - 0.45F) * 1.85F, 0.0F, 1.0F));
+                setPartScaleAndFade(this.extraFeetL, Mth.clamp((p - 0.45F) * 1.85F, 0.0F, 1.0F));
+            }
+        } else if (state.bathPhase == 3) {
+            // Фаза 3: идёт к водоёму в скромном купальнике
+            this.blush.visible = true;
+        } else if (state.bathPhase == 4) {
+            // Фаза 4: сидит в воде и отдыхает
+            this.blush.visible = true;
+            this.closedEyes.visible = (state.ageInTicks % 90.0F) > 62.0F;
+            this.root.y += 155.0F + Mth.sin(state.ageInTicks * 0.12F) * 5.0F;
+            this.body.xRot = -0.08F;
+            this.head.xRot += 0.10F;
+            this.head.zRot += 0.08F * Mth.sin(state.ageInTicks * 0.07F);
+            this.rightLeg.xRot = -1.18F;
+            this.leftLeg.xRot = -1.18F;
+            this.rightLeg.yRot = -0.18F;
+            this.leftLeg.yRot = 0.18F;
+            this.rightArm.xRot = -0.32F + 0.12F * Mth.sin(state.ageInTicks * 0.14F);
+            this.leftArm.xRot = -0.32F - 0.12F * Mth.sin(state.ageInTicks * 0.14F);
+            this.rightArm.zRot = 0.24F;
+            this.leftArm.zRot = -0.24F;
+        } else if (state.bathPhase == 5) {
+            // Фаза 5: отдыхает без брони (если водоёма 3x3+ не нашлось)
+            this.blush.visible = true;
+            this.head.zRot += 0.10F;
+            this.rightArm.xRot -= 0.22F;
+            this.rightArm.zRot += 0.14F;
         }
     }
 }

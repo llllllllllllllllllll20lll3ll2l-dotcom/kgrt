@@ -98,6 +98,12 @@ public class ManylModClient implements ClientModInitializer {
                         ctx.client().setScreen(new ValkyrieDialogueScreen(payload));
                     }
                 }));
+
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.PlayVoicePayload.TYPE, (payload, ctx) ->
+                ctx.client().execute(() -> ClientVoiceManager.playExclusive(
+                        payload.entityId(), payload.soundId(), payload.volume(), payload.pitch(),
+                        payload.x(), payload.y(), payload.z()
+                )));
     }
 
     private void handleHotkeys(Minecraft client) {

@@ -176,6 +176,10 @@ public abstract class BaseGolemEntity extends PathfinderMob {
                 && level.canSeeSky(pos);
     }
 
+    public boolean isBusyWithRoutine() {
+        return false;
+    }
+
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
@@ -183,7 +187,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         this.goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.85D) {
             @Override
             public boolean canUse() {
-                if (isDisabled() || isSitting()) return false;
+                if (isDisabled() || isSitting() || isBusyWithRoutine()) return false;
                 if (getOwnerUuid() != null && getOwnerSettings().isFollowOwner()) return false;
                 return super.canUse();
             }
@@ -191,13 +195,13 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 6.0F) {
             @Override
             public boolean canUse() {
-                return !isDisabled() && super.canUse();
+                return !isDisabled() && !isBusyWithRoutine() && super.canUse();
             }
         });
         this.goalSelector.addGoal(9, new RandomLookAroundGoal(this) {
             @Override
             public boolean canUse() {
-                return !isDisabled() && super.canUse();
+                return !isDisabled() && !isBusyWithRoutine() && super.canUse();
             }
         });
     }
@@ -222,7 +226,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             sl.sendParticles(ModParticles.SUMMON_RUNE, getX(), getY() + 0.9D, getZ(), 16, 0.35D, 0.45D, 0.35D, 0.04D);
             sl.sendParticles(ModParticles.CORE_HEART, getX(), getY() + 1.4D, getZ(), 8, 0.3D, 0.3D, 0.3D, 0.03D);
             if (!(this instanceof ValkyrieGolemEntity)) {
-                sl.playSound(null, getX(), getY(), getZ(), ModSounds.WARRIOR_GREET, getSoundSource(), 0.82F, 1.0F);
+                playVoice(ModSounds.WARRIOR_GREET, 0.82F, 1.0F);
             } else {
                 sl.playSound(null, getX(), getY(), getZ(), ModSounds.GOLEM_SUMMON, getSoundSource(), 0.75F, 1.18F);
             }
@@ -632,7 +636,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             if (player.isShiftKeyDown()) {
                 setSitting(!isSitting());
                 playSound(ModSounds.GOLEM_STEP, 0.16F, isSitting() ? 0.8F : 1.2F);
-                playSound(ModSounds.WARRIOR_ORDER, 0.72F, 1.0F);
+                playVoice(ModSounds.WARRIOR_ORDER, 0.72F, 1.0F);
                 serverPlayer.displayClientMessage(Component.translatable(
                         isSitting() ? "msg.manyl_mod.mode_stay" : "msg.manyl_mod.mode_follow",
                         Component.translatable(getRole().getTranslationKey())), true);
@@ -687,7 +691,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             setHunger(MAX_HUNGER);
             recruitBy(player);
             if (this instanceof ValkyrieGolemEntity) {
-                playSound(ModSounds.VALKYRIE_REPAIRED, 0.85F, 1.0F);
+                playVoice(ModSounds.VALKYRIE_REPAIRED, 0.85F, 1.0F);
             }
             player.displayClientMessage(Component.translatable("msg.manyl_mod.repaired",
                     Component.translatable(getRole().getTranslationKey())), false);
@@ -779,6 +783,24 @@ public abstract class BaseGolemEntity extends PathfinderMob {
     public LivingEntity getOwnerEntity() {
         if (ownerUuid == null) return null;
         return level().getPlayerByUUID(ownerUuid);
+    }
+
+    /**
+     * Воспроизводит эксклюзивную голосовую реплику: на клиенте предыдущая реплика
+     * немедленно останавливается, чтобы голоса никогда не накладывались.
+     */
+    public void playVoice(SoundEvent sound, float volume, float pitch) {
+        if (sound == null || !(level() instanceof ServerLevel sl)) return;
+        net.minecraft.resources.Identifier id = net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.getKey(sound);
+        if (id == null) return;
+        ModNetworking.PlayVoicePayload packet = new ModNetworking.PlayVoicePayload(
+                getId(), id, volume, pitch, getX(), getY(), getZ()
+        );
+        for (ServerPlayer player : sl.players()) {
+            if (player.distanceToSqr(this) <= 1024.0D) {
+                net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, packet);
+            }
+        }
     }
 
     @Override

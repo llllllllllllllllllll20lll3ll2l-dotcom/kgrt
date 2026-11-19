@@ -33,6 +33,7 @@ import net.minecraft.world.level.Level;
  */
 public class WarriorGolemEntity extends BaseGolemEntity {
     private long lastWarriorAttackVoiceTick = -1000L;
+    private long lastWarriorHurtVoiceTick = -1000L;
 
     public WarriorGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -119,7 +120,20 @@ public class WarriorGolemEntity extends BaseGolemEntity {
 
     @Override
     protected SoundEvent getHurtSound(DamageSource source) {
-        return ModSounds.WARRIOR_HURT;
+        return ModSounds.GOLEM_HURT;
+    }
+
+    @Override
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        boolean hurt = super.hurtServer(level, source, amount);
+        if (hurt && getRole() == GolemRole.WARRIOR && !isDisabled()) {
+            long now = level.getGameTime();
+            if (now - lastWarriorHurtVoiceTick >= 25L) {
+                lastWarriorHurtVoiceTick = now;
+                playVoice(ModSounds.WARRIOR_HURT, 0.72F, 0.96F + random.nextFloat() * 0.08F);
+            }
+        }
+        return hurt;
     }
 
     @Override
@@ -128,7 +142,7 @@ public class WarriorGolemEntity extends BaseGolemEntity {
             long now = level.getGameTime();
             if (now - lastWarriorAttackVoiceTick >= 60L && random.nextFloat() < 0.55F) {
                 lastWarriorAttackVoiceTick = now;
-                playSound(ModSounds.WARRIOR_ATTACK, 0.72F, 0.96F + random.nextFloat() * 0.08F);
+                playVoice(ModSounds.WARRIOR_ATTACK, 0.72F, 0.96F + random.nextFloat() * 0.08F);
             }
         }
         return super.doHurtTarget(level, target);
@@ -187,7 +201,7 @@ public class WarriorGolemEntity extends BaseGolemEntity {
         PlayerGolemSettings settings = getOwnerSettings();
         String guardMode = settings.getGuardMode();
 
-        if ("patrol".equals(guardMode) && !isSitting() && getTarget() == null) {
+        if ("patrol".equals(guardMode) && !isSitting() && !isBusyWithRoutine() && getTarget() == null) {
             BlockPos home = getHomePos();
             if (home != null && position().distanceToSqr(home.getX() + 0.5D, home.getY(), home.getZ() + 0.5D) > 64.0D) {
                 getNavigation().moveTo(home.getX() + 0.5D, home.getY(), home.getZ() + 0.5D, 1.1D);
