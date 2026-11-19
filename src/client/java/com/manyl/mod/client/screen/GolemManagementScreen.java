@@ -12,12 +12,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * Окно управления отрядом Воинов и Воительниц.
+ * Окно управления отрядом Воинов и Воительниц с кнопками роспуска отдельных типов и всего отряда.
  */
 public class GolemManagementScreen extends Screen {
     private static final Identifier PANEL_TEX = ManylMod.id("textures/gui/management_panel.png");
-    private static final int PANEL_W = 240;
-    private static final int PANEL_H = 166;
+    private static final int PANEL_W = 248;
+    private static final int PANEL_H = 186;
 
     private int warriorCount;
     private int valkyrieCount;
@@ -60,17 +60,11 @@ public class GolemManagementScreen extends Screen {
         GolemRole[] roles = GolemRole.values();
         for (int i = 0; i < roles.length; i++) {
             GolemRole role = roles[i];
-            int ry = top + 36 + i * 26;
-            this.addRenderableWidget(Button.builder(Component.literal("+"), b ->
-                    ClientPlayNetworking.send(new ModNetworking.SummonGolemPayload(role.ordinal())))
-                    .pos(left + 174, ry)
-                    .size(24, 18)
-                    .build());
-
-            this.addRenderableWidget(Button.builder(Component.literal("-"), b ->
+            int ry = top + 34 + i * 26;
+            this.addRenderableWidget(Button.builder(Component.translatable("gui.manyl_mod.dismiss_role"), b ->
                     ClientPlayNetworking.send(new ModNetworking.RecallGolemsPayload(role.ordinal())))
-                    .pos(left + 202, ry)
-                    .size(24, 18)
+                    .pos(left + 168, ry)
+                    .size(68, 18)
                     .build());
         }
 
@@ -83,7 +77,12 @@ public class GolemManagementScreen extends Screen {
             followOwner = "follow".equals(guardMode);
             b.setMessage(guardLabel());
             ClientPlayNetworking.send(new ModNetworking.UpdateWarriorSettingsPayload(followOwner, guardMode, targetFilter));
-        }).pos(left + 12, top + 114).size(PANEL_W - 24, 20).build());
+        }).pos(left + 12, top + 106).size(PANEL_W - 24, 20).build());
+
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.manyl_mod.disband_squad"), b -> {
+            ClientPlayNetworking.send(new ModNetworking.RecallGolemsPayload(-1));
+            this.onClose();
+        }).pos(left + 12, top + 134).size(PANEL_W - 24, 22).build());
 
         this.addRenderableWidget(Button.builder(Component.literal("✕"), b -> this.onClose())
                 .pos(left + PANEL_W - 24, top + 6)
@@ -113,15 +112,17 @@ public class GolemManagementScreen extends Screen {
         for (int i = 0; i < roles.length; i++) {
             GolemRole role = roles[i];
             int count = (role == GolemRole.WARRIOR) ? warriorCount : valkyrieCount;
-            int ry = top + 36 + i * 26;
+            int ry = top + 34 + i * 26;
             graphics.blit(RenderPipelines.GUI_TEXTURED, role.getIconTexture(), left + 12, ry + 1, 0, 0, 16, 16, 16, 16);
             graphics.drawString(this.font, Component.translatable(role.getTranslationKey()), left + 34, ry + 5, 0xFFE5E9F0, false);
 
             String countLabel = String.valueOf(count);
-            graphics.drawString(this.font, countLabel, left + 146, ry + 5, role.getAccentColor(), false);
+            graphics.drawString(this.font, countLabel, left + 148, ry + 5, role.getAccentColor(), false);
         }
 
-        graphics.drawString(this.font, Component.translatable("gui.manyl_mod.guard_mode_label"), left + 12, top + 98, 0xFFD8DEE9, false);
+        graphics.drawString(this.font, Component.translatable("gui.manyl_mod.guard_mode_label"), left + 12, top + 92, 0xFFD8DEE9, false);
+        graphics.drawCenteredString(this.font, Component.translatable("gui.manyl_mod.disband_hint"),
+                left + PANEL_W / 2, top + 162, 0xFF9AA7C0);
 
         super.render(graphics, mouseX, mouseY, delta);
     }

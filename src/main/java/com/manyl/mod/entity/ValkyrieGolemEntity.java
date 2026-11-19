@@ -35,11 +35,11 @@ import java.util.List;
 /**
  * Голем-воительница (женский тип воина):
  * - 75% ХП воина-мужчины (27.0 HP);
- * - Живые женские звуки (смех, вздохи, боевые возгласы, ворчание при ревности);
- * - Тёплая романтическая ветка (стадии 0..3, диалоги, комплименты, подарки, признание);
- * - Плюшки за влюблённость: забота, исцеление, подпитка и экстренное спасение при низком ХП;
- * - Ревность (при стадии 1+ и >1 девушке в отряде): при 100% подходит, прячет меч,
- *   бьёт рукой на 2 HP (1 сердечко), возвращает меч и шкала падает на 25% (до 75%).
+ * - Полная женская озвучка каждой реплики и боевой/бытовой реакции;
+ * - Романтическая ветка (стадии 0..3), плюшки заботы и спасения;
+ * - Ревность при стадии 1+ и наличии >1 девушки в отряде:
+ *   при 100% подходит, прячет меч, бьёт рукой на 2 HP, возвращает меч и сбрасывает шкалу до 75%
+ *   с нормальным перерывом (чтобы не бить игрока постоянно).
  */
 public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public static final int MAX_AFFECTION = 100;
@@ -76,9 +76,10 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     private long lastShareFoodTick = -1000L;
     private int rescueCooldownTicks = 0;
 
-    // Сценарий удара рукой от ревности со скрытием меча
+    // Сценарий удара рукой от ревности со скрытием меча + антиспам-кулдаун
     private int weaponHideTicks = 0;
     private int pendingSlapTicks = 0;
+    private int slapCooldownTicks = 0;
     private boolean jealousWarned50 = false;
 
     public ValkyrieGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
@@ -156,9 +157,17 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
 
     public void playGreetVoice() {
         long now = level().getGameTime();
-        if (now - lastGreetVoiceTick >= 80L) {
+        if (now - lastGreetVoiceTick >= 60L) {
             lastGreetVoiceTick = now;
-            playSound(getJealousy() >= 60 ? ModSounds.VALKYRIE_JEALOUS : ModSounds.VALKYRIE_GREET, 0.72F, 1.0F);
+            if (!isTamed()) {
+                playSound(ModSounds.VALKYRIE_WILD_GREET, 0.80F, 1.0F);
+            } else if (getJealousy() >= 70) {
+                playSound(ModSounds.VALKYRIE_JEALOUS, 0.80F, 1.0F);
+            } else if (getRomanceStage() >= STAGE_BELOVED) {
+                playSound(ModSounds.VALKYRIE_LOVE, 0.78F, 1.0F);
+            } else {
+                playSound(ModSounds.VALKYRIE_GREET, 0.78F, 1.0F);
+            }
         }
     }
 
@@ -183,13 +192,14 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 recruitBy(player);
                 if (getAffection() < 10) setAffection(10);
                 spawnHeartBurst(10);
-                playSound(ModSounds.VALKYRIE_GREET, 0.78F, 1.04F);
+                playSound(ModSounds.VALKYRIE_RECRUITED, 0.85F, 1.0F);
                 return Component.translatable("dialogue.manyl_mod.valkyrie.recruited").getString();
             }
             return getGreetingLine(true);
         }
 
         if (!isTamed()) {
+            playSound(ModSounds.VALKYRIE_WILD_GREET, 0.78F, 1.0F);
             return Component.translatable("dialogue.manyl_mod.valkyrie.need_recruit").getString();
         }
 
@@ -199,16 +209,21 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 if (now - lastTalkTick >= 200L) {
                     lastTalkTick = now;
                     addAffection(4);
-                    addJealousy(-15);
+                    addJealousy(-18);
                     spawnHeartBurst(4);
-                    playSound(ModSounds.VALKYRIE_GREET, 0.70F, 1.02F);
                 }
-                int variant = random.nextInt(3);
+                SoundEvent talkVoice = switch (getRomanceStage()) {
+                    case STAGE_BELOVED -> ModSounds.VALKYRIE_TALK_BELOVED;
+                    case STAGE_CRUSH -> ModSounds.VALKYRIE_TALK_CRUSH;
+                    case STAGE_FRIEND -> ModSounds.VALKYRIE_TALK_FRIEND;
+                    default -> ModSounds.VALKYRIE_TALK_ALLY;
+                };
+                playSound(talkVoice, 0.82F, 1.0F);
                 String key = switch (getRomanceStage()) {
-                    case STAGE_BELOVED -> "dialogue.manyl_mod.valkyrie.talk.beloved." + variant;
-                    case STAGE_CRUSH -> "dialogue.manyl_mod.valkyrie.talk.crush." + variant;
-                    case STAGE_FRIEND -> "dialogue.manyl_mod.valkyrie.talk.friend." + variant;
-                    default -> "dialogue.manyl_mod.valkyrie.talk.ally." + variant;
+                    case STAGE_BELOVED -> "dialogue.manyl_mod.valkyrie.talk.beloved.0";
+                    case STAGE_CRUSH -> "dialogue.manyl_mod.valkyrie.talk.crush.0";
+                    case STAGE_FRIEND -> "dialogue.manyl_mod.valkyrie.talk.friend.0";
+                    default -> "dialogue.manyl_mod.valkyrie.talk.ally.0";
                 };
                 return Component.translatable(key).getString();
             }
@@ -216,10 +231,10 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 if (now - lastComplimentTick >= 240L) {
                     lastComplimentTick = now;
                     addAffection(8);
-                    addJealousy(-28);
+                    addJealousy(-30);
                     spawnHeartBurst(7);
-                    playSound(ModSounds.VALKYRIE_LAUGH, 0.78F, 1.02F);
                 }
+                playSound(ModSounds.VALKYRIE_LAUGH, 0.82F, 1.0F);
                 int variant = random.nextInt(2);
                 String key = switch (getRomanceStage()) {
                     case STAGE_BELOVED -> "dialogue.manyl_mod.valkyrie.compliment.beloved." + variant;
@@ -234,11 +249,11 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case ACTION_CONFESS -> {
                 if (getRomanceStage() >= STAGE_BELOVED) {
                     spawnHeartBurst(10);
-                    playSound(ModSounds.VALKYRIE_LOVE, 0.78F, 1.0F);
+                    playSound(ModSounds.VALKYRIE_LOVE, 0.82F, 1.0F);
                     return Component.translatable("dialogue.manyl_mod.valkyrie.confess_already").getString();
                 }
                 if (getAffection() < CONFESS_THRESHOLD) {
-                    playSound(ModSounds.VALKYRIE_SIGH, 0.65F, 1.0F);
+                    playSound(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
                     return Component.translatable("dialogue.manyl_mod.valkyrie.confess_too_early").getString();
                 }
                 setRomanceStage(STAGE_BELOVED);
@@ -247,13 +262,14 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 spawnHeartBurst(18);
                 if (level() instanceof ServerLevel sl) {
                     sl.sendParticles(ModParticles.SUMMON_RUNE, getX(), getY() + 1.2D, getZ(), 18, 0.45D, 0.55D, 0.45D, 0.04D);
-                    sl.playSound(null, getX(), getY(), getZ(), ModSounds.VALKYRIE_LOVE, getSoundSource(), 0.85F, 1.0F);
+                    sl.playSound(null, getX(), getY(), getZ(), ModSounds.VALKYRIE_CONFESS, getSoundSource(), 0.88F, 1.0F);
                 }
                 return Component.translatable("dialogue.manyl_mod.valkyrie.confess_success").getString();
             }
             case ACTION_TOGGLE_SIT -> {
                 setSitting(!isSitting());
                 playSound(ModSounds.GOLEM_STEP, 0.18F, isSitting() ? 0.85F : 1.25F);
+                playSound(isSitting() ? ModSounds.VALKYRIE_SIGH : ModSounds.VALKYRIE_GREET, 0.72F, 1.0F);
                 return Component.translatable(
                         isSitting() ? "dialogue.manyl_mod.valkyrie.mode_stay" : "dialogue.manyl_mod.valkyrie.mode_follow"
                 ).getString();
@@ -267,13 +283,14 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     private String handleGift(ServerPlayer player) {
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) {
-            playSound(ModSounds.VALKYRIE_SIGH, 0.60F, 1.0F);
+            playSound(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
             return Component.translatable("dialogue.manyl_mod.valkyrie.gift_hint").getString();
         }
 
         int gain = 0;
         int jealousyDrop = 40;
         String responseKey = null;
+        SoundEvent giftSound = ModSounds.VALKYRIE_GIFT_LOVE;
 
         if (held.is(ItemTags.FLOWERS)) {
             gain = 16;
@@ -295,6 +312,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             gain = 15;
             jealousyDrop = 45;
             responseKey = "dialogue.manyl_mod.valkyrie.gift.sweet";
+            giftSound = ModSounds.VALKYRIE_GIFT_SWEET;
             restoreFromFood(held);
         } else {
             FoodProperties food = held.get(DataComponents.FOOD);
@@ -302,11 +320,13 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 gain = 10;
                 jealousyDrop = 35;
                 responseKey = "dialogue.manyl_mod.valkyrie.gift.food";
+                giftSound = ModSounds.VALKYRIE_GIFT_SWEET;
                 restoreFromFood(held);
             }
         }
 
         if (gain <= 0) {
+            playSound(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
             return Component.translatable("dialogue.manyl_mod.valkyrie.gift_hint").getString();
         }
 
@@ -317,7 +337,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         addJealousy(-jealousyDrop);
         heal(4.0F);
         setEatTicks(16);
-        playSound(ModSounds.VALKYRIE_LAUGH, 0.80F, 1.02F);
+        playSound(giftSound, 0.82F, 1.0F);
         spawnHeartBurst(12);
         return Component.translatable(responseKey).getString();
     }
@@ -366,6 +386,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         if (level().isClientSide()) return;
 
         if (rescueCooldownTicks > 0) rescueCooldownTicks--;
+        if (slapCooldownTicks > 0) slapCooldownTicks--;
 
         // Таймер скрытия меча и возврат меча в руку после шлепка ревности
         if (weaponHideTicks > 0) {
@@ -375,7 +396,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             }
         }
 
-        // Выполнение самого лёгкого удара рукой на 2 HP после того, как меч спрятан
+        // Выполнение лёгкого удара рукой на 2 HP после того, как меч спрятан
         if (pendingSlapTicks > 0) {
             pendingSlapTicks--;
             if (pendingSlapTicks == 0) {
@@ -394,18 +415,22 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         // 2. Ревность (активируется при стадии 1+ и наличии >1 девушки в отряде)
         tickJealousySystem(sl, owner);
 
-        // 3. Если ревность достигла 100%, подходит к владельцу и прячет меч для шлепка
-        if (getJealousy() >= MAX_JEALOUSY && pendingSlapTicks == 0 && owner instanceof ServerPlayer serverOwner && serverOwner.isAlive()) {
+        // 3. Если ревность достигла 100% И прошёл перерыв — подходит, прячет меч и легонько бьёт рукой
+        if (getJealousy() >= MAX_JEALOUSY
+                && slapCooldownTicks <= 0
+                && pendingSlapTicks == 0
+                && owner instanceof ServerPlayer serverOwner
+                && serverOwner.isAlive()) {
             double distSq = distanceToSqr(serverOwner);
-            if (distSq <= 6.0D) {
+            if (distSq <= 6.25D) {
                 getNavigation().stop();
                 getLookControl().setLookAt(serverOwner, 30.0F, 30.0F);
                 weaponHideTicks = 34; // прячем меч на ~1.7 сек
                 onInventoryChanged(); // убираем меч из руки
                 pendingSlapTicks = 6; // через 0.3 сек бьём голой рукой!
-            } else if (distSq <= 625.0D) {
+            } else if (distSq <= 625.0D && !isSitting()) {
                 getLookControl().setLookAt(serverOwner, 30.0F, 30.0F);
-                getNavigation().moveTo(serverOwner, 1.25D);
+                getNavigation().moveTo(serverOwner, 1.20D);
             }
         }
     }
@@ -439,13 +464,12 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 owner.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 200, 0, false, true, true));
                 sl.sendParticles(ParticleTypes.HEART, owner.getX(), owner.getY() + 1.2D, owner.getZ(), 14, 0.45D, 0.5D, 0.45D, 0.03D);
                 sl.sendParticles(ModParticles.SUMMON_RUNE, owner.getX(), owner.getY() + 0.8D, owner.getZ(), 14, 0.4D, 0.4D, 0.4D, 0.04D);
-                playSound(ModSounds.VALKYRIE_LOVE, 0.90F, 1.0F);
+                playSound(ModSounds.VALKYRIE_RESCUE, 0.90F, 1.0F);
                 if (owner instanceof ServerPlayer sp) {
                     sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_rescue"), true);
                 }
             }
         } else if (stage >= STAGE_CRUSH) {
-            // Стадия 2: мягкое исцеление + ускорение рядом и забота о сытости игрока
             if (tickCount % 120 == 0 && distSq <= 100.0D) {
                 owner.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 80, 0, true, false, true));
                 owner.addEffect(new MobEffectInstance(MobEffects.SPEED, 80, 0, true, false, true));
@@ -459,6 +483,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             owner.heal(2.0F);
             owner.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, true, false, true));
             spawnHeartBurst(5);
+            playSound(ModSounds.VALKYRIE_LOVE, 0.72F, 1.0F);
             if (owner instanceof ServerPlayer sp && stage >= STAGE_FRIEND) {
                 sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_care_heal"), true);
             }
@@ -472,6 +497,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 sp.getFoodData().eat(3, 0.4F);
                 if (getHunger() >= 60) setHunger(getHunger() - 10);
                 spawnHeartBurst(4);
+                playSound(ModSounds.VALKYRIE_GIFT_SWEET, 0.72F, 1.0F);
                 sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_share_food"), true);
             }
         }
@@ -491,36 +517,37 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     }
 
     private void tickJealousySystem(ServerLevel sl, LivingEntity owner) {
-        if (tickCount % 20 != 0) return;
+        // Проверка каждые 3 секунды (60 тиков) — спокойный, комфортный ритм без постоянного спама ударами
+        if (tickCount % 60 != 0) return;
 
         if (getRomanceStage() < STAGE_FRIEND || getOwnerUuid() == null) {
-            if (getJealousy() > 0) addJealousy(-2);
+            if (getJealousy() > 0) addJealousy(-4);
             return;
         }
 
         int totalValkyries = ManylSavedData.getValkyrieCount(sl.getServer(), getOwnerUuid());
         if (totalValkyries <= 1) {
-            if (getJealousy() > 0) addJealousy(-2);
+            if (getJealousy() > 0) addJealousy(-5);
             return;
         }
 
         List<ValkyrieGolemEntity> nearbyRivals = sl.getEntitiesOfClass(
                 ValkyrieGolemEntity.class,
-                getBoundingBox().inflate(24.0D, 8.0D, 24.0D),
+                getBoundingBox().inflate(18.0D, 6.0D, 18.0D),
                 other -> other != this && other.isAlive() && getOwnerUuid().equals(other.getOwnerUuid())
         );
 
         if (!nearbyRivals.isEmpty()) {
-            int gain = getRomanceStage() >= STAGE_CRUSH ? 3 : 2;
-            addJealousy(gain);
-        } else if (tickCount % 80 == 0) {
+            // +1 каждые 3 сек (~5 минут с 0% до 100%, ~75 сек с 75% до 100%)
+            addJealousy(getRomanceStage() >= STAGE_CRUSH ? 2 : 1);
+        } else if (tickCount % 240 == 0) {
             addJealousy(1);
         }
 
         if (getJealousy() >= 50 && !jealousWarned50) {
             jealousWarned50 = true;
             long now = sl.getGameTime();
-            if (now - lastJealousWarnTick >= 300L) {
+            if (now - lastJealousWarnTick >= 400L) {
                 lastJealousWarnTick = now;
                 playSound(ModSounds.VALKYRIE_JEALOUS, 0.78F, 1.0F);
                 if (owner instanceof ServerPlayer sp) {
@@ -540,14 +567,15 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         swing(InteractionHand.MAIN_HAND);
         setAttackTicks(12);
         sp.hurtServer(sl, damageSources().mobAttack(this), 2.0F);
-        sp.knockback(0.28D, getX() - sp.getX(), getZ() - sp.getZ());
+        sp.knockback(0.25D, getX() - sp.getX(), getZ() - sp.getZ());
 
         sl.playSound(null, getX(), getY(), getZ(), SoundEvents.PLAYER_ATTACK_WEAK, getSoundSource(), 0.7F, 1.15F);
-        playSound(ModSounds.VALKYRIE_JEALOUS, 0.85F, 1.04F);
+        playSound(ModSounds.VALKYRIE_JEALOUS, 0.85F, 1.02F);
         sl.sendParticles(ParticleTypes.ANGRY_VILLAGER, getX(), getY() + 1.85D, getZ(), 5, 0.25D, 0.2D, 0.25D, 0.02D);
 
-        // Шкала ревности падает на 25% (со 100% до 75%)
+        // Шкала ревности падает на 25% (100% -> 75%) + 45 сек спокойствия
         setJealousy(Math.max(0, getJealousy() - 25));
+        slapCooldownTicks = 900;
         sp.displayClientMessage(Component.translatable("msg.manyl_mod.valkyrie_jealous_slap"), false);
     }
 

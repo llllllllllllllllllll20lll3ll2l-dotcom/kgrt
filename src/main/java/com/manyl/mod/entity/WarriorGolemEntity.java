@@ -15,14 +15,15 @@ import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.Level;
 
 /**
- * Голем-воин (макс. 5 на игрока).
+ * Голем-воин (без ограничений по количеству).
  * Автоматически берёт в руку лучшее оружие из своего инвентаря (отображается в 3D и усиливает удар),
- * а также поддерживает команды !guard и !target.
+ * никогда не атакует своего владельца и союзных стражей.
  */
 public class WarriorGolemEntity extends BaseGolemEntity {
     public WarriorGolemEntity(EntityType<? extends PathfinderMob> type, Level level) {
@@ -38,6 +39,30 @@ public class WarriorGolemEntity extends BaseGolemEntity {
         return false;
     }
 
+    public boolean isFriendlyEntity(LivingEntity entity) {
+        if (entity == null) return false;
+        if (entity instanceof Player player && getOwnerUuid() != null && getOwnerUuid().equals(player.getUUID())) {
+            return true;
+        }
+        if (entity instanceof BaseGolemEntity otherGolem) {
+            if (getOwnerUuid() != null && getOwnerUuid().equals(otherGolem.getOwnerUuid())) {
+                return true;
+            }
+            if (getOwnerUuid() == null && otherGolem.getOwnerUuid() == null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void setTarget(LivingEntity target) {
+        if (target != null && isFriendlyEntity(target)) {
+            return;
+        }
+        super.setTarget(target);
+    }
+
     @Override
     protected void onInventoryChanged() {
         if (level().isClientSide()) return;
@@ -49,7 +74,6 @@ public class WarriorGolemEntity extends BaseGolemEntity {
         ItemStack best = ItemStack.EMPTY;
         double bestScore = -1.0D;
 
-        // Ищем лучшее оружие в слотах 1..6
         for (int i = 1; i < INVENTORY_SIZE; i++) {
             ItemStack s = inventory.getItem(i);
             if (s.isEmpty() || s.has(DataComponents.FOOD)) continue;
@@ -82,7 +106,7 @@ public class WarriorGolemEntity extends BaseGolemEntity {
         if (stack.is(ItemTags.SWORDS)) dmg += 2.0D;
         else if (stack.is(ItemTags.AXES)) dmg += 1.5D;
         if (dmg > 0.0D) return 10.0D + dmg;
-        return 1.0D; // любой неоружейный предмет в руке как запасной вариант
+        return 1.0D;
     }
 
     @Override
@@ -91,13 +115,23 @@ public class WarriorGolemEntity extends BaseGolemEntity {
         this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.25D, true));
         this.goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.15D, 5.0F, 2.5F));
 
-        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+        this.targetSelector.addGoal(1, new HurtByTargetGoal(this) {
+            @Override
+            public boolean canUse() {
+                LivingEntity lastHurt = WarriorGolemEntity.this.getLastHurtByMob();
+                if (lastHurt != null && isFriendlyEntity(lastHurt)) {
+                    WarriorGolemEntity.this.setLastHurtByMob(null);
+                    return false;
+                }
+                return super.canUse();
+            }
+        });
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Monster.class, 10, true, false,
                 (target, level) -> matchesTargetFilter(target)));
     }
 
     private boolean matchesTargetFilter(LivingEntity target) {
-        if (target instanceof BaseGolemEntity) return false;
+        if (isFriendlyEntity(target)) return false;
         String filter = getOwnerSettings().getTargetFilter();
         if (filter == null || filter.isEmpty()) return true;
         String path = BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()).getPath();
@@ -108,6 +142,12 @@ public class WarriorGolemEntity extends BaseGolemEntity {
     public void aiStep() {
         super.aiStep();
         if (level().isClientSide()) return;
+
+        // Сброс цели, если по каким-то причинам целью оказался владелец или союзник
+        LivingEntity curTarget = getTarget();
+        if (curTarget != null && isFriendlyEntity(curTarget)) {
+            super.setTarget(null);
+        }
 
         PlayerGolemSettings settings = getOwnerSettings();
         String guardMode = settings.getGuardMode();
@@ -123,7 +163,7 @@ public class WarriorGolemEntity extends BaseGolemEntity {
             LivingEntity owner = getOwnerEntity();
             if (owner != null && distanceToSqr(owner) < 256.0D) {
                 LivingEntity attacker = owner.getLastHurtByMob();
-                if (attacker != null && attacker.isAlive() && !(attacker instanceof BaseGolemEntity)) {
+                if (attacker != null && attacker.isAlive() && !isFriendlyEntity(attacker)) {
                     setTarget(attacker);
                 }
             }

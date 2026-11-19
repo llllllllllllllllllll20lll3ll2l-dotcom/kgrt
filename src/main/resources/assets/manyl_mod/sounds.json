@@ -34,8 +34,8 @@
   "valkyrie_laugh": {
     "subtitle": "subtitles.manyl_mod.valkyrie_laugh",
     "sounds": [
-      { "name": "manyl_mod:valkyrie_laugh", "volume": 0.75 },
-      { "name": "manyl_mod:valkyrie_giggle", "volume": 0.75 }
+      { "name": "manyl_mod:valkyrie_laugh", "volume": 0.78 },
+      { "name": "manyl_mod:valkyrie_giggle", "volume": 0.78 }
     ]
   },
   "valkyrie_hurt": {
@@ -51,18 +51,58 @@
   },
   "valkyrie_greet": {
     "subtitle": "subtitles.manyl_mod.valkyrie_greet",
-    "sounds": [{ "name": "manyl_mod:valkyrie_greet", "volume": 0.75 }]
+    "sounds": [{ "name": "manyl_mod:valkyrie_greet", "volume": 0.78 }]
   },
   "valkyrie_jealous": {
     "subtitle": "subtitles.manyl_mod.valkyrie_jealous",
-    "sounds": [{ "name": "manyl_mod:valkyrie_jealous", "volume": 0.80 }]
+    "sounds": [{ "name": "manyl_mod:valkyrie_jealous", "volume": 0.82 }]
   },
   "valkyrie_love": {
     "subtitle": "subtitles.manyl_mod.valkyrie_love",
-    "sounds": [{ "name": "manyl_mod:valkyrie_love", "volume": 0.80 }]
+    "sounds": [{ "name": "manyl_mod:valkyrie_love", "volume": 0.82 }]
   },
   "valkyrie_sigh": {
     "subtitle": "subtitles.manyl_mod.valkyrie_sigh",
-    "sounds": [{ "name": "manyl_mod:valkyrie_sigh", "volume": 0.70 }]
+    "sounds": [{ "name": "manyl_mod:valkyrie_sigh", "volume": 0.72 }]
+  },
+  "valkyrie_wild_greet": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_greet",
+    "sounds": [{ "name": "manyl_mod:valkyrie_wild_greet", "volume": 0.82 }]
+  },
+  "valkyrie_recruited": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_greet",
+    "sounds": [{ "name": "manyl_mod:valkyrie_recruited", "volume": 0.82 }]
+  },
+  "valkyrie_talk_ally": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_greet",
+    "sounds": [{ "name": "manyl_mod:valkyrie_talk_ally", "volume": 0.82 }]
+  },
+  "valkyrie_talk_friend": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_greet",
+    "sounds": [{ "name": "manyl_mod:valkyrie_talk_friend", "volume": 0.82 }]
+  },
+  "valkyrie_talk_crush": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_love",
+    "sounds": [{ "name": "manyl_mod:valkyrie_talk_crush", "volume": 0.82 }]
+  },
+  "valkyrie_talk_beloved": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_love",
+    "sounds": [{ "name": "manyl_mod:valkyrie_talk_beloved", "volume": 0.82 }]
+  },
+  "valkyrie_gift_love": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_laugh",
+    "sounds": [{ "name": "manyl_mod:valkyrie_gift_love", "volume": 0.82 }]
+  },
+  "valkyrie_gift_sweet": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_laugh",
+    "sounds": [{ "name": "manyl_mod:valkyrie_gift_sweet", "volume": 0.82 }]
+  },
+  "valkyrie_confess": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_love",
+    "sounds": [{ "name": "manyl_mod:valkyrie_confess", "volume": 0.85 }]
+  },
+  "valkyrie_rescue": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_love",
+    "sounds": [{ "name": "manyl_mod:valkyrie_rescue", "volume": 0.88 }]
   }
 }

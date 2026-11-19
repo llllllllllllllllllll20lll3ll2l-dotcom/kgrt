@@ -15,10 +15,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 
 /**
- * Экран встроенного инвентаря прислужника:
- * - Превью живой 3D-модели голема;
- * - Полосы сытости (голода) и здоровья;
- * - Слот под еду (слева) и 6 слотов груза (3x2 справа).
+ * Экран встроенного инвентаря прислужника с боковой панелью управления и роспуска отряда.
  */
 public class GolemInventoryScreen extends AbstractContainerScreen<GolemInventoryMenu> {
     private static final Identifier TEXTURE = ManylMod.id("textures/gui/golem_inventory.png");
@@ -26,14 +23,18 @@ public class GolemInventoryScreen extends AbstractContainerScreen<GolemInventory
     private static final Identifier HUNGER_HALF = ManylMod.id("textures/gui/icons/hunger_half.png");
     private static final Identifier HUNGER_EMPTY = ManylMod.id("textures/gui/icons/hunger_empty.png");
 
+    private static final int SIDE_W = 82;
+    private static final int SIDE_H = 84;
+
+    private Button sitToggleBtn;
+
     public GolemInventoryScreen(GolemInventoryMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         this.imageWidth = 176;
         this.imageHeight = 166;
-        this.inventoryLabelY = 72;
+        this.inventoryLabelX = 63;
+        this.inventoryLabelY = 75;
     }
-
-    private Button sitToggleBtn;
 
     @Override
     protected void init() {
@@ -42,9 +43,24 @@ public class GolemInventoryScreen extends AbstractContainerScreen<GolemInventory
         this.titleLabelY = 6;
         BaseGolemEntity golem = this.menu.getGolem();
         if (golem != null) {
-            this.sitToggleBtn = this.addRenderableWidget(Button.builder(sitButtonLabel(golem), b -> {
-                ClientPlayNetworking.send(new ModNetworking.ToggleGolemSitPayload(golem.getId()));
-            }).pos(this.leftPos + 114, this.topPos + 4).size(56, 13).build());
+            int sx = this.leftPos + this.imageWidth + 4;
+            int sy = this.topPos;
+            this.sitToggleBtn = this.addRenderableWidget(Button.builder(sitButtonLabel(golem), b ->
+                    ClientPlayNetworking.send(new ModNetworking.ToggleGolemSitPayload(golem.getId())))
+                    .pos(sx + 6, sy + 18)
+                    .size(SIDE_W - 12, 18)
+                    .build());
+
+            this.addRenderableWidget(Button.builder(Component.translatable("gui.manyl_mod.dismiss_one"), b -> {
+                ClientPlayNetworking.send(new ModNetworking.DismissGolemPayload(golem.getId()));
+                this.onClose();
+            }).pos(sx + 6, sy + 39).size(SIDE_W - 12, 18).build());
+
+            this.addRenderableWidget(Button.builder(Component.translatable("gui.manyl_mod.squad_manage"), b ->
+                    ClientPlayNetworking.send(new ModNetworking.RequestOpenManagementPayload()))
+                    .pos(sx + 6, sy + 60)
+                    .size(SIDE_W - 12, 18)
+                    .build());
         }
     }
 
@@ -68,26 +84,33 @@ public class GolemInventoryScreen extends AbstractContainerScreen<GolemInventory
         int y = this.topPos;
         graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
 
+        // Боковая панель управления справа без перекрытия текстов и слотов
+        int sx = x + this.imageWidth + 4;
+        int sy = y;
+        graphics.fill(sx, sy, sx + SIDE_W, sy + SIDE_H, 0xEE181C2B);
+        graphics.fill(sx, sy, sx + SIDE_W, sy + 1, 0xFFD9AE5F);
+        graphics.fill(sx, sy + SIDE_H - 1, sx + SIDE_W, sy + SIDE_H, 0xFFD9AE5F);
+        graphics.fill(sx, sy, sx + 1, sy + SIDE_H, 0xFFD9AE5F);
+        graphics.fill(sx + SIDE_W - 1, sy, sx + SIDE_W, sy + SIDE_H, 0xFFD9AE5F);
+        graphics.drawCenteredString(this.font, Component.translatable("gui.manyl_mod.controls"),
+                sx + SIDE_W / 2, sy + 6, 0xFFE8C87A);
+
         BaseGolemEntity golem = this.menu.getGolem();
         if (golem != null) {
-            // Превью 3D-модели голема в левом окне
             InventoryScreen.renderEntityInInventoryFollowsMouse(
                     graphics, x + 8, y + 17, x + 56, y + 73,
                     19, 0.06F, (float) mouseX, (float) mouseY, golem
             );
 
-            // Полоса сытости (голод 0..100)
             int hunger = golem.getHunger();
             int fillWidth = Math.round(90.0F * hunger / (float) BaseGolemEntity.MAX_HUNGER);
             if (fillWidth > 0) {
                 graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, x + 65, y + 20, 176, 0, fillWidth, 7, 256, 256);
             }
 
-            // Иконка состояния голода рядом с полосой
             Identifier hungerIcon = hunger > 50 ? HUNGER_FULL : (hunger > 15 ? HUNGER_HALF : HUNGER_EMPTY);
             graphics.blit(RenderPipelines.GUI_TEXTURED, hungerIcon, x + 157, y + 19, 0, 0, 9, 9, 9, 9);
 
-            // Тонкая полоска здоровья под окном превью
             int hpWidth = Math.round(48.0F * (golem.getHealth() / golem.getMaxHealth()));
             if (hpWidth > 0) {
                 graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, x + 8, y + 74, 176, 10, hpWidth, 3, 256, 256);
@@ -101,10 +124,10 @@ public class GolemInventoryScreen extends AbstractContainerScreen<GolemInventory
         BaseGolemEntity golem = this.menu.getGolem();
         if (golem != null) {
             String hungerText = golem.getHunger() + "%";
-            graphics.drawString(this.font, hungerText, 66, 30, 0xFFDADEE8, false);
+            graphics.drawString(this.font, hungerText, 62, 29, 0xFFDADEE8, false);
         }
         graphics.drawString(this.font, Component.translatable("gui.manyl_mod.food_slot"), 63, 58, 0xFFD4A85C, false);
-        graphics.drawString(this.font, Component.translatable("gui.manyl_mod.cargo"), 92, 30, 0xFFB8C0D0, false);
-        graphics.drawString(this.font, this.playerInventoryTitle, 8, this.inventoryLabelY, 0xFFB8C0D0, false);
+        graphics.drawString(this.font, Component.translatable("gui.manyl_mod.cargo"), 94, 29, 0xFFB8C0D0, false);
+        graphics.drawString(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, 0xFFB8C0D0, false);
     }
 }

@@ -166,6 +166,15 @@ public final class ModNetworking {
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
+    public record DismissGolemPayload(int entityId) implements CustomPacketPayload {
+        public static final Type<DismissGolemPayload> TYPE = new Type<>(ManylMod.id("dismiss_golem"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, DismissGolemPayload> CODEC =
+                ByteBufCodecs.VAR_INT.map(DismissGolemPayload::new, DismissGolemPayload::entityId).cast();
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
     public static void registerPayloads() {
         PayloadTypeRegistry.playS2C().register(OpenStaffMenuPayload.TYPE, OpenStaffMenuPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncGolemStatePayload.TYPE, SyncGolemStatePayload.CODEC);
@@ -177,6 +186,7 @@ public final class ModNetworking {
         PayloadTypeRegistry.playC2S().register(RequestOpenManagementPayload.TYPE, RequestOpenManagementPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ValkyrieRomanceActionPayload.TYPE, ValkyrieRomanceActionPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ToggleGolemSitPayload.TYPE, ToggleGolemSitPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(DismissGolemPayload.TYPE, DismissGolemPayload.CODEC);
     }
 
     public static void registerServerReceivers() {
@@ -238,6 +248,36 @@ public final class ModNetworking {
                         && golem.distanceToSqr(player) <= 100.0D) {
                     golem.setSitting(!golem.isSitting());
                     golem.playSound(ModSounds.GOLEM_STEP, 0.16F, golem.isSitting() ? 0.8F : 1.2F);
+                }
+            });
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(DismissGolemPayload.TYPE, (payload, ctx) -> {
+            ServerPlayer player = ctx.player();
+            int entityId = payload.entityId();
+            ctx.server().execute(() -> {
+                Entity entity = player.level().getEntity(entityId);
+                if (entity instanceof BaseGolemEntity golem && golem.isAlive()
+                        && player.getUUID().equals(golem.getOwnerUuid())
+                        && golem.distanceToSqr(player) <= 100.0D) {
+                    for (int i = 0; i < BaseGolemEntity.INVENTORY_SIZE; i++) {
+                        ItemStack stack = golem.getGolemInventory().getItem(i);
+                        if (!stack.isEmpty()) {
+                            if (!player.getInventory().add(stack)) {
+                                player.drop(stack, false);
+                            }
+                            golem.getGolemInventory().setItem(i, ItemStack.EMPTY);
+                        }
+                    }
+                    if (golem.level() instanceof ServerLevel gl) {
+                        gl.sendParticles(ModParticles.SUMMON_RUNE, golem.getX(), golem.getY() + 0.6D, golem.getZ(), 12, 0.25D, 0.3D, 0.25D, 0.03D);
+                    }
+                    player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                            ModSounds.GOLEM_RECALL, player.getSoundSource(), 0.65F, 1.0F);
+                    player.displayClientMessage(Component.translatable("msg.manyl_mod.dismissed_one",
+                            Component.translatable(golem.getRole().getTranslationKey())), true);
+                    golem.discard();
+                    sendStateSync(player);
                 }
             });
         });

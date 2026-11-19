@@ -7,7 +7,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 
 /**
- * Регистрация звуковых эффектов Manyl_mod (включая живую женскую озвучку Воительницы).
+ * Регистрация звуковых эффектов Manyl_mod (включая полную женскую озвучку Воительницы).
  */
 public final class ModSounds {
     public static final SoundEvent GOLEM_SUMMON = register("golem_summon");
@@ -26,6 +26,17 @@ public final class ModSounds {
     public static final SoundEvent VALKYRIE_JEALOUS = register("valkyrie_jealous");
     public static final SoundEvent VALKYRIE_LOVE = register("valkyrie_love");
     public static final SoundEvent VALKYRIE_SIGH = register("valkyrie_sigh");
+
+    public static final SoundEvent VALKYRIE_WILD_GREET = register("valkyrie_wild_greet");
+    public static final SoundEvent VALKYRIE_RECRUITED = register("valkyrie_recruited");
+    public static final SoundEvent VALKYRIE_TALK_ALLY = register("valkyrie_talk_ally");
+    public static final SoundEvent VALKYRIE_TALK_FRIEND = register("valkyrie_talk_friend");
+    public static final SoundEvent VALKYRIE_TALK_CRUSH = register("valkyrie_talk_crush");
+    public static final SoundEvent VALKYRIE_TALK_BELOVED = register("valkyrie_talk_beloved");
+    public static final SoundEvent VALKYRIE_GIFT_LOVE = register("valkyrie_gift_love");
+    public static final SoundEvent VALKYRIE_GIFT_SWEET = register("valkyrie_gift_sweet");
+    public static final SoundEvent VALKYRIE_CONFESS = register("valkyrie_confess");
+    public static final SoundEvent VALKYRIE_RESCUE = register("valkyrie_rescue");
 
     private static SoundEvent register(String name) {
         Identifier id = ManylMod.id(name);

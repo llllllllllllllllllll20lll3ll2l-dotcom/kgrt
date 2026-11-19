@@ -73,6 +73,12 @@ public class ValkyrieDialogueScreen extends Screen {
                 .size(16, 16)
                 .build());
 
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.manyl_mod.squad_short"), b ->
+                        ClientPlayNetworking.send(new ModNetworking.RequestOpenManagementPayload()))
+                .pos(left + PANEL_W - 76, top + 8)
+                .size(48, 16)
+                .build());
+
         this.recruitBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.recruit"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_RECRUIT))
