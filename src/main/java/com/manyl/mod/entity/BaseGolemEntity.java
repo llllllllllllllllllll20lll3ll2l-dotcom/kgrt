@@ -4,6 +4,7 @@ import com.manyl.mod.data.ManylSavedData;
 import com.manyl.mod.data.PlayerGolemSettings;
 import com.manyl.mod.menu.GolemInventoryMenu;
 import com.manyl.mod.network.ModNetworking;
+import com.manyl.mod.registry.ModItems;
 import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;

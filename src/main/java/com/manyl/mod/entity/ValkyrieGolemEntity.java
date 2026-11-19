@@ -527,7 +527,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             if (getDaydreamTicks() > 0) {
                 setDaydreamTicks(0);
                 daydreamCooldownTicks = 240;
-                playSound(ModSounds.VALKYRIE_SHY, 0.72F, 1.05F);
+                playSound(ModSounds.VALKYRIE_SIGH, 0.72F, 1.05F);
                 sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.18D, 0.12D, 0.18D, 0.01D);
             }
             return;
