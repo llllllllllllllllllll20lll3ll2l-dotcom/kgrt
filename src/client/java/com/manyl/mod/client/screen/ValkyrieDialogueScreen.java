@@ -17,8 +17,8 @@ import java.util.List;
  * Диалоговый экран общения, романтических плюшек, ревности и отношений с Големом-воительницей.
  */
 public class ValkyrieDialogueScreen extends Screen {
-    private static final int PANEL_W = 296;
-    private static final int PANEL_H = 266;
+    private static final int PANEL_W = 312;
+    private static final int PANEL_H = 304;
 
     private final int entityId;
     private boolean tamed;
@@ -37,7 +37,12 @@ public class ValkyrieDialogueScreen extends Screen {
     private Button patBtn;
     private Button hugBtn;
     private Button kissBtn;
+    private Button blowKissBtn;
+    private Button holdHandsBtn;
     private Button danceBtn;
+    private Button saluteBtn;
+    private Button shyBtn;
+    private Button bowBtn;
     private Button weddingBtn;
     private Button modeBtn;
     private Button gearBtn;
@@ -100,77 +105,112 @@ public class ValkyrieDialogueScreen extends Screen {
                         Component.translatable("gui.manyl_mod.valkyrie.talk"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_TALK))
                 .pos(left + 14, top + 130)
-                .size(halfW, 19)
+                .size(halfW, 18)
                 .build());
 
         this.complimentBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.compliment"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_COMPLIMENT))
                 .pos(left + 20 + halfW, top + 130)
-                .size(halfW, 19)
+                .size(halfW, 18)
                 .build());
 
         this.giftBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.gift"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_GIFT))
-                .pos(left + 14, top + 152)
-                .size(halfW, 19)
+                .pos(left + 14, top + 151)
+                .size(halfW, 18)
                 .build());
 
         this.confessBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.confess"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_CONFESS))
-                .pos(left + 20 + halfW, top + 152)
-                .size(halfW, 19)
+                .pos(left + 20 + halfW, top + 151)
+                .size(halfW, 18)
                 .build());
 
         this.patBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.pat"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_PAT))
-                .pos(left + 14, top + 174)
-                .size(thirdW, 19)
+                .pos(left + 14, top + 172)
+                .size(thirdW, 18)
                 .build());
 
         this.hugBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.hug"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_HUG))
-                .pos(left + 18 + thirdW, top + 174)
-                .size(thirdW, 19)
+                .pos(left + 18 + thirdW, top + 172)
+                .size(thirdW, 18)
                 .build());
 
         this.kissBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.kiss"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_KISS))
-                .pos(left + 22 + thirdW * 2, top + 174)
-                .size(PANEL_W - 36 - thirdW * 2, 19)
+                .pos(left + 22 + thirdW * 2, top + 172)
+                .size(PANEL_W - 36 - thirdW * 2, 18)
+                .build());
+
+        this.blowKissBtn = this.addRenderableWidget(Button.builder(
+                        Component.translatable("gui.manyl_mod.valkyrie.blow_kiss"),
+                        b -> sendAction(ValkyrieGolemEntity.ACTION_BLOW_KISS))
+                .pos(left + 14, top + 193)
+                .size(thirdW, 18)
+                .build());
+
+        this.holdHandsBtn = this.addRenderableWidget(Button.builder(
+                        Component.translatable("gui.manyl_mod.valkyrie.hold_hands"),
+                        b -> sendAction(ValkyrieGolemEntity.ACTION_HOLD_HANDS))
+                .pos(left + 18 + thirdW, top + 193)
+                .size(thirdW, 18)
                 .build());
 
         this.danceBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.dance"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_DANCE))
-                .pos(left + 14, top + 196)
-                .size(halfW, 19)
+                .pos(left + 22 + thirdW * 2, top + 193)
+                .size(PANEL_W - 36 - thirdW * 2, 18)
+                .build());
+
+        this.saluteBtn = this.addRenderableWidget(Button.builder(
+                        Component.translatable("gui.manyl_mod.valkyrie.salute"),
+                        b -> sendAction(ValkyrieGolemEntity.ACTION_SALUTE))
+                .pos(left + 14, top + 214)
+                .size(thirdW, 18)
+                .build());
+
+        this.shyBtn = this.addRenderableWidget(Button.builder(
+                        Component.translatable("gui.manyl_mod.valkyrie.shy"),
+                        b -> sendAction(ValkyrieGolemEntity.ACTION_SHY))
+                .pos(left + 18 + thirdW, top + 214)
+                .size(thirdW, 18)
+                .build());
+
+        this.bowBtn = this.addRenderableWidget(Button.builder(
+                        Component.translatable("gui.manyl_mod.valkyrie.bow"),
+                        b -> sendAction(ValkyrieGolemEntity.ACTION_BOW))
+                .pos(left + 22 + thirdW * 2, top + 214)
+                .size(PANEL_W - 36 - thirdW * 2, 18)
                 .build());
 
         this.weddingBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.wedding"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_WEDDING))
-                .pos(left + 20 + halfW, top + 196)
-                .size(halfW, 19)
+                .pos(left + 14, top + 235)
+                .size(halfW, 18)
                 .build());
 
         this.modeBtn = this.addRenderableWidget(Button.builder(
                         modeLabel(),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_TOGGLE_SIT))
-                .pos(left + 14, top + 218)
-                .size(halfW, 19)
+                .pos(left + 20 + halfW, top + 235)
+                .size(halfW, 18)
                 .build());
 
         this.gearBtn = this.addRenderableWidget(Button.builder(
                         Component.translatable("gui.manyl_mod.valkyrie.gear"),
                         b -> sendAction(ValkyrieGolemEntity.ACTION_OPEN_INVENTORY))
-                .pos(left + 20 + halfW, top + 218)
-                .size(halfW, 19)
+                .pos(left + 14, top + 256)
+                .size(PANEL_W - 28, 18)
                 .build());
 
         rebuildButtonsState();
@@ -194,7 +234,12 @@ public class ValkyrieDialogueScreen extends Screen {
         if (patBtn != null) patBtn.visible = tamed;
         if (hugBtn != null) hugBtn.visible = tamed;
         if (kissBtn != null) kissBtn.visible = tamed;
+        if (blowKissBtn != null) blowKissBtn.visible = tamed;
+        if (holdHandsBtn != null) holdHandsBtn.visible = tamed;
         if (danceBtn != null) danceBtn.visible = tamed;
+        if (saluteBtn != null) saluteBtn.visible = tamed;
+        if (shyBtn != null) shyBtn.visible = tamed;
+        if (bowBtn != null) bowBtn.visible = tamed;
         if (weddingBtn != null) {
             weddingBtn.visible = tamed;
             weddingBtn.setMessage(Component.translatable(

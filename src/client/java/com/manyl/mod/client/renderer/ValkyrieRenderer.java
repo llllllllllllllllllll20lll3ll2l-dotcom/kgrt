@@ -86,7 +86,7 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
 
     @Override
     protected void scale(GolemRenderState state, PoseStack poseStack) {
-        float s = 1.0F / 24.0F;
+        float s = 1.0F / 34.08F;
         poseStack.scale(s, s, s);
     }
 

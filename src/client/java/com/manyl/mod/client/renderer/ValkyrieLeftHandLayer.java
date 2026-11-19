@@ -24,10 +24,10 @@ public class ValkyrieLeftHandLayer extends RenderLayer<GolemRenderState, Valkyri
         }
         matrices.pushPose();
         this.getParentModel().translateToLeftHand(matrices);
-        matrices.translate(0.0F, 11.6F, -1.6F);
+        matrices.translate(0.0F, 2.13F, -2.27F);
         matrices.mulPose(Axis.XP.rotationDegrees(-90.0F));
         matrices.mulPose(Axis.YP.rotationDegrees(180.0F));
-        matrices.scale(21.0F, 21.0F, 21.0F);
+        matrices.scale(29.82F, 29.82F, 29.82F);
 
         state.offhandItem.submit(matrices, commandQueue, light, OverlayTexture.NO_OVERLAY, state.outlineColor);
         matrices.popPose();

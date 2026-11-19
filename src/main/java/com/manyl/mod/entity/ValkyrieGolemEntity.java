@@ -72,6 +72,11 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public static final int ACTION_KISS = 9;
     public static final int ACTION_DANCE = 10;
     public static final int ACTION_WEDDING = 11;
+    public static final int ACTION_BLOW_KISS = 12;
+    public static final int ACTION_HOLD_HANDS = 13;
+    public static final int ACTION_SALUTE = 14;
+    public static final int ACTION_SHY = 15;
+    public static final int ACTION_BOW = 16;
 
     public static final int ANIM_NONE = 0;
     public static final int ANIM_PAT = 1;
@@ -79,6 +84,12 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public static final int ANIM_KISS = 3;
     public static final int ANIM_DANCE = 4;
     public static final int ANIM_WEDDING = 5;
+    public static final int ANIM_BLOW_KISS = 6;
+    public static final int ANIM_HOLD_HANDS = 7;
+    public static final int ANIM_SALUTE = 8;
+    public static final int ANIM_SHY = 9;
+    public static final int ANIM_SLAP = 10;
+    public static final int ANIM_BOW = 11;
 
     public static final int PHASE_NONE = 0;
     public static final int PHASE_LOOK_AROUND = 1;
@@ -112,6 +123,11 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     private long lastHugTick = -1000L;
     private long lastKissTick = -1000L;
     private long lastDanceTick = -1000L;
+    private long lastBlowKissTick = -1000L;
+    private long lastHoldHandsTick = -1000L;
+    private long lastSaluteTick = -1000L;
+    private long lastShyTick = -1000L;
+    private long lastBowTick = -1000L;
     private long lastWeddingBuffTick = -1000L;
     private long lastHeartParticleTick = 0L;
     private long lastAttackVoiceTick = -1000L;
@@ -482,6 +498,66 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 playVoice(ModSounds.VALKYRIE_SIGH, 0.74F, 1.0F);
                 return new RomanceActionOutcome(Component.translatable("dialogue.manyl_mod.valkyrie.anim.wedding_need_ring").getString(), false);
             }
+            case ACTION_BLOW_KISS -> {
+                if (getRomanceStage() < STAGE_FRIEND) {
+                    playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
+                    return new RomanceActionOutcome(Component.translatable("dialogue.manyl_mod.valkyrie.anim.blow_kiss.too_early").getString(), false);
+                }
+                if (now - lastBlowKissTick >= 200L) {
+                    lastBlowKissTick = now;
+                    addAffection(6);
+                    addJealousy(-20);
+                }
+                startInteractionAnim(ANIM_BLOW_KISS, player);
+                playVoice(ModSounds.VALKYRIE_LAUGH, 0.85F, 1.05F);
+                spawnHeartBurst(8);
+                return new RomanceActionOutcome(Component.translatable("dialogue.manyl_mod.valkyrie.anim.blow_kiss").getString(), true);
+            }
+            case ACTION_HOLD_HANDS -> {
+                if (getRomanceStage() < STAGE_FRIEND) {
+                    playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.0F);
+                    return new RomanceActionOutcome(Component.translatable("dialogue.manyl_mod.valkyrie.anim.hold_hands.too_early").getString(), false);
+                }
+                if (now - lastHoldHandsTick >= 200L) {
+                    lastHoldHandsTick = now;
+                    addAffection(6);
+                    addJealousy(-20);
+                }
+                startInteractionAnim(ANIM_HOLD_HANDS, player);
+                playVoice(ModSounds.VALKYRIE_LOVE, 0.82F, 1.02F);
+                spawnHeartBurst(7);
+                return new RomanceActionOutcome(Component.translatable("dialogue.manyl_mod.valkyrie.anim.hold_hands").getString(), true);
+            }
+            case ACTION_SALUTE -> {
+                if (now - lastSaluteTick >= 160L) {
+                    lastSaluteTick = now;
+                    addAffection(3);
+                }
+                startInteractionAnim(ANIM_SALUTE, player);
+                playVoice(ModSounds.VALKYRIE_GREET, 0.85F, 1.02F);
+                return new RomanceActionOutcome(Component.translatable("dialogue.manyl_mod.valkyrie.anim.salute").getString(), true);
+            }
+            case ACTION_SHY -> {
+                if (now - lastShyTick >= 180L) {
+                    lastShyTick = now;
+                    addAffection(4);
+                    addJealousy(-10);
+                }
+                startInteractionAnim(ANIM_SHY, player);
+                playVoice(ModSounds.VALKYRIE_DAYDREAM, 0.78F, 1.04F);
+                spawnHeartBurst(5);
+                return new RomanceActionOutcome(Component.translatable("dialogue.manyl_mod.valkyrie.anim.shy").getString(), true);
+            }
+            case ACTION_BOW -> {
+                if (now - lastBowTick >= 180L) {
+                    lastBowTick = now;
+                    addAffection(4);
+                }
+                startInteractionAnim(ANIM_BOW, player);
+                playVoice(ModSounds.VALKYRIE_GREET, 0.82F, 0.98F);
+                spawnHeartBurst(4);
+                return new RomanceActionOutcome(Component.translatable("dialogue.manyl_mod.valkyrie.anim.bow").getString(), true);
+            }
             case ACTION_TOGGLE_SIT -> {
                 setSitting(!isSitting());
                 playSound(ModSounds.GOLEM_STEP, 0.18F, isSitting() ? 0.85F : 1.25F);
@@ -794,6 +870,12 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case ANIM_KISS -> 75;
             case ANIM_DANCE -> 100;
             case ANIM_WEDDING -> 130;
+            case ANIM_BLOW_KISS -> 60;
+            case ANIM_HOLD_HANDS -> 70;
+            case ANIM_SALUTE -> 55;
+            case ANIM_SHY -> 65;
+            case ANIM_SLAP -> 36;
+            case ANIM_BOW -> 70;
             default -> 0;
         };
 
@@ -858,6 +940,36 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 if (t == 76) {
                     playVoice(ModSounds.VALKYRIE_CONFESS, 0.86F, 1.02F);
                     sl.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, getX(), getY() + 1.5D, getZ(), 28, 0.55D, 0.7D, 0.55D, 0.18D);
+                }
+            }
+            case ANIM_BLOW_KISS -> {
+                if (t == 28 || t == 36 || t == 44) {
+                    double px = owner != null ? Mth.lerp((t - 24) / 24.0D, getX(), owner.getX()) : getX();
+                    double pz = owner != null ? Mth.lerp((t - 24) / 24.0D, getZ(), owner.getZ()) : getZ();
+                    sl.sendParticles(ParticleTypes.HEART, px, getY() + 1.65D, pz, 4, 0.15D, 0.15D, 0.15D, 0.02D);
+                    sl.sendParticles(ModParticles.CORE_HEART, px, getY() + 1.55D, pz, 3, 0.12D, 0.12D, 0.12D, 0.02D);
+                }
+            }
+            case ANIM_HOLD_HANDS -> {
+                if (t % 14 == 0) {
+                    double mx = owner != null ? (getX() + owner.getX()) * 0.5D : getX();
+                    double mz = owner != null ? (getZ() + owner.getZ()) * 0.5D : getZ();
+                    sl.sendParticles(ParticleTypes.HEART, mx, getY() + 1.15D, mz, 2, 0.2D, 0.15D, 0.2D, 0.01D);
+                }
+            }
+            case ANIM_SALUTE -> {
+                if (t == 12) {
+                    sl.sendParticles(ModParticles.SUMMON_RUNE, getX(), getY() + 1.4D, getZ(), 8, 0.35D, 0.35D, 0.35D, 0.02D);
+                }
+            }
+            case ANIM_SHY -> {
+                if (t == 15 || t == 35 || t == 50) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.22D, 0.12D, 0.22D, 0.01D);
+                }
+            }
+            case ANIM_BOW -> {
+                if (t == 24 || t == 48) {
+                    sl.sendParticles(ParticleTypes.END_ROD, getX(), getY() + 1.2D, getZ(), 3, 0.3D, 0.2D, 0.3D, 0.01D);
                 }
             }
         }
@@ -993,6 +1105,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         if (shySpotted) {
             playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.05F);
             sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.18D, 0.12D, 0.18D, 0.01D);
+            setInteractionAnim(ANIM_SHY);
+            setInteractionTicks(0);
         }
     }
 
@@ -1219,6 +1333,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
 
         swing(InteractionHand.MAIN_HAND);
         setAttackTicks(12);
+        startInteractionAnim(ANIM_SLAP, sp);
         sp.hurtServer(sl, damageSources().mobAttack(this), 2.0F);
         sp.knockback(0.25D, getX() - sp.getX(), getZ() - sp.getZ());
 
