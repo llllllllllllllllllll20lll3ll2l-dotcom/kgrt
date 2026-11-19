@@ -24,10 +24,10 @@ public class ValkyrieHeldItemLayer extends RenderLayer<GolemRenderState, Valkyri
         }
         matrices.pushPose();
         this.getParentModel().translateToRightHand(matrices);
-        matrices.translate(-0.85F, 9.25F, -1.35F);
+        matrices.translate(-1.28F, 13.88F, -2.02F);
         matrices.mulPose(Axis.XP.rotationDegrees(-90.0F));
         matrices.mulPose(Axis.YP.rotationDegrees(180.0F));
-        matrices.scale(14.0F, 14.0F, 14.0F);
+        matrices.scale(21.0F, 21.0F, 21.0F);
 
         state.heldItem.submit(matrices, commandQueue, light, OverlayTexture.NO_OVERLAY, state.outlineColor);
         matrices.popPose();

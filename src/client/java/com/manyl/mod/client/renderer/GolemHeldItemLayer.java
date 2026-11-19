@@ -24,11 +24,11 @@ public class GolemHeldItemLayer extends RenderLayer<GolemRenderState, GolemModel
         }
         matrices.pushPose();
         this.getParentModel().translateToRightHand(matrices);
-        // Позиция кисти в 16x координатах модели + масштаб 14.4F (14.4 * 0.0625 = 0.90)
-        matrices.translate(-2.00F, 9.40F, -1.40F);
+        // Позиция кисти в 24x координатах модели + масштаб 21.6F (21.6 / 24 = 0.90)
+        matrices.translate(-3.00F, 14.10F, -2.10F);
         matrices.mulPose(Axis.XP.rotationDegrees(-90.0F));
         matrices.mulPose(Axis.YP.rotationDegrees(180.0F));
-        matrices.scale(14.4F, 14.4F, 14.4F);
+        matrices.scale(21.6F, 21.6F, 21.6F);
 
         state.heldItem.submit(matrices, commandQueue, light, OverlayTexture.NO_OVERLAY, state.outlineColor);
         matrices.popPose();
