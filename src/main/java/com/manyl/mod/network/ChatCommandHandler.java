@@ -90,7 +90,7 @@ public final class ChatCommandHandler {
     }
 
     private static void sendHelp(ServerPlayer player) {
-        player.displayClientMessage(Component.literal("§c§l=== Команды Manyl_mod (Воины) ==="), false);
+        player.displayClientMessage(Component.literal("§c§l=== Команды Manyl_mod V2 (Воины) ==="), false);
         player.displayClientMessage(Component.literal("§e!help §7— показать список команд"), false);
         player.displayClientMessage(Component.literal("§c[Воин] §b!guard <follow|stay|patrol> §7— следовать, стоять или патрулировать"), false);
         player.displayClientMessage(Component.literal("§c[Воин] §b!target <моб|all> §7— атаковать конкретных мобов"), false);
