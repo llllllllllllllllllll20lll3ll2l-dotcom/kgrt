@@ -434,6 +434,18 @@ public class ValkyrieModel extends EntityModel<GolemRenderState> {
         part.y -= 28.0F * progress;
     }
 
+    private static float smooth01(float x) {
+        float t = Mth.clamp(x, 0.0F, 1.0F);
+        return t * t * (3.0F - 2.0F * t);
+    }
+
+    private static float bell(float t, float start, float peakIn, float peakOut, float end) {
+        if (t <= start || t >= end) return 0.0F;
+        if (t < peakIn) return smooth01((t - start) / Math.max(0.001F, peakIn - start));
+        if (t > peakOut) return 1.0F - smooth01((t - peakOut) / Math.max(0.001F, end - peakOut));
+        return 1.0F;
+    }
+
     @Override
     public void setupAnim(GolemRenderState state) {
         this.root().getAllParts().forEach(ModelPart::resetPose);
@@ -475,12 +487,122 @@ public class ValkyrieModel extends EntityModel<GolemRenderState> {
         if (state.bathPhase != 4) {
             this.walkAnim.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, 2.2F, 2.4F);
         }
-        this.workAnim.apply(state.workAnimationState, state.ageInTicks, 1.0F);
-        this.attackAnim.apply(state.attackAnimationState, state.ageInTicks, 1.0F);
-        this.carryAnim.apply(state.carryAnimationState, state.ageInTicks, 1.0F);
-        this.sitAnim.apply(state.sitAnimationState, state.ageInTicks, 1.0F);
-        this.summonAnim.apply(state.summonAnimationState, state.ageInTicks, 1.0F);
-        this.eatAnim.apply(state.eatAnimationState, state.ageInTicks, 1.0F);
+        if (state.interactionAnim == 0) {
+            this.workAnim.apply(state.workAnimationState, state.ageInTicks, 1.0F);
+            this.attackAnim.apply(state.attackAnimationState, state.ageInTicks, 1.0F);
+            this.carryAnim.apply(state.carryAnimationState, state.ageInTicks, 1.0F);
+            this.sitAnim.apply(state.sitAnimationState, state.ageInTicks, 1.0F);
+            this.summonAnim.apply(state.summonAnimationState, state.ageInTicks, 1.0F);
+            this.eatAnim.apply(state.eatAnimationState, state.ageInTicks, 1.0F);
+        }
+
+        if (state.interactionAnim != 0) {
+            float t = state.interactionTicks;
+            switch (state.interactionAnim) {
+                case 1 -> { // ANIM_PAT: ласковое поглаживание по голове (45 тиков)
+                    float env = bell(t, 0.0F, 9.0F, 35.0F, 45.0F);
+                    float wiggle = Mth.sin(t * 0.42F);
+                    this.blush.visible = env > 0.15F;
+                    this.closedEyes.visible = t >= 6.0F && t <= 38.0F;
+                    this.head.xRot = Mth.lerp(env, this.head.xRot, -0.15F + 0.05F * wiggle);
+                    this.head.zRot += 0.22F * wiggle * env;
+                    this.body.xRot += 0.06F * env;
+                    this.rightArm.xRot = Mth.lerp(env, this.rightArm.xRot, -0.46F);
+                    this.leftArm.xRot = Mth.lerp(env, this.leftArm.xRot, -0.46F);
+                    this.rightArm.yRot = Mth.lerp(env, this.rightArm.yRot, 0.28F);
+                    this.leftArm.yRot = Mth.lerp(env, this.leftArm.yRot, -0.28F);
+                    this.rightArm.zRot += 0.08F * env;
+                    this.leftArm.zRot -= 0.08F * env;
+                }
+                case 2 -> { // ANIM_HUG: тёплые объятия (65 тиков)
+                    float open = bell(t, 0.0F, 12.0F, 16.0F, 22.0F);
+                    float hug = bell(t, 12.0F, 22.0F, 50.0F, 65.0F);
+                    this.blush.visible = t > 8.0F;
+                    this.closedEyes.visible = t >= 18.0F && t <= 53.0F;
+                    this.body.xRot = 0.14F * hug;
+                    this.body.z -= 12.0F * hug;
+                    this.head.yRot = Mth.lerp(hug, this.head.yRot, 0.16F);
+                    this.head.xRot = Mth.lerp(hug, this.head.xRot, 0.12F);
+                    this.head.zRot += 0.22F * hug;
+                    this.rightArm.xRot = -0.95F * open - 1.24F * hug;
+                    this.leftArm.xRot = -0.95F * open - 1.24F * hug;
+                    this.rightArm.yRot = 0.48F * hug;
+                    this.leftArm.yRot = -0.48F * hug;
+                    this.rightArm.zRot = 0.65F * open + 0.08F * hug;
+                    this.leftArm.zRot = -0.65F * open - 0.08F * hug;
+                }
+                case 3 -> { // ANIM_KISS: смущённый нежный поцелуй (75 тиков)
+                    float shy = bell(t, 0.0F, 8.0F, 14.0F, 22.0F);
+                    float lean = bell(t, 14.0F, 26.0F, 48.0F, 60.0F);
+                    float after = bell(t, 52.0F, 60.0F, 67.0F, 75.0F);
+                    this.blush.visible = t > 4.0F;
+                    this.closedEyes.visible = t >= 22.0F && t <= 56.0F;
+
+                    // Привстаёт на носочки и тянется вперёд
+                    this.root.y -= 10.0F * lean;
+                    this.body.xRot = 0.18F * lean;
+                    this.body.z -= 16.0F * lean;
+                    this.head.yRot = Mth.lerp(lean, this.head.yRot, 0.0F) + 0.18F * shy;
+                    this.head.xRot = Mth.lerp(lean, this.head.xRot, -0.14F) + 0.10F * shy;
+                    this.head.zRot += 0.12F * shy + 0.14F * after;
+
+                    // Руки: прикрывает щёчку -> нежно держит за плечи -> прикрывает губы
+                    this.rightArm.xRot = -1.35F * shy - 1.08F * lean - 1.55F * after;
+                    this.rightArm.yRot = 0.35F * shy + 0.24F * lean + 0.42F * after;
+                    this.rightArm.zRot = 0.16F * lean + 0.06F * after;
+                    this.leftArm.xRot = -0.22F * shy - 1.08F * lean - 0.22F * after;
+                    this.leftArm.yRot = -0.24F * lean;
+                    this.leftArm.zRot = -0.16F * lean - 0.08F * (shy + after);
+                }
+                case 4 -> { // ANIM_DANCE: весёлый танец с кружением (100 тиков)
+                    float env = bell(t, 0.0F, 12.0F, 86.0F, 100.0F);
+                    float p = smooth01(t / 100.0F);
+                    float beat = Mth.sin(t * 0.32F);
+                    float beatCos = Mth.cos(t * 0.32F);
+                    this.blush.visible = true;
+                    this.root.yRot = p * Mth.TWO_PI * 2.0F;
+                    this.root.y -= Math.abs(beat) * 16.0F * env;
+                    this.body.zRot = 0.08F * beat * env;
+                    this.head.zRot += 0.16F * beat * env;
+                    this.head.xRot -= 0.08F * env;
+                    this.rightArm.zRot = (0.85F + 0.35F * beat) * env;
+                    this.leftArm.zRot = (-0.85F - 0.35F * beat) * env;
+                    this.rightArm.xRot = (-0.58F + 0.35F * beatCos) * env;
+                    this.leftArm.xRot = (-0.58F - 0.35F * beatCos) * env;
+                    this.rightLeg.xRot = 0.32F * beat * env;
+                    this.leftLeg.xRot = -0.32F * beat * env;
+                }
+                case 5 -> { // ANIM_WEDDING: свадебная церемония и клятва (130 тиков)
+                    float bow = bell(t, 0.0F, 12.0F, 22.0F, 32.0F);
+                    float ring = bell(t, 26.0F, 38.0F, 64.0F, 76.0F);
+                    float twirl = bell(t, 70.0F, 80.0F, 106.0F, 118.0F);
+                    float finale = bell(t, 110.0F, 118.0F, 123.0F, 130.0F);
+
+                    this.blush.visible = t > 8.0F;
+                    this.closedEyes.visible = (t >= 48.0F && t <= 66.0F) || (t >= 116.0F && t <= 126.0F);
+
+                    // Реверанс -> кольцо -> радостный свадебный пируэт -> финальный поклон
+                    this.root.y += 14.0F * bow + 10.0F * finale - 8.0F * twirl;
+                    if (t >= 72.0F && t <= 114.0F) {
+                        float spinP = smooth01((t - 72.0F) / 42.0F);
+                        this.root.yRot = spinP * Mth.TWO_PI;
+                    }
+                    this.body.xRot = 0.14F * bow + 0.10F * finale;
+                    this.head.xRot = Mth.lerp(ring, this.head.xRot, -0.06F) + 0.16F * bow + 0.12F * finale;
+                    this.head.zRot += 0.14F * ring + 0.12F * finale;
+
+                    // Левая рука тянется для кольца, правая у сердца, затем обе взлетают в празднике
+                    this.leftArm.xRot = -1.25F * bow - 1.18F * ring - 2.15F * twirl - 0.95F * finale;
+                    this.leftArm.yRot = -0.50F * bow - 0.18F * ring;
+                    this.leftArm.zRot = -0.10F * ring - 0.58F * twirl;
+
+                    this.rightArm.xRot = -1.25F * bow - 1.15F * ring - 2.15F * twirl - 1.45F * finale;
+                    this.rightArm.yRot = 0.50F * bow + 0.55F * ring + 0.38F * finale;
+                    this.rightArm.zRot = 0.58F * twirl;
+                }
+            }
+            return;
+        }
 
         if (state.bathPhase == 1) {
             // Фаза 1: оглядывается по сторонам (0..40 тиков)

@@ -92,6 +92,12 @@ public class ManylModClient implements ClientModInitializer {
 
         ClientPlayNetworking.registerGlobalReceiver(ModNetworking.OpenValkyrieDialoguePayload.TYPE, (payload, ctx) ->
                 ctx.client().execute(() -> {
+                    if (payload.closeScreen()) {
+                        if (ctx.client().screen instanceof ValkyrieDialogueScreen) {
+                            ctx.client().setScreen(null);
+                        }
+                        return;
+                    }
                     if (ctx.client().screen instanceof ValkyrieDialogueScreen screen) {
                         screen.updateFromPayload(payload);
                     } else {

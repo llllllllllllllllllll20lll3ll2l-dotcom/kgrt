@@ -19,7 +19,7 @@ public class ValkyrieHeldItemLayer extends RenderLayer<GolemRenderState, Valkyri
     @Override
     public void submit(PoseStack matrices, SubmitNodeCollector commandQueue, int light,
                        GolemRenderState state, float limbAngle, float limbDistance) {
-        if (state.heldItem.isEmpty() || state.bathPhase >= 2) {
+        if (state.heldItem.isEmpty() || state.bathPhase >= 2 || state.interactionAnim >= 2) {
             return;
         }
         matrices.pushPose();

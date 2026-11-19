@@ -123,7 +123,8 @@ public final class ModNetworking {
     }
 
     public record OpenValkyrieDialoguePayload(
-            int entityId, boolean tamed, boolean sitting, int affection, int romanceStage, int jealousy, String dialogueLine
+            int entityId, boolean tamed, boolean sitting, int affection, int romanceStage, int jealousy,
+            boolean vowBound, boolean closeScreen, String dialogueLine
     ) implements CustomPacketPayload {
         public static final Type<OpenValkyrieDialoguePayload> TYPE = new Type<>(ManylMod.id("open_valkyrie_dialogue"));
         public static final StreamCodec<RegistryFriendlyByteBuf, OpenValkyrieDialoguePayload> CODEC = StreamCodec.of(
@@ -134,10 +135,13 @@ public final class ModNetworking {
                     buf.writeVarInt(p.affection);
                     buf.writeVarInt(p.romanceStage);
                     buf.writeVarInt(p.jealousy);
+                    buf.writeBoolean(p.vowBound);
+                    buf.writeBoolean(p.closeScreen);
                     buf.writeUtf(p.dialogueLine == null ? "" : p.dialogueLine, 512);
                 },
                 buf -> new OpenValkyrieDialoguePayload(
-                        buf.readVarInt(), buf.readBoolean(), buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readUtf(512)
+                        buf.readVarInt(), buf.readBoolean(), buf.readBoolean(), buf.readVarInt(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readBoolean(), buf.readBoolean(), buf.readUtf(512)
                 )
         );
 
@@ -293,8 +297,11 @@ public final class ModNetworking {
                         }
                         return;
                     }
-                    String replyLine = valkyrie.handleRomanceAction(player, actionId);
-                    sendValkyrieDialogueWithLine(player, valkyrie, replyLine);
+                    ValkyrieGolemEntity.RomanceActionOutcome outcome = valkyrie.handleRomanceActionOutcome(player, actionId);
+                    if (outcome.closeScreen() && outcome.line() != null && !outcome.line().isEmpty()) {
+                        player.displayClientMessage(Component.literal("§d[" + valkyrie.getDisplayName().getString() + "]§r «" + outcome.line() + "»"), false);
+                    }
+                    sendValkyrieDialogueWithLine(player, valkyrie, outcome.line(), outcome.closeScreen());
                 }
             });
         });
@@ -438,10 +445,10 @@ public final class ModNetworking {
 
     public static void sendOpenValkyrieDialogue(ServerPlayer player, ValkyrieGolemEntity valkyrie) {
         valkyrie.playGreetVoice();
-        sendValkyrieDialogueWithLine(player, valkyrie, valkyrie.getGreetingLine(valkyrie.isTamed()));
+        sendValkyrieDialogueWithLine(player, valkyrie, valkyrie.getGreetingLine(valkyrie.isTamed()), false);
     }
 
-    public static void sendValkyrieDialogueWithLine(ServerPlayer player, ValkyrieGolemEntity valkyrie, String line) {
+    public static void sendValkyrieDialogueWithLine(ServerPlayer player, ValkyrieGolemEntity valkyrie, String line, boolean closeScreen) {
         ServerPlayNetworking.send(player, new OpenValkyrieDialoguePayload(
                 valkyrie.getId(),
                 valkyrie.isTamed(),
@@ -449,6 +456,8 @@ public final class ModNetworking {
                 valkyrie.getAffection(),
                 valkyrie.getRomanceStage(),
                 valkyrie.getJealousy(),
+                valkyrie.isVowBound(),
+                closeScreen,
                 line
         ));
     }
