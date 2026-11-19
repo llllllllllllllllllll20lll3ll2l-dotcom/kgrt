@@ -28,7 +28,7 @@ public class ManylMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        LOGGER.info("Инициализация мода Manyl_mod V2...");
+        LOGGER.info("Инициализация мода Manyl_mod V3...");
 
         ModSounds.init();
         ModParticles.init();
@@ -51,7 +51,7 @@ public class ManylMod implements ModInitializer {
                 })
                 .build());
 
-        LOGGER.info("Manyl_mod V2 успешно загружен!");
+        LOGGER.info("Manyl_mod V3 успешно загружен!");
     }
 
     public static Identifier id(String path) {

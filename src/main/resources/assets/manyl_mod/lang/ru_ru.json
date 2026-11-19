@@ -43,6 +43,8 @@
   "gui.manyl_mod.rename_apply": "Дать имя",
 
   "gui.manyl_mod.valkyrie.recruit": "Пригласить пойти вместе",
+  "gui.manyl_mod.valkyrie.tab.chat": "Общение и забота",
+  "gui.manyl_mod.valkyrie.tab.anims": "Анимации ♥",
   "gui.manyl_mod.valkyrie.talk": "Поговорить",
   "gui.manyl_mod.valkyrie.compliment": "Комплимент",
   "gui.manyl_mod.valkyrie.gift": "Подарить предмет",
@@ -62,7 +64,7 @@
   "gui.manyl_mod.valkyrie.gear": "Снаряжение и еда",
   "gui.manyl_mod.valkyrie.jealousy_bar": "⚡ Ревность %s%%",
   "gui.manyl_mod.valkyrie.confess_hint": "Признание откроется при %s близости ♥",
-  "gui.manyl_mod.valkyrie.gift_bar_hint": "Для свадьбы держите или имейте при себе Кольцо Обета 💍",
+  "gui.manyl_mod.valkyrie.gift_bar_hint": "Для свадьбы имейте при себе Кольцо Обета 💍",
 
   "gui.manyl_mod.valkyrie.stage.wild": "Странница (дикая)",
   "gui.manyl_mod.valkyrie.stage.ally": "Спутница",
@@ -72,10 +74,10 @@
   "gui.manyl_mod.valkyrie.stage.spouse": "💍 Супруга (Вечный обет) ♥",
 
   "gui.manyl_mod.valkyrie.perk.none": "Бонус: приручите, чтобы открыть заботу и ауру",
-  "gui.manyl_mod.valkyrie.perk.ally": "Бонус: откроется на 20+ близости (заботливое лечение)",
+  "gui.manyl_mod.valkyrie.perk.ally": "Бонус: лечение откроется на 20+ близости",
   "gui.manyl_mod.valkyrie.perk.friend": "Плюшка: подлечивает вас при ХП < 50%",
   "gui.manyl_mod.valkyrie.perk.crush": "Плюшка: Скорость + Реген рядом, делится едой",
-  "gui.manyl_mod.valkyrie.perk.beloved": "Плюшка ♥: аура Регена/Скорости + спасение при низком ХП",
+  "gui.manyl_mod.valkyrie.perk.beloved": "Плюшка ♥: аура Регена/Скорости + спасение ХП",
 
   "dialogue.manyl_mod.valkyrie.wild_greeting": "Здравствуй, путник! Я странствую по этим землям в поисках достойного соратника. Пойдём вместе?",
   "dialogue.manyl_mod.valkyrie.recruited": "С радостью присоединюсь к тебе! Вместе нам не страшна никакая тьма.",

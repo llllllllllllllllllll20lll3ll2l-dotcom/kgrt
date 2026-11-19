@@ -90,6 +90,13 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public static final int ANIM_SHY = 9;
     public static final int ANIM_SLAP = 10;
     public static final int ANIM_BOW = 11;
+    public static final int ANIM_TONGUE = 12;
+    public static final int ANIM_ADMIN_SIT = 13;
+    public static final int ANIM_LIE = 14;
+    public static final int ANIM_JUMP = 15;
+    public static final int ANIM_BARK = 16;
+    public static final int ANIM_MOAN = 17;
+    public static final int ANIM_MASTER = 18;
 
     public static final int PHASE_NONE = 0;
     public static final int PHASE_LOOK_AROUND = 1;
@@ -97,6 +104,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public static final int PHASE_WALK_TO_WATER = 3;
     public static final int PHASE_BATHING_SIT = 4;
     public static final int PHASE_REST_UNARMORED = 5;
+    public static final int PHASE_DRESS_ARMOR = 6;
 
     public record RomanceActionOutcome(String line, boolean closeScreen) {}
 
@@ -116,6 +124,10 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_INTERACTION_TICKS =
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_TALK_TICKS =
+            SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_ADMIN_SWIMSUIT =
+            SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.BOOLEAN);
 
     private long lastTalkTick = -1000L;
     private long lastComplimentTick = -1000L;
@@ -161,7 +173,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
 
     @Override
     protected boolean isWeaponHidden() {
-        return weaponHideTicks > 0 || getBathPhase() >= PHASE_STRIP_ARMOR || getInteractionAnim() >= ANIM_HUG;
+        return weaponHideTicks > 0 || isInSwimsuit() || getBathPhase() == PHASE_STRIP_ARMOR || getBathPhase() == PHASE_DRESS_ARMOR || getInteractionAnim() >= ANIM_HUG;
     }
 
     @Override
@@ -175,6 +187,39 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         builder.define(DATA_BATH_TICKS, 0);
         builder.define(DATA_INTERACTION_ANIM, ANIM_NONE);
         builder.define(DATA_INTERACTION_TICKS, 0);
+        builder.define(DATA_TALK_TICKS, 0);
+        builder.define(DATA_ADMIN_SWIMSUIT, false);
+    }
+
+    public int getTalkTicks() {
+        return entityData.get(DATA_TALK_TICKS);
+    }
+
+    public void setTalkTicks(int ticks) {
+        entityData.set(DATA_TALK_TICKS, Math.max(0, ticks));
+    }
+
+    public void triggerTalkTicks(int ticks) {
+        if (!level().isClientSide()) {
+            setTalkTicks(Math.max(getTalkTicks(), ticks));
+        }
+    }
+
+    public boolean isAdminSwimsuit() {
+        return entityData.get(DATA_ADMIN_SWIMSUIT);
+    }
+
+    public void setAdminSwimsuit(boolean val) {
+        entityData.set(DATA_ADMIN_SWIMSUIT, val);
+        onInventoryChanged();
+    }
+
+    @Override
+    public void playVoice(SoundEvent sound, float volume, float pitch) {
+        super.playVoice(sound, volume, pitch);
+        if (!level().isClientSide() && sound != null) {
+            triggerTalkTicks(40);
+        }
     }
 
     public boolean isVowBound() {
@@ -244,9 +289,10 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     }
 
     public boolean isInSwimsuit() {
+        if (isAdminSwimsuit()) return true;
         int p = getBathPhase();
         return p == PHASE_WALK_TO_WATER || p == PHASE_BATHING_SIT || p == PHASE_REST_UNARMORED
-                || (p == PHASE_STRIP_ARMOR && getBathTicks() >= 45);
+                || (p == PHASE_STRIP_ARMOR && getBathTicks() >= 75);
     }
 
     public int getAffection() {
@@ -781,6 +827,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         if (rescueCooldownTicks > 0) rescueCooldownTicks--;
         if (slapCooldownTicks > 0) slapCooldownTicks--;
         if (daydreamCooldownTicks > 0) daydreamCooldownTicks--;
+        if (getTalkTicks() > 0) setTalkTicks(getTalkTicks() - 1);
 
         // Таймер скрытия меча и возврат меча в руку после шлепка ревности
         if (weaponHideTicks > 0) {
@@ -876,6 +923,13 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case ANIM_SHY -> 65;
             case ANIM_SLAP -> 36;
             case ANIM_BOW -> 70;
+            case ANIM_TONGUE -> 70;
+            case ANIM_ADMIN_SIT -> 12000;
+            case ANIM_LIE -> 12000;
+            case ANIM_JUMP -> 75;
+            case ANIM_BARK -> 55;
+            case ANIM_MOAN -> 75;
+            case ANIM_MASTER -> 85;
             default -> 0;
         };
 
@@ -885,7 +939,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             } else {
                 getNavigation().stop();
             }
-            if (anim != ANIM_DANCE && !(anim == ANIM_WEDDING && t >= 72 && t <= 112)) {
+            if (anim != ANIM_DANCE && anim != ANIM_ADMIN_SIT && anim != ANIM_LIE
+                    && !(anim == ANIM_WEDDING && t >= 72 && t <= 112)) {
                 faceEntity(owner);
             }
         } else {
@@ -972,6 +1027,39 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                     sl.sendParticles(ParticleTypes.END_ROD, getX(), getY() + 1.2D, getZ(), 3, 0.3D, 0.2D, 0.3D, 0.01D);
                 }
             }
+            case ANIM_TONGUE -> {
+                if (t == 16 || t == 42) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 3, 0.25D, 0.15D, 0.25D, 0.02D);
+                }
+            }
+            case ANIM_JUMP -> {
+                if (t == 6 || t == 31 || t == 56) {
+                    Vec3 mv = getDeltaMovement();
+                    setDeltaMovement(mv.x, 0.42D, mv.z);
+                    sl.playSound(null, getX(), getY(), getZ(), SoundEvents.AMETHYST_BLOCK_CHIME, getSoundSource(), 0.45F, 1.35F);
+                }
+                if (t % 10 == 0) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.9D, getZ(), 2, 0.3D, 0.2D, 0.3D, 0.02D);
+                }
+            }
+            case ANIM_BARK -> {
+                if (t == 14 || t == 30) {
+                    sl.playSound(null, getX(), getY(), getZ(), SoundEvents.WOLF_AMBIENT, getSoundSource(), 0.55F, 1.35F);
+                    sl.sendParticles(ParticleTypes.NOTE, getX(), getY() + 1.95D, getZ(), 2, 0.25D, 0.15D, 0.25D, 0.4D);
+                }
+            }
+            case ANIM_MOAN -> {
+                if (t == 18 || t == 38 || t == 58) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 4, 0.28D, 0.2D, 0.28D, 0.02D);
+                    sl.sendParticles(ModParticles.CORE_HEART, getX(), getY() + 1.65D, getZ(), 3, 0.22D, 0.18D, 0.22D, 0.02D);
+                }
+            }
+            case ANIM_MASTER -> {
+                if (t == 22 || t == 52) {
+                    sl.sendParticles(ParticleTypes.END_ROD, getX(), getY() + 1.45D, getZ(), 4, 0.3D, 0.25D, 0.3D, 0.02D);
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.8D, getZ(), 3, 0.25D, 0.15D, 0.25D, 0.02D);
+                }
+            }
         }
 
         if (t >= duration) {
@@ -986,6 +1074,37 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             return;
         }
 
+        int phase = getBathPhase();
+        int ticks = getBathTicks() + 1;
+
+        // В режиме админ-купальника не запускаем/не сбрасываем купание от чужого взгляда;
+        // если только что вызвали команду «одеть купальник», доигрываем PHASE_STRIP_ARMOR до конца и остаёмся в купальнике.
+        if (isAdminSwimsuit()) {
+            if (phase == PHASE_STRIP_ARMOR) {
+                getNavigation().stop();
+                setBathTicks(ticks);
+                if (ticks == 28) {
+                    playVoice(ModSounds.VALKYRIE_DAYDREAM, 0.72F, 1.02F);
+                }
+                if (ticks >= 75) {
+                    setBathPhase(PHASE_NONE);
+                    setBathTicks(0);
+                }
+            }
+            return;
+        }
+
+        // Фаза плавного надевания брони (никакого мгновенного появления!)
+        if (phase == PHASE_DRESS_ARMOR) {
+            getNavigation().stop();
+            setBathTicks(ticks);
+            if (ticks >= 50) {
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+            }
+            return;
+        }
+
         // Проверяем только не-Spectator игроков (Spectator не засчитывается за смотрящего!)
         boolean nonSpectatorWatching = false;
         for (Player p : sl.players()) {
@@ -996,15 +1115,12 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             }
         }
 
-        if (nonSpectatorWatching) {
-            if (getBathPhase() != PHASE_NONE) {
-                cancelBathRoutine(sl, true);
-            }
+        // Если игрок подсмотрел ДО снятия брони (PHASE_LOOK_AROUND или начало PHASE_STRIP_ARMOR), стеснительно откладываем раздевание.
+        // Если она УЖЕ в купальнике или в воде — НЕ одеваемся моментально! Она спокойно продолжает купание.
+        if (nonSpectatorWatching && (phase == PHASE_LOOK_AROUND || (phase == PHASE_STRIP_ARMOR && ticks < 28))) {
+            cancelBathRoutine(sl, true);
             return;
         }
-
-        int phase = getBathPhase();
-        int ticks = getBathTicks() + 1;
 
         switch (phase) {
             case PHASE_NONE -> {
@@ -1018,7 +1134,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case PHASE_LOOK_AROUND -> {
                 getNavigation().stop();
                 setBathTicks(ticks);
-                if (ticks >= 40) { // Огляделась по сторонам (2 сек) -> снимает броню
+                if (ticks >= 40) { // Огляделась по сторонам (2 сек) -> краснеет и снимает броню
                     setBathPhase(PHASE_STRIP_ARMOR);
                     setBathTicks(0);
                     playVoice(ModSounds.VALKYRIE_DAYDREAM, 0.65F, 1.0F);
@@ -1027,7 +1143,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case PHASE_STRIP_ARMOR -> {
                 getNavigation().stop();
                 setBathTicks(ticks);
-                if (ticks >= 60) { // Броня снята (одета в скромный закрытый купальник)
+                if (ticks >= 75) { // Сначала покраснела (0..28), затем плавно сняла броню (28..75)
                     if (targetWaterPos != null && isValid3x3WaterPool(targetWaterPos)) {
                         setBathPhase(PHASE_WALK_TO_WATER);
                         setBathTicks(0);
@@ -1080,8 +1196,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 if (ticks % 90 == 0) {
                     sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.6D, getZ(), 2, 0.2D, 0.15D, 0.2D, 0.01D);
                 }
-                if (ticks >= 300) { // Накупалась (15 сек) -> спокойно одевается
-                    cancelBathRoutine(sl, false);
+                if (ticks >= 300) { // Накупалась (15 сек) -> ПЛАВНО надевает броню (не моментально!)
+                    startDressArmor();
                 }
             }
             case PHASE_REST_UNARMORED -> {
@@ -1091,22 +1207,118 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                     sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.9D, getZ(), 1, 0.15D, 0.1D, 0.15D, 0.01D);
                 }
                 if (ticks >= 160) {
-                    cancelBathRoutine(sl, false);
+                    startDressArmor();
                 }
             }
         }
     }
 
-    private void cancelBathRoutine(ServerLevel sl, boolean shySpotted) {
-        setBathPhase(PHASE_NONE);
+    private void startDressArmor() {
+        targetWaterPos = null;
+        daydreamCooldownTicks = 500;
+        setBathPhase(PHASE_DRESS_ARMOR);
         setBathTicks(0);
+    }
+
+    private void cancelBathRoutine(ServerLevel sl, boolean shySpotted) {
+        boolean alreadyUnarmored = isInSwimsuit() || (getBathPhase() == PHASE_STRIP_ARMOR && getBathTicks() >= 28);
         targetWaterPos = null;
         daydreamCooldownTicks = shySpotted ? 260 : 500;
+        if (alreadyUnarmored && !isAdminSwimsuit()) {
+            // Если броня уже снята, одеваем её ПЛАВНО, а не мгновенно
+            setBathPhase(PHASE_DRESS_ARMOR);
+            setBathTicks(0);
+        } else {
+            setBathPhase(PHASE_NONE);
+            setBathTicks(0);
+        }
         if (shySpotted) {
             playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.05F);
             sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.18D, 0.12D, 0.18D, 0.01D);
             setInteractionAnim(ANIM_SHY);
             setInteractionTicks(0);
+        }
+    }
+
+    /**
+     * Выполняет скрытую кастомную админ-анимацию из команды !help_admin.
+     */
+    public String triggerAdminCommand(String action, ServerPlayer caller) {
+        switch (action) {
+            case "tongue" -> {
+                startInteractionAnim(ANIM_TONGUE, caller);
+                playVoice(ModSounds.VALKYRIE_LAUGH, 0.80F, 1.12F);
+                return "§d[Воительница]§r *игриво высунула язычок* :P";
+            }
+            case "sit" -> {
+                startInteractionAnim(ANIM_ADMIN_SIT, caller);
+                playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.02F);
+                return "§d[Воительница]§r *аккуратно присела на землю*";
+            }
+            case "lie" -> {
+                startInteractionAnim(ANIM_LIE, caller);
+                playVoice(ModSounds.VALKYRIE_DAYDREAM, 0.72F, 1.0F);
+                return "§d[Воительница]§r *грациозно легла отдохнуть*";
+            }
+            case "jump" -> {
+                startInteractionAnim(ANIM_JUMP, caller);
+                playVoice(ModSounds.VALKYRIE_LAUGH, 0.85F, 1.08F);
+                return "§d[Воительница]§r *весело подпрыгивает!* ♪";
+            }
+            case "bark" -> {
+                startInteractionAnim(ANIM_BARK, caller);
+                playVoice(ModSounds.VALKYRIE_LAUGH, 0.82F, 1.18F);
+                triggerTalkTicks(34);
+                return "§d[Воительница]§r «Гав! Гав!» ♥";
+            }
+            case "swimsuit" -> {
+                setInteractionAnim(ANIM_NONE);
+                setInteractionTicks(0);
+                setAdminSwimsuit(true);
+                setBathPhase(PHASE_STRIP_ARMOR);
+                setBathTicks(0);
+                getNavigation().stop();
+                if (caller != null) faceEntity(caller);
+                playVoice(ModSounds.VALKYRIE_SIGH, 0.78F, 1.05F);
+                return "§d[Воительница]§r *густо покраснела и начала снимать броню в купальник...* ♥";
+            }
+            case "moan" -> {
+                startInteractionAnim(ANIM_MOAN, caller);
+                playVoice(ModSounds.VALKYRIE_DAYDREAM, 0.88F, 0.90F);
+                triggerTalkTicks(50);
+                spawnHeartBurst(10);
+                return "§d[Воительница]§r «Ах... ммм~ ♥»";
+            }
+            case "master" -> {
+                startInteractionAnim(ANIM_MASTER, caller);
+                playVoice(ModSounds.VALKYRIE_CONFESS, 0.90F, 1.0F);
+                triggerTalkTicks(56);
+                spawnHeartBurst(8);
+                return "§d[Воительница]§r «Как прикажете, мой Господин ♥»";
+            }
+            case "armor" -> {
+                setInteractionAnim(ANIM_NONE);
+                setInteractionTicks(0);
+                boolean wasInSwimsuit = isInSwimsuit() || getBathPhase() == PHASE_STRIP_ARMOR;
+                setAdminSwimsuit(false);
+                if (wasInSwimsuit) {
+                    setBathPhase(PHASE_DRESS_ARMOR);
+                    setBathTicks(0);
+                } else {
+                    setBathPhase(PHASE_NONE);
+                    setBathTicks(0);
+                }
+                playVoice(ModSounds.VALKYRIE_GREET, 0.80F, 1.0F);
+                return "§d[Воительница]§r *плавно надевает боевую броню*";
+            }
+            case "stop" -> {
+                setInteractionAnim(ANIM_NONE);
+                setInteractionTicks(0);
+                return "§d[Воительница]§r *вернулась в обычную стойку*";
+            }
+            default -> {
+                return null;
+            }
         }
     }
 
@@ -1354,6 +1566,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         out.putInt("ValkyrieRomanceStage", getRomanceStage());
         out.putInt("ValkyrieJealousy", getJealousy());
         out.putBoolean("ValkyrieVowBound", isVowBound());
+        out.putBoolean("ValkyrieAdminSwimsuit", isAdminSwimsuit());
         out.putInt("ValkyrieRescueCd", rescueCooldownTicks);
     }
 
@@ -1361,6 +1574,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     protected void readAdditionalSaveData(ValueInput in) {
         super.readAdditionalSaveData(in);
         setVowBound(in.getBooleanOr("ValkyrieVowBound", false));
+        setAdminSwimsuit(in.getBooleanOr("ValkyrieAdminSwimsuit", false));
         setRomanceStage(in.getIntOr("ValkyrieRomanceStage", STAGE_STRANGER_ALLY));
         setAffection(in.getIntOr("ValkyrieAffection", 0));
         setJealousy(isVowBound() ? 0 : in.getIntOr("ValkyrieJealousy", 0));

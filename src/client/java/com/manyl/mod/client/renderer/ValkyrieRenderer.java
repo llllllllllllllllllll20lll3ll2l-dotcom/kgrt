@@ -46,6 +46,8 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
             state.daydreamTicks = valkyrie.getBathTicks();
             state.interactionAnim = valkyrie.getInteractionAnim();
             state.interactionTicks = net.minecraft.util.Mth.lerp(tickProgress, valkyrie.getPrevInteractionTicks(), valkyrie.getInteractionTicks());
+            state.talkTicks = valkyrie.getTalkTicks();
+            state.adminSwimsuit = valkyrie.isAdminSwimsuit();
             state.isVowBound = valkyrie.isVowBound();
         } else {
             state.bathPhase = 0;
@@ -54,6 +56,8 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
             state.daydreamTicks = 0;
             state.interactionAnim = 0;
             state.interactionTicks = 0.0F;
+            state.talkTicks = 0;
+            state.adminSwimsuit = false;
             state.isVowBound = false;
         }
 

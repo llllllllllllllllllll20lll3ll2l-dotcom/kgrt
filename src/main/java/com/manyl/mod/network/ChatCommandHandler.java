@@ -4,6 +4,7 @@ import com.manyl.mod.data.ManylSavedData;
 import com.manyl.mod.data.PlayerGolemSettings;
 import com.manyl.mod.entity.BaseGolemEntity;
 import com.manyl.mod.entity.GolemRole;
+import com.manyl.mod.entity.ValkyrieGolemEntity;
 import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
@@ -50,6 +51,7 @@ public final class ChatCommandHandler {
 
         switch (cmd) {
             case "help", "помощь", "?" -> sendHelp(player);
+            case "help_admin", "adm" -> handleHelpAdmin(player, server, arg);
 
             case "guard", "охрана" -> {
                 String mode = normalizeGuardMode(arg);
@@ -170,6 +172,86 @@ public final class ChatCommandHandler {
             case "пиглин" -> "piglin";
             default -> s;
         };
+    }
+
+    private static void handleHelpAdmin(ServerPlayer player, MinecraftServer server, String arg) {
+        if (arg.isEmpty()) {
+            sendAdminHelp(player);
+            return;
+        }
+        String action = normalizeAdminAction(arg);
+        if (action == null) {
+            reply(player, "§d[Admin]§c Неизвестная анимация: §f" + arg + "§c. Введите §b!help_admin§c для списка.");
+            return;
+        }
+        ValkyrieGolemEntity target = findTargetValkyrie(player, server);
+        if (target == null) {
+            reply(player, "§d[Admin]§c Рядом нет ни одной Воительницы!");
+            return;
+        }
+        String res = target.triggerAdminCommand(action, player);
+        if (res != null) {
+            reply(player, res);
+        }
+    }
+
+    private static void sendAdminHelp(ServerPlayer player) {
+        player.displayClientMessage(Component.literal("§d§l=== Секретные анимации Воительницы (!help_admin) ==="), false);
+        player.displayClientMessage(Component.literal("§b!help_admin язык §7— высунуть язык (игривое подмигивание)"), false);
+        player.displayClientMessage(Component.literal("§b!help_admin сесть §7— сесть в позу"), false);
+        player.displayClientMessage(Component.literal("§b!help_admin лечь §7— грациозно лечь"), false);
+        player.displayClientMessage(Component.literal("§b!help_admin прыгать §7— весело попрыгать"), false);
+        player.displayClientMessage(Component.literal("§b!help_admin гавкнуть §7— лапки + «Гав! Гав!»"), false);
+        player.displayClientMessage(Component.literal("§b!help_admin купальник §7— сначала покраснеет, потом оденет купальник"), false);
+        player.displayClientMessage(Component.literal("§b!help_admin простонать §7— смущение и томный вздох"), false);
+        player.displayClientMessage(Component.literal("§b!help_admin господин §7— поклон и «Как прикажете, мой Господин ♥»"), false);
+        player.displayClientMessage(Component.literal("§b!help_admin броня §7— плавно одеть броню обратно"), false);
+        player.displayClientMessage(Component.literal("§b!help_admin стоп §7— сбросить позу (коротко можно: §e!adm <слово>§7)"), false);
+    }
+
+    private static String normalizeAdminAction(String raw) {
+        String s = raw.toLowerCase(Locale.ROOT).trim();
+        return switch (s) {
+            case "высунуть язык", "язык", "tongue" -> "tongue";
+            case "сесть", "сидеть", "sit" -> "sit";
+            case "лечь", "лежать", "lie" -> "lie";
+            case "прыгать", "прыжок", "jump" -> "jump";
+            case "гавкнуть", "гав", "лаять", "bark" -> "bark";
+            case "одеть купальник", "надеть купальник", "купальник", "swimsuit" -> "swimsuit";
+            case "простонать", "стон", "moan" -> "moan";
+            case "назвать господином", "господином", "господин", "master" -> "master";
+            case "одеть броню", "надеть броню", "броня", "броню", "armor" -> "armor";
+            case "стоп", "встать", "сброс", "stop", "reset" -> "stop";
+            default -> null;
+        };
+    }
+
+    private static ValkyrieGolemEntity findTargetValkyrie(ServerPlayer player, MinecraftServer server) {
+        ValkyrieGolemEntity best = null;
+        double bestDist = Double.MAX_VALUE;
+        if (player.level() instanceof ServerLevel sl) {
+            List<ValkyrieGolemEntity> nearby = sl.getEntitiesOfClass(
+                    ValkyrieGolemEntity.class,
+                    player.getBoundingBox().inflate(48.0D),
+                    v -> v.isAlive() && !v.isDisabled()
+            );
+            for (ValkyrieGolemEntity v : nearby) {
+                double d = v.distanceToSqr(player);
+                boolean owned = player.getUUID().equals(v.getOwnerUuid());
+                double score = owned ? d : (d + 10000.0D);
+                if (score < bestDist) {
+                    bestDist = score;
+                    best = v;
+                }
+            }
+        }
+        if (best != null) return best;
+        for (BaseGolemEntity g : ManylSavedData.getPlayerGolems(server, player.getUUID())) {
+            if (g instanceof ValkyrieGolemEntity v && v.isAlive()) {
+                return v;
+            }
+        }
+        return null;
     }
 
     private static void reply(ServerPlayer player, String msg) {
