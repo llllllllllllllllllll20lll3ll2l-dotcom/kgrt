@@ -406,7 +406,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                     addJealousy(-15);
                 }
                 startInteractionAnim(ANIM_PAT, player);
-                playVoice(ModSounds.VALKYRIE_GIGGLE, 0.82F, 1.03F);
+                playVoice(ModSounds.VALKYRIE_LAUGH, 0.82F, 1.03F);
                 spawnHeartBurst(6);
                 String key = getRomanceStage() >= STAGE_CRUSH
                         ? "dialogue.manyl_mod.valkyrie.anim.pat.warm"
@@ -833,7 +833,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                     sl.sendParticles(ModParticles.CORE_HEART, mx, getY() + 1.65D, mz, 4, 0.2D, 0.2D, 0.2D, 0.04D);
                 }
                 if (t == 36) {
-                    playVoice(ModSounds.VALKYRIE_GIGGLE, 0.72F, 1.08F);
+                    playVoice(ModSounds.VALKYRIE_LAUGH, 0.72F, 1.08F);
                 }
             }
             case ANIM_DANCE -> {
