@@ -1044,7 +1044,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             }
             case ANIM_BARK -> {
                 if (t == 14 || t == 30) {
-                    sl.playSound(null, getX(), getY(), getZ(), SoundEvents.WOLF_AMBIENT, getSoundSource(), 0.55F, 1.35F);
+                    playVoice(ModSounds.VALKYRIE_LAUGH, 0.72F, 1.35F);
                     sl.sendParticles(ParticleTypes.NOTE, getX(), getY() + 1.95D, getZ(), 2, 0.25D, 0.15D, 0.25D, 0.4D);
                 }
             }
