@@ -55,3 +55,37 @@ jobs:
         with:
           name: Artifacts
           path: build/libs/
+      - name: publish github release
+        if: success() && github.event_name == 'push' && contains(github.event.head_commit.message, '[release]')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          JAR_FILE=$(find dist -maxdepth 1 -type f -name '*.jar' | head -n 1)
+          if [ -z "$JAR_FILE" ]; then
+            JAR_FILE=$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | head -n 1)
+          fi
+          cat << 'EOF' > /tmp/release_notes.md
+          ## Manyl_mod V2 (v2.0.0 — Fabric 1.21.11)
+
+          ### Основные изменения V2
+          - **Название и версия обновлены до Manyl_mod V2 (`2.0.0`)**.
+          - **Ультра-детализированные модели и 4K-текстуры Стражей** (`4096×4096`):
+            - **Воительница (`191` элемент)**: живое лицо, выразительные глаза, ресницы, румянец, коса, многоперьевые крылья, модульная съёмная броня и скромный закрытый лазурно-золотой купальник.
+            - **Воин (`139` элементов)**: массивная кованая броня с заклёпками, кольчугой, филигранью и пылающими рубинами.
+          - **Анимация снятия брони и купания Воительницы**:
+            - Когда рядом нет игроков (кроме режима `Spectator`), Воительница оглядывается, снимает броню и надевает скромный закрытый купальник, находит ближайший водоём от `3×3` блоков, заходит и садится отдыхать на воде (игроки в `Spectator` не прерывают анимацию).
+          - **Эксклюзивная озвучка без наложения**: каждая новая реплика автоматически прерывает предыдущую.
+          - **Без естественного спавна активных Стражей в Верхнем мире**: стражи встречаются только в Древних руинах (отключёнными, требующими починки) или призываются игроком.
+          - Сохранены все механики: ранги (`Новобранец` → `★★★ Мастер`), 4 слота брони и щит, Кольцо Обета, тактические клавиши `G`/`H`, русская и английская локализация.
+          EOF
+          sed -i 's/^          //' /tmp/release_notes.md
+          if gh release view V2 >/dev/null 2>&1; then
+            gh release edit V2 --title "Manyl_mod V2" --notes-file /tmp/release_notes.md --latest
+            gh release upload V2 "$JAR_FILE" --clobber
+          else
+            gh release create V2 "$JAR_FILE" \
+              --target "${{ github.sha }}" \
+              --title "Manyl_mod V2" \
+              --latest \
+              --notes-file /tmp/release_notes.md
+          fi
