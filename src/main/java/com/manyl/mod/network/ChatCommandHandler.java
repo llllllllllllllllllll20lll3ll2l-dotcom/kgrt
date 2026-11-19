@@ -101,9 +101,8 @@ public final class ChatCommandHandler {
         List<BaseGolemEntity> golems = ManylSavedData.getPlayerGolems(server, player.getUUID());
         int wCount = ManylSavedData.getWarriorCount(server, player.getUUID());
         int vCount = ManylSavedData.getValkyrieCount(server, player.getUUID());
-        reply(player, String.format("§c[Статус]§r Воины: §c%d/%d§r | Воительницы: §d%d/%d§r | Режим: §e%s§r | Цель: §e%s",
-                wCount, GolemRole.WARRIOR.getMaxPerPlayer(),
-                vCount, GolemRole.VALKYRIE.getMaxPerPlayer(),
+        reply(player, String.format("§c[Статус]§r Воины: §c%d§r | Воительницы: §d%d§r (без лимита) | Режим: §e%s§r | Цель: §e%s",
+                wCount, vCount,
                 s.getGuardMode(),
                 s.getTargetFilter().isEmpty() ? "все" : s.getTargetFilter()));
         for (BaseGolemEntity g : golems) {

@@ -5,6 +5,7 @@ import com.manyl.mod.data.ManylSavedData;
 import com.manyl.mod.data.PlayerGolemSettings;
 import com.manyl.mod.entity.BaseGolemEntity;
 import com.manyl.mod.entity.GolemRole;
+import com.manyl.mod.entity.ValkyrieGolemEntity;
 import com.manyl.mod.registry.ModEntities;
 import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
@@ -18,6 +19,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -25,7 +27,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 
 /**
- * Сетевые пакеты (C2S и S2C) для управления отрядом Воинов и Воительниц.
+ * Сетевые пакеты (C2S и S2C) для управления отрядом Воинов, Воительниц и романтических диалогов.
  */
 public final class ModNetworking {
 
@@ -118,14 +120,62 @@ public final class ModNetworking {
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
+    public record OpenValkyrieDialoguePayload(
+            int entityId, boolean tamed, boolean sitting, int affection, int romanceStage, String dialogueLine
+    ) implements CustomPacketPayload {
+        public static final Type<OpenValkyrieDialoguePayload> TYPE = new Type<>(ManylMod.id("open_valkyrie_dialogue"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, OpenValkyrieDialoguePayload> CODEC = StreamCodec.of(
+                (buf, p) -> {
+                    buf.writeVarInt(p.entityId);
+                    buf.writeBoolean(p.tamed);
+                    buf.writeBoolean(p.sitting);
+                    buf.writeVarInt(p.affection);
+                    buf.writeVarInt(p.romanceStage);
+                    buf.writeUtf(p.dialogueLine == null ? "" : p.dialogueLine, 512);
+                },
+                buf -> new OpenValkyrieDialoguePayload(
+                        buf.readVarInt(), buf.readBoolean(), buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readUtf(512)
+                )
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record ValkyrieRomanceActionPayload(int entityId, int actionId) implements CustomPacketPayload {
+        public static final Type<ValkyrieRomanceActionPayload> TYPE = new Type<>(ManylMod.id("valkyrie_romance_action"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ValkyrieRomanceActionPayload> CODEC = StreamCodec.of(
+                (buf, p) -> {
+                    buf.writeVarInt(p.entityId);
+                    buf.writeVarInt(p.actionId);
+                },
+                buf -> new ValkyrieRomanceActionPayload(buf.readVarInt(), buf.readVarInt())
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record ToggleGolemSitPayload(int entityId) implements CustomPacketPayload {
+        public static final Type<ToggleGolemSitPayload> TYPE = new Type<>(ManylMod.id("toggle_golem_sit"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ToggleGolemSitPayload> CODEC =
+                ByteBufCodecs.VAR_INT.map(ToggleGolemSitPayload::new, ToggleGolemSitPayload::entityId).cast();
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
     public static void registerPayloads() {
         PayloadTypeRegistry.playS2C().register(OpenStaffMenuPayload.TYPE, OpenStaffMenuPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncGolemStatePayload.TYPE, SyncGolemStatePayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(OpenValkyrieDialoguePayload.TYPE, OpenValkyrieDialoguePayload.CODEC);
 
         PayloadTypeRegistry.playC2S().register(SummonGolemPayload.TYPE, SummonGolemPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(RecallGolemsPayload.TYPE, RecallGolemsPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(UpdateWarriorSettingsPayload.TYPE, UpdateWarriorSettingsPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(RequestOpenManagementPayload.TYPE, RequestOpenManagementPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(ValkyrieRomanceActionPayload.TYPE, ValkyrieRomanceActionPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(ToggleGolemSitPayload.TYPE, ToggleGolemSitPayload.CODEC);
     }
 
     public static void registerServerReceivers() {
@@ -156,6 +206,55 @@ public final class ModNetworking {
             ServerPlayer player = ctx.player();
             ctx.server().execute(() -> sendOpenStaffMenu(player, true));
         });
+
+        ServerPlayNetworking.registerGlobalReceiver(ValkyrieRomanceActionPayload.TYPE, (payload, ctx) -> {
+            ServerPlayer player = ctx.player();
+            int entityId = payload.entityId();
+            int actionId = payload.actionId();
+            ctx.server().execute(() -> {
+                Entity entity = player.level().getEntity(entityId);
+                if (entity instanceof ValkyrieGolemEntity valkyrie && valkyrie.isAlive()
+                        && valkyrie.distanceToSqr(player) <= 100.0D) {
+                    if (actionId == ValkyrieGolemEntity.ACTION_OPEN_INVENTORY) {
+                        if (valkyrie.isTamed()) {
+                            valkyrie.openInventoryMenuFromDialogue(player);
+                        }
+                        return;
+                    }
+                    String replyLine = valkyrie.handleRomanceAction(player, actionId);
+                    sendValkyrieDialogueWithLine(player, valkyrie, replyLine);
+                }
+            });
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(ToggleGolemSitPayload.TYPE, (payload, ctx) -> {
+            ServerPlayer player = ctx.player();
+            int entityId = payload.entityId();
+            ctx.server().execute(() -> {
+                Entity entity = player.level().getEntity(entityId);
+                if (entity instanceof BaseGolemEntity golem && golem.isAlive()
+                        && player.getUUID().equals(golem.getOwnerUuid())
+                        && golem.distanceToSqr(player) <= 100.0D) {
+                    golem.setSitting(!golem.isSitting());
+                    golem.playSound(ModSounds.GOLEM_STEP, 0.16F, golem.isSitting() ? 0.8F : 1.2F);
+                }
+            });
+        });
+    }
+
+    public static void sendOpenValkyrieDialogue(ServerPlayer player, ValkyrieGolemEntity valkyrie) {
+        sendValkyrieDialogueWithLine(player, valkyrie, valkyrie.getGreetingLine(valkyrie.isTamed()));
+    }
+
+    public static void sendValkyrieDialogueWithLine(ServerPlayer player, ValkyrieGolemEntity valkyrie, String line) {
+        ServerPlayNetworking.send(player, new OpenValkyrieDialoguePayload(
+                valkyrie.getId(),
+                valkyrie.isTamed(),
+                valkyrie.isSitting(),
+                valkyrie.getAffection(),
+                valkyrie.getRomanceStage(),
+                line
+        ));
     }
 
     public static void sendOpenStaffMenu(ServerPlayer player, boolean openManagement) {
@@ -182,11 +281,6 @@ public final class ModNetworking {
         ServerLevel level = (ServerLevel) player.level();
         MinecraftServer server = level.getServer();
         int current = ManylSavedData.getRoleCount(server, player.getUUID(), role);
-        if (current >= role.getMaxPerPlayer()) {
-            player.displayClientMessage(Component.translatable("msg.manyl_mod.limit_reached", current, role.getMaxPerPlayer()), true);
-            sendStateSync(player);
-            return;
-        }
 
         Vec3 look = player.getLookAngle();
         double sx = player.getX() + look.x * 1.8D + (player.getRandom().nextDouble() - 0.5D) * 0.8D;
@@ -209,7 +303,7 @@ public final class ModNetworking {
             level.sendParticles(ModParticles.SUMMON_RUNE, sx, sy + 0.5D, sz, 14, 0.35D, 0.4D, 0.35D, 0.04D);
 
             player.displayClientMessage(Component.translatable("msg.manyl_mod.summoned",
-                    Component.translatable(role.getTranslationKey()), current + 1, role.getMaxPerPlayer()), true);
+                    Component.translatable(role.getTranslationKey()), current + 1), true);
         }
         sendStateSync(player);
     }

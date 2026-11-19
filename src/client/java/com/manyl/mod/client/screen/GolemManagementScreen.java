@@ -117,8 +117,8 @@ public class GolemManagementScreen extends Screen {
             graphics.blit(RenderPipelines.GUI_TEXTURED, role.getIconTexture(), left + 12, ry + 1, 0, 0, 16, 16, 16, 16);
             graphics.drawString(this.font, Component.translatable(role.getTranslationKey()), left + 34, ry + 5, 0xFFE5E9F0, false);
 
-            String countLabel = count + " / " + role.getMaxPerPlayer();
-            graphics.drawString(this.font, countLabel, left + 136, ry + 5, role.getAccentColor(), false);
+            String countLabel = String.valueOf(count);
+            graphics.drawString(this.font, countLabel, left + 146, ry + 5, role.getAccentColor(), false);
         }
 
         graphics.drawString(this.font, Component.translatable("gui.manyl_mod.guard_mode_label"), left + 12, top + 98, 0xFFD8DEE9, false);

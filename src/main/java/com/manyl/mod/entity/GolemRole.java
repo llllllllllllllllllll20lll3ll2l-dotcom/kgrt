@@ -6,12 +6,12 @@ import net.minecraft.resources.Identifier;
  * Типы прислужников-воинов Manyl_mod: Голем-воин (муж.) и Голем-воительница (жен.).
  */
 public enum GolemRole {
-    WARRIOR("warrior_golem", 5, 36.0D, 0.29D, 7.0D, 0xFFE24444,
+    WARRIOR("warrior_golem", -1, 36.0D, 0.29D, 7.0D, 0xFFE24444,
             "entity.manyl_mod.warrior_golem",
             "textures/entity/golem/warrior_golem.png",
             "textures/entity/golem/warrior_golem_glow.png",
             "textures/gui/icons/warrior.png"),
-    VALKYRIE("valkyrie_golem", 5, 32.0D, 0.34D, 7.5D, 0xFFE866B8,
+    VALKYRIE("valkyrie_golem", -1, 32.0D, 0.34D, 7.5D, 0xFFE866B8,
             "entity.manyl_mod.valkyrie_golem",
             "textures/entity/golem/valkyrie_golem.png",
             "textures/entity/golem/valkyrie_golem_glow.png",

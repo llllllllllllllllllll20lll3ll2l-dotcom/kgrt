@@ -8,6 +8,7 @@ import com.manyl.mod.client.renderer.ValkyrieRenderer;
 import com.manyl.mod.client.screen.GolemInventoryScreen;
 import com.manyl.mod.client.screen.GolemManagementScreen;
 import com.manyl.mod.client.screen.RadialMenuScreen;
+import com.manyl.mod.client.screen.ValkyrieDialogueScreen;
 import com.manyl.mod.network.ModNetworking;
 import com.manyl.mod.registry.ModEntities;
 import com.manyl.mod.registry.ModMenus;
@@ -52,6 +53,15 @@ public class ManylModClient implements ClientModInitializer {
                         radial.updateState(payload);
                     } else if (ctx.client().screen instanceof GolemManagementScreen mgmt) {
                         mgmt.updateState(payload);
+                    }
+                }));
+
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.OpenValkyrieDialoguePayload.TYPE, (payload, ctx) ->
+                ctx.client().execute(() -> {
+                    if (ctx.client().screen instanceof ValkyrieDialogueScreen screen) {
+                        screen.updateFromPayload(payload);
+                    } else {
+                        ctx.client().setScreen(new ValkyrieDialogueScreen(payload));
                     }
                 }));
     }

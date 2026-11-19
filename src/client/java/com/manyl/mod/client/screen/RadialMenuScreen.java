@@ -87,7 +87,7 @@ public class RadialMenuScreen extends Screen {
                 Component shortLabel = Component.translatable(i == 0 ? "gui.manyl_mod.warrior_short" : "gui.manyl_mod.valkyrie_short");
                 graphics.blit(RenderPipelines.GUI_TEXTURED, role.getIconTexture(), ix - 8, iy - 15, 0, 0, 16, 16, 16, 16);
                 graphics.drawCenteredString(this.font, shortLabel, ix, iy + 4, hovered ? 0xFFFFE599 : 0xFFE0E5F0);
-                String countStr = count + "/" + role.getMaxPerPlayer();
+                String countStr = String.valueOf(count);
                 graphics.drawCenteredString(this.font, countStr, ix, iy + 14, role.getAccentColor());
             } else {
                 Identifier icon = (i == 2) ? ICON_RECALL : ICON_MANAGE;

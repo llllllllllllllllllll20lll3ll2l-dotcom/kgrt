@@ -42,8 +42,11 @@ public class ManylMod implements ModInitializer {
 
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, MAIN_TAB, FabricItemGroup.builder()
                 .title(Component.translatable("itemGroup.manyl_mod.main"))
-                .icon(() -> new ItemStack(ModItems.SUMMON_STAFF))
-                .displayItems((ctx, entries) -> entries.accept(ModItems.SUMMON_STAFF))
+                .icon(() -> new ItemStack(ModItems.WARRIOR_SPAWN_EGG))
+                .displayItems((ctx, entries) -> {
+                    entries.accept(ModItems.WARRIOR_SPAWN_EGG);
+                    entries.accept(ModItems.VALKYRIE_SPAWN_EGG);
+                })
                 .build());
 
         LOGGER.info("Manyl_mod успешно загружен!");

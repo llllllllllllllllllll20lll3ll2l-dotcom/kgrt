@@ -3,7 +3,10 @@ package com.manyl.mod.client.screen;
 import com.manyl.mod.ManylMod;
 import com.manyl.mod.entity.BaseGolemEntity;
 import com.manyl.mod.menu.GolemInventoryMenu;
+import com.manyl.mod.network.ModNetworking;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -30,15 +33,31 @@ public class GolemInventoryScreen extends AbstractContainerScreen<GolemInventory
         this.inventoryLabelY = 72;
     }
 
+    private Button sitToggleBtn;
+
     @Override
     protected void init() {
         super.init();
         this.titleLabelX = 8;
         this.titleLabelY = 6;
+        BaseGolemEntity golem = this.menu.getGolem();
+        if (golem != null) {
+            this.sitToggleBtn = this.addRenderableWidget(Button.builder(sitButtonLabel(golem), b -> {
+                ClientPlayNetworking.send(new ModNetworking.ToggleGolemSitPayload(golem.getId()));
+            }).pos(this.leftPos + 114, this.topPos + 4).size(56, 13).build());
+        }
+    }
+
+    private Component sitButtonLabel(BaseGolemEntity golem) {
+        return Component.translatable(golem.isSitting() ? "gui.manyl_mod.stay" : "gui.manyl_mod.follow");
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        BaseGolemEntity golem = this.menu.getGolem();
+        if (golem != null && sitToggleBtn != null) {
+            sitToggleBtn.setMessage(sitButtonLabel(golem));
+        }
         super.render(graphics, mouseX, mouseY, delta);
         this.renderTooltip(graphics, mouseX, mouseY);
     }

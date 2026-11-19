@@ -3,7 +3,7 @@ package com.manyl.mod.entity;
 import com.manyl.mod.data.ManylSavedData;
 import com.manyl.mod.data.PlayerGolemSettings;
 import com.manyl.mod.menu.GolemInventoryMenu;
-import com.manyl.mod.registry.ModItems;
+import com.manyl.mod.network.ModNetworking;
 import com.manyl.mod.registry.ModParticles;
 import com.manyl.mod.registry.ModSounds;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
@@ -16,6 +16,9 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
@@ -24,18 +27,17 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AnimationState;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.tags.ItemTags;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
+import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -46,6 +48,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import java.util.EnumSet;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
@@ -132,17 +135,60 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         builder.define(DATA_DISPLAY_ITEM, ItemStack.EMPTY);
     }
 
+    public static boolean checkGuardianSpawnRules(
+            EntityType<? extends BaseGolemEntity> type,
+            ServerLevelAccessor level,
+            EntitySpawnReason reason,
+            BlockPos pos,
+            RandomSource random) {
+        if (reason == EntitySpawnReason.SPAWNER || reason == EntitySpawnReason.SPAWN_ITEM_USE) {
+            return true;
+        }
+        return level.getBlockState(pos.below()).isSolidRender()
+                && level.getRawBrightness(pos, 0) >= 7
+                && level.canSeeSky(pos);
+    }
+
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(3, new PickupFoodAndToolGoal(this));
+        this.goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.85D) {
+            @Override
+            public boolean canUse() {
+                if (isSitting()) return false;
+                if (getOwnerUuid() != null && getOwnerSettings().isFollowOwner()) return false;
+                return super.canUse();
+            }
+        });
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 6.0F));
         this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
     }
 
     @Override
     public boolean removeWhenFarAway(double distanceToClosestPlayer) {
-        return false;
+        return getOwnerUuid() == null && distanceToClosestPlayer > 128.0D;
+    }
+
+    public boolean isTamed() {
+        return getOwnerUuid() != null;
+    }
+
+    public void recruitBy(ServerPlayer player) {
+        setOwnerUuid(player.getUUID());
+        setSitting(false);
+        if (getHomePos() == null) {
+            setHomePos(blockPosition());
+        }
+        if (level() instanceof ServerLevel sl) {
+            sl.sendParticles(ModParticles.SUMMON_RUNE, getX(), getY() + 0.9D, getZ(), 16, 0.35D, 0.45D, 0.35D, 0.04D);
+            sl.sendParticles(ModParticles.CORE_HEART, getX(), getY() + 1.4D, getZ(), 8, 0.3D, 0.3D, 0.3D, 0.03D);
+            sl.playSound(null, getX(), getY(), getZ(), ModSounds.GOLEM_SUMMON, getSoundSource(), 0.75F,
+                    this instanceof ValkyrieGolemEntity ? 1.18F : 1.0F);
+        }
+        player.displayClientMessage(Component.translatable("msg.manyl_mod.recruited",
+                Component.translatable(getRole().getTranslationKey())), true);
+        ModNetworking.sendStateSync(player);
     }
 
     @Override
@@ -158,13 +204,21 @@ public abstract class BaseGolemEntity extends PathfinderMob {
         if (getEatTicks() > 0) setEatTicks(getEatTicks() - 1);
         if (getAttackTicks() > 0) setAttackTicks(getAttackTicks() - 1);
 
-        int drainThreshold = isWorking() ? 160 : 260;
-        hungerTickCounter++;
-        if (hungerTickCounter >= drainThreshold) {
+        if (isTamed()) {
+            int drainThreshold = isWorking() ? 160 : 260;
+            hungerTickCounter++;
+            if (hungerTickCounter >= drainThreshold) {
+                hungerTickCounter = 0;
+                int current = getHunger();
+                if (current > 0) {
+                    setHunger(current - 1);
+                }
+            }
+        } else {
             hungerTickCounter = 0;
-            int current = getHunger();
-            if (current > 0) {
-                setHunger(current - 1);
+            starveTickCounter = 0;
+            if (getHunger() < MAX_HUNGER) {
+                setHunger(MAX_HUNGER);
             }
         }
 
@@ -176,7 +230,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             tryEatFromInventory();
         }
 
-        if (getHunger() > 0 && getHunger() <= 20) {
+        if (isTamed() && getHunger() > 0 && getHunger() <= 20) {
             if (hungrySoundCooldown <= 0) {
                 playSound(ModSounds.GOLEM_HUNGRY, 0.35F, 1.0F);
                 hungrySoundCooldown = 140;
@@ -189,7 +243,7 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             }
         }
 
-        if (getHunger() <= 0) {
+        if (isTamed() && getHunger() <= 0) {
             starveTickCounter++;
             if (starveTickCounter >= 40) {
                 starveTickCounter = 0;
@@ -484,16 +538,34 @@ public abstract class BaseGolemEntity extends PathfinderMob {
 
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
-        ItemStack held = player.getItemInHand(hand);
-        if (held.is(ModItems.SUMMON_STAFF)) {
+        if (hand != InteractionHand.MAIN_HAND) {
             return InteractionResult.PASS;
         }
-        if (!level().isClientSide()) {
+        ItemStack held = player.getItemInHand(hand);
+        if (!level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+            if (this instanceof ValkyrieGolemEntity valkyrie) {
+                if (isTamed() && player.isShiftKeyDown()) {
+                    openGolemMenu(player);
+                    return InteractionResult.SUCCESS;
+                }
+                ModNetworking.sendOpenValkyrieDialogue(serverPlayer, valkyrie);
+                return InteractionResult.SUCCESS;
+            }
+
+            if (!isTamed()) {
+                recruitBy(serverPlayer);
+                return InteractionResult.SUCCESS;
+            }
+
             if (player.isShiftKeyDown()) {
                 setSitting(!isSitting());
                 playSound(ModSounds.GOLEM_STEP, 0.16F, isSitting() ? 0.8F : 1.2F);
+                serverPlayer.displayClientMessage(Component.translatable(
+                        isSitting() ? "msg.manyl_mod.mode_stay" : "msg.manyl_mod.mode_follow",
+                        Component.translatable(getRole().getTranslationKey())), true);
                 return InteractionResult.SUCCESS;
             }
+
             FoodProperties food = held.get(DataComponents.FOOD);
             if (food != null && getHunger() < MAX_HUNGER) {
                 int restore = Math.max(12, food.nutrition() * 8);
@@ -513,6 +585,12 @@ public abstract class BaseGolemEntity extends PathfinderMob {
             openGolemMenu(player);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    public void openInventoryMenuFromDialogue(Player player) {
+        if (!level().isClientSide()) {
+            openGolemMenu(player);
+        }
     }
 
     private void openGolemMenu(Player player) {
