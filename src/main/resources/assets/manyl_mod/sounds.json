@@ -45,5 +45,7 @@
   "valkyrie_daydream": { "subtitle": "subtitles.manyl_mod.valkyrie_daydream", "sounds": [{ "name": "manyl_mod:valkyrie_daydream", "volume": 0.42 }] },
   "valkyrie_vow": { "subtitle": "subtitles.manyl_mod.valkyrie_love", "sounds": [{ "name": "manyl_mod:valkyrie_vow", "volume": 0.85 }] },
   "valkyrie_campfire": { "subtitle": "subtitles.manyl_mod.valkyrie_love", "sounds": [{ "name": "manyl_mod:valkyrie_campfire", "volume": 0.82 }] },
-  "valkyrie_repaired": { "subtitle": "subtitles.manyl_mod.valkyrie_greet", "sounds": [{ "name": "manyl_mod:valkyrie_repaired", "volume": 0.82 }] }
+  "valkyrie_repaired": { "subtitle": "subtitles.manyl_mod.valkyrie_greet", "sounds": [{ "name": "manyl_mod:valkyrie_repaired", "volume": 0.82 }] },
+  "valkyrie_bark": { "subtitle": "subtitles.manyl_mod.valkyrie_bark", "sounds": [{ "name": "manyl_mod:valkyrie_bark", "volume": 0.95 }] },
+  "valkyrie_moan": { "subtitle": "subtitles.manyl_mod.valkyrie_moan", "sounds": [{ "name": "manyl_mod:valkyrie_moan", "volume": 0.95 }] }
 }

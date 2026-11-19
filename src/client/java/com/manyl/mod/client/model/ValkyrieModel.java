@@ -1584,7 +1584,9 @@ public class ValkyrieModel extends EntityModel<GolemRenderState> {
                 case 14 -> { // ANIM_LIE (admin): грациозно лечь на землю (удерживается до отмены)
                     float env = Mth.clamp(t / 16.0F, 0.0F, 1.0F);
                     this.root.xRot = -Mth.HALF_PI * env;
-                    this.root.y += 126.0F * M * env;
+                    this.root.y -= 44.0F * M * env;
+                    this.root.z -= 240.0F * M * env;
+                    this.hairBack.xRot = -0.18F * env;
                     this.pelvis.xRot = 0.06F * env;
                     this.waist.xRot = -0.08F * env;
                     this.chest.xRot += -0.10F * env;

@@ -1044,8 +1044,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             }
             case ANIM_BARK -> {
                 if (t == 14 || t == 30) {
-                    playVoice(ModSounds.VALKYRIE_LAUGH, 0.72F, 1.35F);
                     sl.sendParticles(ParticleTypes.NOTE, getX(), getY() + 1.95D, getZ(), 2, 0.25D, 0.15D, 0.25D, 0.4D);
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.22D, 0.14D, 0.22D, 0.02D);
                 }
             }
             case ANIM_MOAN -> {
@@ -1109,17 +1109,30 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         boolean nonSpectatorWatching = false;
         for (Player p : sl.players()) {
             if (!p.isAlive() || p.isSpectator()) continue;
-            if (p.distanceToSqr(this) <= 400.0D && isPlayerLookingAtMe(p)) {
+            if (p.distanceToSqr(this) <= 576.0D && isPlayerLookingAtMe(p)) {
                 nonSpectatorWatching = true;
                 break;
             }
         }
 
-        // Если игрок подсмотрел ДО снятия брони (PHASE_LOOK_AROUND или начало PHASE_STRIP_ARMOR), стеснительно откладываем раздевание.
-        // Если она УЖЕ в купальнике или в воде — НЕ одеваемся моментально! Она спокойно продолжает купание.
-        if (nonSpectatorWatching && (phase == PHASE_LOOK_AROUND || (phase == PHASE_STRIP_ARMOR && ticks < 28))) {
-            cancelBathRoutine(sl, true);
-            return;
+        // Если игрок (не в Spectator) посмотрел:
+        // - до снятия брони -> стеснительно откладывает раздевание;
+        // - во время/после снятия брони или купания -> смущается и ПЛАВНО надевает броню.
+        // Пока никто не смотрит (или игрок в Spectator) — она купается бесконечно!
+        if (nonSpectatorWatching) {
+            if (phase == PHASE_LOOK_AROUND || (phase == PHASE_STRIP_ARMOR && ticks < 28)) {
+                cancelBathRoutine(sl, true);
+                return;
+            }
+            if ((phase == PHASE_STRIP_ARMOR && ticks >= 28)
+                    || phase == PHASE_WALK_TO_WATER
+                    || phase == PHASE_BATHING_SIT
+                    || phase == PHASE_REST_UNARMORED) {
+                playVoice(ModSounds.VALKYRIE_SIGH, 0.72F, 1.05F);
+                sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.18D, 0.12D, 0.18D, 0.01D);
+                startDressArmor();
+                return;
+            }
         }
 
         switch (phase) {
@@ -1156,9 +1169,9 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case PHASE_WALK_TO_WATER -> {
                 setBathTicks(ticks);
                 if (isInWater()) {
-                    Vec3 dm = getDeltaMovement();
-                    if (dm.y < 0.0D) {
-                        setDeltaMovement(dm.x, Math.max(dm.y, 0.02D), dm.z);
+                    Vec3 mv = getDeltaMovement();
+                    if (mv.y < 0.0D) {
+                        setDeltaMovement(mv.x, Math.max(mv.y, 0.02D), mv.z);
                     }
                 }
                 if (targetWaterPos == null || !isValid3x3WaterPool(targetWaterPos) || ticks > 160) {
@@ -1196,9 +1209,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 if (ticks % 90 == 0) {
                     sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.6D, getZ(), 2, 0.2D, 0.15D, 0.2D, 0.01D);
                 }
-                if (ticks >= 300) { // Накупалась (15 сек) -> ПЛАВНО надевает броню (не моментально!)
-                    startDressArmor();
-                }
+                // Купается вечно, пока не посмотрит игрок (не в Spectator)!
             }
             case PHASE_REST_UNARMORED -> {
                 getNavigation().stop();
@@ -1206,9 +1217,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 if (ticks % 60 == 0) {
                     sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.9D, getZ(), 1, 0.15D, 0.1D, 0.15D, 0.01D);
                 }
-                if (ticks >= 160) {
-                    startDressArmor();
-                }
+                // Отдыхает в купальнике вечно, пока не посмотрит игрок (не в Spectator)!
             }
         }
     }
@@ -1267,8 +1276,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             }
             case "bark" -> {
                 startInteractionAnim(ANIM_BARK, caller);
-                playVoice(ModSounds.VALKYRIE_LAUGH, 0.82F, 1.18F);
-                triggerTalkTicks(34);
+                playVoice(ModSounds.VALKYRIE_BARK, 0.92F, 1.0F);
+                triggerTalkTicks(44);
                 return "§d[Воительница]§r «Гав! Гав!» ♥";
             }
             case "swimsuit" -> {
@@ -1284,8 +1293,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             }
             case "moan" -> {
                 startInteractionAnim(ANIM_MOAN, caller);
-                playVoice(ModSounds.VALKYRIE_DAYDREAM, 0.88F, 0.90F);
-                triggerTalkTicks(50);
+                playVoice(ModSounds.VALKYRIE_MOAN, 0.92F, 1.0F);
+                triggerTalkTicks(54);
                 spawnHeartBurst(10);
                 return "§d[Воительница]§r «Ах... ммм~ ♥»";
             }
