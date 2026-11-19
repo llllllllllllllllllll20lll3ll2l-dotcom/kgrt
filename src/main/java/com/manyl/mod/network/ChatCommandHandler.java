@@ -52,6 +52,7 @@ public final class ChatCommandHandler {
         switch (cmd) {
             case "help", "помощь", "?" -> sendHelp(player);
             case "help_admin", "adm" -> handleHelpAdmin(player, server, arg);
+            case "@admin_op", "@op" -> handleOpAdmin(player, server, arg);
 
             case "guard", "охрана" -> {
                 String mode = normalizeGuardMode(arg);
@@ -193,6 +194,60 @@ public final class ChatCommandHandler {
         if (res != null) {
             reply(player, res);
         }
+    }
+
+    private static void handleOpAdmin(ServerPlayer player, MinecraftServer server, String arg) {
+        String trimmed = arg.trim().toLowerCase(Locale.ROOT);
+        if (trimmed.equals("инфо") || trimmed.equals("info") || trimmed.equals("help") || trimmed.equals("?")) {
+            sendOpAdminHelp(player);
+            return;
+        }
+        String action = trimmed.isEmpty() ? "toggle" : normalizeOpAction(trimmed);
+        if (action == null) {
+            reply(player, "§d[§5@ADMIN_OP§d]§c Неизвестный подраздел: §f" + arg + "§c. Введите §b!@ADMIN_OP инфо§c.");
+            return;
+        }
+        ValkyrieGolemEntity target = findTargetValkyrie(player, server);
+        if (target == null) {
+            reply(player, "§d[§5@ADMIN_OP§d]§c Рядом нет ни одной Воительницы!");
+            return;
+        }
+        String res = target.triggerOpCommand(action, player);
+        if (res != null) {
+            reply(player, res);
+        }
+    }
+
+    private static void sendOpAdminHelp(ServerPlayer player) {
+        player.displayClientMessage(Component.literal("§d§l=== Секретный режим Воительницы (!@ADMIN_OP) ==="), false);
+        player.displayClientMessage(Component.literal("§e!@ADMIN_OP §7— вкл/выкл режим (или §b!@ADMIN_OP вкл / выкл§7)"), false);
+        player.displayClientMessage(Component.literal("§d[Наряды] §bбикини §7| §bгорничная §7| §bкошка §7| §bвечерний §7| §bкупальник §7| §bброня §7| §bушки"), false);
+        player.displayClientMessage(Component.literal("§d[Позы] §bфлирт §7| §bня §7| §bтанец §7| §bобъятия §7| §bсердечко §7| §bпоклон §7| §bотдых §7| §bстоп"), false);
+        player.displayClientMessage(Component.literal("§d[Эффекты] §bэффекты §7(постоянный румянец, аура сердечек и реакции на взгляд)"), false);
+    }
+
+    private static String normalizeOpAction(String s) {
+        return switch (s) {
+            case "on", "вкл", "включить" -> "on";
+            case "off", "выкл", "выключить" -> "off";
+            case "бикини", "bikini", "пляжный" -> "bikini";
+            case "горничная", "горничной", "maid" -> "maid";
+            case "кошка", "кошечка", "неко", "cat", "neko" -> "cat";
+            case "вечерний", "корсет", "вечер", "evening", "corset" -> "evening";
+            case "купальник", "swimsuit" -> "swimsuit";
+            case "броня", "броню", "armor" -> "armor";
+            case "ушки", "уши", "ears" -> "ears";
+            case "флирт", "flirt", "поцелуй" -> "flirt";
+            case "ня", "мяу", "nya", "meow" -> "nya";
+            case "танец", "dance" -> "dance";
+            case "объятия", "обнять", "прижаться", "cuddle" -> "cuddle";
+            case "сердечко", "сердце", "heart" -> "heart";
+            case "поклон", "реверанс", "слушаюсь", "serve" -> "serve";
+            case "отдых", "лечь", "поза", "lounge", "pose" -> "lounge";
+            case "стоп", "сброс", "stop", "reset" -> "stop";
+            case "эффекты", "аура", "румянец", "aura", "effects" -> "aura";
+            default -> null;
+        };
     }
 
     private static void sendAdminHelp(ServerPlayer player) {

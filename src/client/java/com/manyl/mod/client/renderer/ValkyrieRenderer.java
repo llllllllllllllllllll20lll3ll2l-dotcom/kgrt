@@ -49,6 +49,10 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
             state.talkTicks = valkyrie.getTalkTicks();
             state.adminSwimsuit = valkyrie.isAdminSwimsuit();
             state.isVowBound = valkyrie.isVowBound();
+            state.opMode = valkyrie.isOpMode();
+            state.opOutfit = valkyrie.getOpOutfit();
+            state.opCatEars = valkyrie.isOpCatEars();
+            state.opAura = valkyrie.isOpAura();
         } else {
             state.bathPhase = 0;
             state.bathTicks = 0;
@@ -59,6 +63,10 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
             state.talkTicks = 0;
             state.adminSwimsuit = false;
             state.isVowBound = false;
+            state.opMode = false;
+            state.opOutfit = 0;
+            state.opCatEars = false;
+            state.opAura = false;
         }
 
         state.hasHeadArmor = !entity.getItemBySlot(EquipmentSlot.HEAD).isEmpty();

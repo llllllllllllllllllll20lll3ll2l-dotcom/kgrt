@@ -97,6 +97,20 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public static final int ANIM_BARK = 16;
     public static final int ANIM_MOAN = 17;
     public static final int ANIM_MASTER = 18;
+    public static final int ANIM_OP_FLIRT = 19;
+    public static final int ANIM_OP_NYA = 20;
+    public static final int ANIM_OP_SEDUCTIVE_DANCE = 21;
+    public static final int ANIM_OP_CUDDLE = 22;
+    public static final int ANIM_OP_HEART = 23;
+    public static final int ANIM_OP_MAID_BOW = 24;
+    public static final int ANIM_OP_LOUNGE = 25;
+
+    public static final int OP_OUTFIT_NONE = 0;
+    public static final int OP_OUTFIT_BIKINI = 1;
+    public static final int OP_OUTFIT_MAID = 2;
+    public static final int OP_OUTFIT_CAT = 3;
+    public static final int OP_OUTFIT_EVENING = 4;
+    public static final int OP_OUTFIT_SWIMSUIT = 5;
 
     public static final int PHASE_NONE = 0;
     public static final int PHASE_LOOK_AROUND = 1;
@@ -128,6 +142,14 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_ADMIN_SWIMSUIT =
             SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DATA_OP_MODE =
+            SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_OP_OUTFIT =
+            SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_OP_CAT_EARS =
+            SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DATA_OP_AURA =
+            SynchedEntityData.defineId(ValkyrieGolemEntity.class, EntityDataSerializers.BOOLEAN);
 
     private long lastTalkTick = -1000L;
     private long lastComplimentTick = -1000L;
@@ -150,6 +172,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     private long lastShareFoodTick = -1000L;
     private long lastCampfireEventTick = -20000L;
     private long lastFlowerEventTick = -10000L;
+    private long lastOpLookTick = -1000L;
+    private long lastOpApproachTick = -1000L;
     private int rescueCooldownTicks = 0;
     private int daydreamCooldownTicks = 180;
     private BlockPos targetWaterPos = null;
@@ -189,6 +213,44 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         builder.define(DATA_INTERACTION_TICKS, 0);
         builder.define(DATA_TALK_TICKS, 0);
         builder.define(DATA_ADMIN_SWIMSUIT, false);
+        builder.define(DATA_OP_MODE, false);
+        builder.define(DATA_OP_OUTFIT, OP_OUTFIT_NONE);
+        builder.define(DATA_OP_CAT_EARS, false);
+        builder.define(DATA_OP_AURA, true);
+    }
+
+    public boolean isOpMode() {
+        return entityData.get(DATA_OP_MODE);
+    }
+
+    public void setOpMode(boolean val) {
+        entityData.set(DATA_OP_MODE, val);
+        onInventoryChanged();
+    }
+
+    public int getOpOutfit() {
+        return entityData.get(DATA_OP_OUTFIT);
+    }
+
+    public void setOpOutfit(int outfit) {
+        entityData.set(DATA_OP_OUTFIT, Mth.clamp(outfit, OP_OUTFIT_NONE, OP_OUTFIT_SWIMSUIT));
+        onInventoryChanged();
+    }
+
+    public boolean isOpCatEars() {
+        return entityData.get(DATA_OP_CAT_EARS);
+    }
+
+    public void setOpCatEars(boolean val) {
+        entityData.set(DATA_OP_CAT_EARS, val);
+    }
+
+    public boolean isOpAura() {
+        return entityData.get(DATA_OP_AURA);
+    }
+
+    public void setOpAura(boolean val) {
+        entityData.set(DATA_OP_AURA, val);
     }
 
     public int getTalkTicks() {
@@ -289,7 +351,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     }
 
     public boolean isInSwimsuit() {
-        if (isAdminSwimsuit()) return true;
+        if (isAdminSwimsuit() || (isOpMode() && getOpOutfit() != OP_OUTFIT_NONE)) return true;
         int p = getBathPhase();
         return p == PHASE_WALK_TO_WATER || p == PHASE_BATHING_SIT || p == PHASE_REST_UNARMORED
                 || (p == PHASE_STRIP_ARMOR && getBathTicks() >= 75);
@@ -352,6 +414,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             lastGreetVoiceTick = now;
             if (!isTamed()) {
                 playVoice(ModSounds.VALKYRIE_WILD_GREET, 0.80F, 1.0F);
+            } else if (isOpMode()) {
+                playVoice(ModSounds.VALKYRIE_OP_ENTER, 0.86F, 1.02F);
             } else if (getJealousy() >= 70) {
                 playVoice(ModSounds.VALKYRIE_JEALOUS, 0.80F, 1.0F);
             } else if (getRomanceStage() >= STAGE_BELOVED) {
@@ -365,6 +429,9 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public String getGreetingLine(boolean tamed) {
         if (!tamed) {
             return Component.translatable("dialogue.manyl_mod.valkyrie.wild_greeting").getString();
+        }
+        if (isOpMode()) {
+            return Component.translatable("dialogue.manyl_mod.valkyrie.op_greet").getString();
         }
         if (getJealousy() >= 70) {
             return Component.translatable("dialogue.manyl_mod.valkyrie.greet.jealous").getString();
@@ -469,10 +536,12 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 }
                 startInteractionAnim(ANIM_PAT, player);
                 playVoice(ModSounds.VALKYRIE_LAUGH, 0.82F, 1.03F);
-                spawnHeartBurst(6);
-                String key = getRomanceStage() >= STAGE_CRUSH
+                spawnHeartBurst(isOpMode() ? 10 : 6);
+                String key = isOpMode()
+                        ? "dialogue.manyl_mod.valkyrie.op_pat"
+                        : (getRomanceStage() >= STAGE_CRUSH
                         ? "dialogue.manyl_mod.valkyrie.anim.pat.warm"
-                        : "dialogue.manyl_mod.valkyrie.anim.pat.early";
+                        : "dialogue.manyl_mod.valkyrie.anim.pat.early");
                 return new RomanceActionOutcome(Component.translatable(key).getString(), true);
             }
             case ACTION_HUG -> {
@@ -489,10 +558,12 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 }
                 startInteractionAnim(ANIM_HUG, player);
                 playVoice(ModSounds.VALKYRIE_LOVE, 0.85F, 1.0F);
-                spawnHeartBurst(10);
-                String key = getRomanceStage() >= STAGE_BELOVED
+                spawnHeartBurst(isOpMode() ? 14 : 10);
+                String key = isOpMode()
+                        ? "dialogue.manyl_mod.valkyrie.op_hug"
+                        : (getRomanceStage() >= STAGE_BELOVED
                         ? "dialogue.manyl_mod.valkyrie.anim.hug.beloved"
-                        : "dialogue.manyl_mod.valkyrie.anim.hug.friend";
+                        : "dialogue.manyl_mod.valkyrie.anim.hug.friend");
                 return new RomanceActionOutcome(Component.translatable(key).getString(), true);
             }
             case ACTION_KISS -> {
@@ -508,10 +579,12 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 }
                 startInteractionAnim(ANIM_KISS, player);
                 playVoice(ModSounds.VALKYRIE_LOVE, 0.86F, 1.04F);
-                spawnHeartBurst(14);
-                String key = getRomanceStage() >= STAGE_BELOVED
+                spawnHeartBurst(isOpMode() ? 18 : 14);
+                String key = isOpMode()
+                        ? "dialogue.manyl_mod.valkyrie.op_kiss"
+                        : (getRomanceStage() >= STAGE_BELOVED
                         ? "dialogue.manyl_mod.valkyrie.anim.kiss.beloved"
-                        : "dialogue.manyl_mod.valkyrie.anim.kiss.crush";
+                        : "dialogue.manyl_mod.valkyrie.anim.kiss.crush");
                 return new RomanceActionOutcome(Component.translatable(key).getString(), true);
             }
             case ACTION_DANCE -> {
@@ -874,6 +947,9 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         // 3. Ревность (активируется при стадии 1+ и наличии >1 девушки в отряде, блокируется Кольцом Обета)
         tickJealousySystem(sl, owner);
 
+        // 3a. Особые интерактивные реакции и аура для секретного режима !@ADMIN_OP (только визуал/звуки/реплики)
+        tickOpModeReactions(sl, owner);
+
         // 4. Если ревность достигла 100% И прошёл перерыв — подходит, прячет меч и легонько бьёт рукой
         if (getJealousy() >= MAX_JEALOUSY
                 && !isVowBound()
@@ -930,6 +1006,13 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case ANIM_BARK -> 55;
             case ANIM_MOAN -> 75;
             case ANIM_MASTER -> 85;
+            case ANIM_OP_FLIRT -> 80;
+            case ANIM_OP_NYA -> 80;
+            case ANIM_OP_SEDUCTIVE_DANCE -> 120;
+            case ANIM_OP_CUDDLE -> 85;
+            case ANIM_OP_HEART -> 75;
+            case ANIM_OP_MAID_BOW -> 85;
+            case ANIM_OP_LOUNGE -> 12000;
             default -> 0;
         };
 
@@ -939,7 +1022,8 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             } else {
                 getNavigation().stop();
             }
-            if (anim != ANIM_DANCE && anim != ANIM_ADMIN_SIT && anim != ANIM_LIE
+            if (anim != ANIM_DANCE && anim != ANIM_ADMIN_SIT && anim != ANIM_LIE && anim != ANIM_OP_LOUNGE
+                    && anim != ANIM_OP_SEDUCTIVE_DANCE
                     && !(anim == ANIM_WEDDING && t >= 72 && t <= 112)) {
                 faceEntity(owner);
             }
@@ -1060,6 +1144,34 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                     sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.8D, getZ(), 3, 0.25D, 0.15D, 0.25D, 0.02D);
                 }
             }
+            case ANIM_OP_FLIRT, ANIM_OP_HEART -> {
+                if (t == 20 || t == 42 || t == 62) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.75D, getZ(), 4, 0.28D, 0.22D, 0.28D, 0.02D);
+                    sl.sendParticles(ModParticles.CORE_HEART, getX(), getY() + 1.55D, getZ(), 3, 0.22D, 0.18D, 0.22D, 0.02D);
+                }
+            }
+            case ANIM_OP_NYA -> {
+                if (t % 16 == 0) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.90D, getZ(), 3, 0.25D, 0.18D, 0.25D, 0.02D);
+                    sl.sendParticles(ParticleTypes.NOTE, getX(), getY() + 2.05D, getZ(), 1, 0.2D, 0.1D, 0.2D, 0.3D);
+                }
+            }
+            case ANIM_OP_SEDUCTIVE_DANCE -> {
+                if (t % 12 == 0) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.65D, getZ(), 3, 0.38D, 0.22D, 0.38D, 0.02D);
+                    sl.sendParticles(ParticleTypes.CHERRY_BLOSSOM, getX(), getY() + 1.85D, getZ(), 4, 0.4D, 0.25D, 0.4D, 0.02D);
+                }
+            }
+            case ANIM_OP_CUDDLE, ANIM_OP_MAID_BOW -> {
+                if (t == 22 || t == 48 || t == 70) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.75D, getZ(), 4, 0.28D, 0.20D, 0.28D, 0.02D);
+                }
+            }
+            case ANIM_OP_LOUNGE -> {
+                if (t % 30 == 0) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 0.85D, getZ(), 2, 0.3D, 0.18D, 0.3D, 0.01D);
+                }
+            }
         }
 
         if (t >= duration) {
@@ -1077,9 +1189,9 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         int phase = getBathPhase();
         int ticks = getBathTicks() + 1;
 
-        // В режиме админ-купальника не запускаем/не сбрасываем купание от чужого взгляда;
-        // если только что вызвали команду «одеть купальник», доигрываем PHASE_STRIP_ARMOR до конца и остаёмся в купальнике.
-        if (isAdminSwimsuit()) {
+        // В режиме админ-купальника или !@ADMIN_OP наряда не запускаем/не сбрасываем купание от чужого взгляда;
+        // если только что вызвали команду «одеть купальник», доигрываем PHASE_STRIP_ARMOR до конца и остаёмся в наряде.
+        if (isAdminSwimsuit() || (isOpMode() && getOpOutfit() != OP_OUTFIT_NONE)) {
             if (phase == PHASE_STRIP_ARMOR) {
                 getNavigation().stop();
                 setBathTicks(ticks);
@@ -1246,6 +1358,247 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 2, 0.18D, 0.12D, 0.18D, 0.01D);
             setInteractionAnim(ANIM_SHY);
             setInteractionTicks(0);
+        }
+    }
+
+    /**
+     * Интерактивные визуально-звуковые реакции в режиме !@ADMIN_OP (без изменения боевых характеристик).
+     */
+    private void tickOpModeReactions(ServerLevel sl, LivingEntity owner) {
+        if (!isOpMode() || !isAlive() || isDisabled() || getTarget() != null) return;
+        if (!(owner instanceof ServerPlayer sp) || !sp.isAlive()) return;
+
+        double distSq = distanceToSqr(sp);
+        if (isOpAura() && tickCount % 14 == 0 && distSq <= 256.0D) {
+            sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 1, 0.28D, 0.18D, 0.28D, 0.01D);
+            sl.sendParticles(ParticleTypes.CHERRY_BLOSSOM, getX(), getY() + 1.55D, getZ(), 2, 0.35D, 0.28D, 0.35D, 0.01D);
+        }
+
+        long now = sl.getGameTime();
+        if (!sp.isSpectator() && tickCount % 10 == 0 && distSq <= 56.25D && getInteractionAnim() == ANIM_NONE) {
+            if (isPlayerLookingAtMe(sp) && now - lastOpLookTick >= 180L) {
+                lastOpLookTick = now;
+                getLookControl().setLookAt(sp, 30.0F, 30.0F);
+                spawnHeartBurst(6);
+                SoundEvent voice = (getOpOutfit() == OP_OUTFIT_CAT || isOpCatEars())
+                        ? ModSounds.VALKYRIE_OP_NYA
+                        : (random.nextBoolean() ? ModSounds.VALKYRIE_OP_SHY : ModSounds.VALKYRIE_LAUGH);
+                playVoice(voice, 0.80F, 1.03F);
+                triggerTalkTicks(38);
+                sp.displayClientMessage(Component.translatable("dialogue.manyl_mod.valkyrie.op_look." + random.nextInt(3)), false);
+            } else if (distSq <= 4.84D && now - lastOpApproachTick >= 240L) {
+                lastOpApproachTick = now;
+                getLookControl().setLookAt(sp, 30.0F, 30.0F);
+                sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 4, 0.25D, 0.18D, 0.25D, 0.02D);
+                if (getOpOutfit() == OP_OUTFIT_CAT || isOpCatEars()) {
+                    playVoice(ModSounds.VALKYRIE_OP_NYA, 0.72F, 1.04F);
+                }
+            }
+        }
+    }
+
+    /**
+     * Скрытая команда !@ADMIN_OP (вкл/выкл особого режима и подкоманды по разделам).
+     */
+    public String triggerOpCommand(String action, ServerPlayer caller) {
+        if (caller != null) {
+            faceEntity(caller);
+        }
+        switch (action) {
+            case "toggle" -> {
+                if (isOpMode()) {
+                    return triggerOpCommand("off", caller);
+                }
+                return triggerOpCommand("on", caller);
+            }
+            case "on" -> {
+                setOpMode(true);
+                if (getOpOutfit() == OP_OUTFIT_NONE) {
+                    setOpOutfit(OP_OUTFIT_BIKINI);
+                }
+                setOpAura(true);
+                setAdminSwimsuit(false);
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+                startInteractionAnim(ANIM_OP_FLIRT, caller);
+                playVoice(ModSounds.VALKYRIE_OP_ENTER, 0.92F, 1.0F);
+                triggerTalkTicks(52);
+                spawnHeartBurst(16);
+                return "§d[§5@ADMIN_OP§d]§r §fРежим §d18+ Фансервис §aВКЛЮЧЁН§r! §7(Наряды, позы и реакции: §e!@ADMIN_OP инфо§7)";
+            }
+            case "off" -> {
+                boolean wasUnarmored = isInSwimsuit();
+                setOpMode(false);
+                setOpOutfit(OP_OUTFIT_NONE);
+                setOpCatEars(false);
+                setAdminSwimsuit(false);
+                setInteractionAnim(ANIM_NONE);
+                setInteractionTicks(0);
+                if (wasUnarmored) {
+                    setBathPhase(PHASE_DRESS_ARMOR);
+                    setBathTicks(0);
+                } else {
+                    setBathPhase(PHASE_NONE);
+                    setBathTicks(0);
+                }
+                playVoice(ModSounds.VALKYRIE_GREET, 0.80F, 1.0F);
+                return "§d[§5@ADMIN_OP§d]§r §fОсобый режим §cВЫКЛЮЧЕН§r. Воительница возвращается к обычному виду.";
+            }
+            // === Раздел: Наряды ===
+            case "bikini" -> {
+                setOpMode(true);
+                setOpOutfit(OP_OUTFIT_BIKINI);
+                setOpAura(true);
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+                startInteractionAnim(ANIM_OP_FLIRT, caller);
+                playVoice(ModSounds.VALKYRIE_OP_ENTER, 0.90F, 1.02F);
+                spawnHeartBurst(14);
+                return "§d[Воительница]§r *переоделась в открытый пляжный бикини с золотыми цепочками~ ♥*";
+            }
+            case "maid" -> {
+                setOpMode(true);
+                setOpOutfit(OP_OUTFIT_MAID);
+                setOpAura(true);
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+                startInteractionAnim(ANIM_OP_MAID_BOW, caller);
+                playVoice(ModSounds.VALKYRIE_OP_MAID, 0.92F, 1.0F);
+                triggerTalkTicks(50);
+                spawnHeartBurst(14);
+                return "§d[Воительница]§r *надела костюм горничной с кружевным фартуком и чулками* «Добро пожаловать домой, Господин ♥»";
+            }
+            case "cat" -> {
+                setOpMode(true);
+                setOpOutfit(OP_OUTFIT_CAT);
+                setOpCatEars(true);
+                setOpAura(true);
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+                startInteractionAnim(ANIM_OP_NYA, caller);
+                playVoice(ModSounds.VALKYRIE_OP_NYA, 0.92F, 1.02F);
+                triggerTalkTicks(48);
+                spawnHeartBurst(14);
+                return "§d[Воительница]§r *надела кошачьи ушки, хвостик и чулочки* «Мяу~ Погладь свою кошечку ♥»";
+            }
+            case "evening" -> {
+                setOpMode(true);
+                setOpOutfit(OP_OUTFIT_EVENING);
+                setOpAura(true);
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+                startInteractionAnim(ANIM_OP_FLIRT, caller);
+                playVoice(ModSounds.VALKYRIE_OP_FLIRT, 0.90F, 1.0F);
+                triggerTalkTicks(48);
+                spawnHeartBurst(14);
+                return "§d[Воительница]§r *переоделась в алый бархатный корсет и чулки~ ♥*";
+            }
+            case "swimsuit" -> {
+                setOpMode(true);
+                setOpOutfit(OP_OUTFIT_SWIMSUIT);
+                setOpAura(true);
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+                playVoice(ModSounds.VALKYRIE_OP_SHY, 0.86F, 1.02F);
+                spawnHeartBurst(12);
+                return "§d[Воительница]§r *осталась в классическом купальнике с усиленным румянцем и сердечками ♥*";
+            }
+            case "armor" -> {
+                setOpMode(true);
+                boolean wasUnarmored = isInSwimsuit();
+                setOpOutfit(OP_OUTFIT_NONE);
+                setAdminSwimsuit(false);
+                if (wasUnarmored) {
+                    setBathPhase(PHASE_DRESS_ARMOR);
+                    setBathTicks(0);
+                }
+                playVoice(ModSounds.VALKYRIE_GREET, 0.80F, 1.0F);
+                return "§d[Воительница]§r *вернула броню (особый режим и позы остаются активны) ♥*";
+            }
+            case "ears" -> {
+                setOpMode(true);
+                boolean next = !isOpCatEars();
+                setOpCatEars(next);
+                if (next) {
+                    startInteractionAnim(ANIM_OP_NYA, caller);
+                    playVoice(ModSounds.VALKYRIE_OP_NYA, 0.90F, 1.04F);
+                    spawnHeartBurst(10);
+                    return "§d[Воительница]§r *надела неко-ушки и хвостик!* «Мяу~ ♥»";
+                }
+                return "§d[Воительница]§r *сняла неко-ушки и хвостик*";
+            }
+            // === Раздел: Позы и анимации ===
+            case "flirt" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_FLIRT, caller);
+                playVoice(ModSounds.VALKYRIE_OP_FLIRT, 0.92F, 1.0F);
+                triggerTalkTicks(50);
+                spawnHeartBurst(12);
+                return "§d[Воительница]§r *кокетливо подмигнула и послала воздушный поцелуй~ 💋*";
+            }
+            case "nya" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_NYA, caller);
+                playVoice(ModSounds.VALKYRIE_OP_NYA, 0.92F, 1.02F);
+                triggerTalkTicks(48);
+                spawnHeartBurst(12);
+                return "§d[Воительница]§r «Мяу~! Мур-мур~ ♥»";
+            }
+            case "dance" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_SEDUCTIVE_DANCE, caller);
+                playVoice(ModSounds.VALKYRIE_LAUGH, 0.88F, 1.05F);
+                spawnHeartBurst(14);
+                return "§d[Воительница]§r *исполняет грациозный чувственный танец~ ♪♥*";
+            }
+            case "cuddle" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_CUDDLE, caller);
+                playVoice(ModSounds.VALKYRIE_LOVE, 0.88F, 1.02F);
+                spawnHeartBurst(14);
+                return "§d[Воительница]§r *ласково прижалась поближе и томно улыбнулась ♥*";
+            }
+            case "heart" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_HEART, caller);
+                playVoice(ModSounds.VALKYRIE_OP_HEART, 0.92F, 1.0F);
+                triggerTalkTicks(48);
+                spawnHeartBurst(16);
+                return "§d[Воительница]§r *сложила ручки сердечком* «Это сердечко — только для тебя ♥»";
+            }
+            case "serve" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_MAID_BOW, caller);
+                playVoice(ModSounds.VALKYRIE_OP_MAID, 0.92F, 1.0F);
+                triggerTalkTicks(50);
+                spawnHeartBurst(12);
+                return "§d[Воительница]§r *изящный реверанс* «Слушаюсь, мой Господин ♥»";
+            }
+            case "lounge" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_LOUNGE, caller);
+                playVoice(ModSounds.VALKYRIE_OP_SHY, 0.86F, 1.0F);
+                spawnHeartBurst(10);
+                return "§d[Воительница]§r *грациозно расположилась на боку и смотрит на тебя~ ♥*";
+            }
+            case "stop" -> {
+                setInteractionAnim(ANIM_NONE);
+                setInteractionTicks(0);
+                return "§d[Воительница]§r *сменила позу на обычную стойку*";
+            }
+            // === Раздел: Эффекты ===
+            case "aura" -> {
+                setOpMode(true);
+                boolean next = !isOpAura();
+                setOpAura(next);
+                if (next) spawnHeartBurst(12);
+                return next
+                        ? "§d[§5@ADMIN_OP§d]§r Постоянный румянец, аура сердечек и лепестков сакуры §aВКЛЮЧЕНЫ§r ♥"
+                        : "§d[§5@ADMIN_OP§d]§r Постоянный румянец и аура частиц §7выключены§r.";
+            }
+            default -> {
+                return null;
+            }
         }
     }
 
@@ -1576,6 +1929,10 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         out.putInt("ValkyrieJealousy", getJealousy());
         out.putBoolean("ValkyrieVowBound", isVowBound());
         out.putBoolean("ValkyrieAdminSwimsuit", isAdminSwimsuit());
+        out.putBoolean("ValkyrieOpMode", isOpMode());
+        out.putInt("ValkyrieOpOutfit", getOpOutfit());
+        out.putBoolean("ValkyrieOpCatEars", isOpCatEars());
+        out.putBoolean("ValkyrieOpAura", isOpAura());
         out.putInt("ValkyrieRescueCd", rescueCooldownTicks);
     }
 
@@ -1584,6 +1941,10 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
         super.readAdditionalSaveData(in);
         setVowBound(in.getBooleanOr("ValkyrieVowBound", false));
         setAdminSwimsuit(in.getBooleanOr("ValkyrieAdminSwimsuit", false));
+        setOpMode(in.getBooleanOr("ValkyrieOpMode", false));
+        setOpOutfit(in.getIntOr("ValkyrieOpOutfit", OP_OUTFIT_NONE));
+        setOpCatEars(in.getBooleanOr("ValkyrieOpCatEars", false));
+        setOpAura(in.getBooleanOr("ValkyrieOpAura", true));
         setRomanceStage(in.getIntOr("ValkyrieRomanceStage", STAGE_STRANGER_ALLY));
         setAffection(in.getIntOr("ValkyrieAffection", 0));
         setJealousy(isVowBound() ? 0 : in.getIntOr("ValkyrieJealousy", 0));

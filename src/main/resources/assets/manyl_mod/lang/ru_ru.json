@@ -184,5 +184,19 @@
   "subtitles.manyl_mod.valkyrie_campfire": "Шёпот воительницы у костра",
   "subtitles.manyl_mod.valkyrie_repaired": "Воительница пробуждается",
   "subtitles.manyl_mod.valkyrie_bark": "Воительница гавкает",
-  "subtitles.manyl_mod.valkyrie_moan": "Томный вздох воительницы"
+  "subtitles.manyl_mod.valkyrie_moan": "Томный вздох воительницы",
+  "subtitles.manyl_mod.valkyrie_op_enter": "Воительница шепчет с нежностью",
+  "subtitles.manyl_mod.valkyrie_op_flirt": "Воительница флиртует",
+  "subtitles.manyl_mod.valkyrie_op_nya": "Воительница мурлычет",
+  "subtitles.manyl_mod.valkyrie_op_maid": "Воительница приветствует Господина",
+  "subtitles.manyl_mod.valkyrie_op_shy": "Воительница смущённо вздыхает",
+  "subtitles.manyl_mod.valkyrie_op_heart": "Воительница признаётся в чувствах",
+
+  "dialogue.manyl_mod.valkyrie.op_look.0": "§d[Воительница]§r *покраснела* Ну не смотри так пристально... Я же таю под твоим взглядом ♥",
+  "dialogue.manyl_mod.valkyrie.op_look.1": "§d[Воительница]§r *игриво улыбнулась* Нравится то, что ты видишь, любимый?~ ♥",
+  "dialogue.manyl_mod.valkyrie.op_look.2": "§d[Воительница]§r *смущённо отвела взгляд* Ах... От твоего взгляда сердце бьётся всё быстрее ♥",
+  "dialogue.manyl_mod.valkyrie.op_greet": "Ммм~ Я так ждала, когда ты подойдёшь поближе... Сегодня я вся твоя ♥",
+  "dialogue.manyl_mod.valkyrie.op_pat": "Мур~ Не останавливайся, мне так хорошо от твоих прикосновений ♥",
+  "dialogue.manyl_mod.valkyrie.op_hug": "Прижми меня ещё крепче... Хочу чувствовать тепло только твоих рук ♥",
+  "dialogue.manyl_mod.valkyrie.op_kiss": "Ммм... ♥ Твои поцелуи такие сладкие, не отпускай меня~"
 }

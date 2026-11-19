@@ -49,6 +49,13 @@ public final class ModSounds {
     public static final SoundEvent VALKYRIE_BARK = register("valkyrie_bark");
     public static final SoundEvent VALKYRIE_MOAN = register("valkyrie_moan");
 
+    public static final SoundEvent VALKYRIE_OP_ENTER = register("valkyrie_op_enter");
+    public static final SoundEvent VALKYRIE_OP_FLIRT = register("valkyrie_op_flirt");
+    public static final SoundEvent VALKYRIE_OP_NYA = register("valkyrie_op_nya");
+    public static final SoundEvent VALKYRIE_OP_MAID = register("valkyrie_op_maid");
+    public static final SoundEvent VALKYRIE_OP_SHY = register("valkyrie_op_shy");
+    public static final SoundEvent VALKYRIE_OP_HEART = register("valkyrie_op_heart");
+
     private static SoundEvent register(String name) {
         Identifier id = ManylMod.id(name);
         return Registry.register(BuiltInRegistries.SOUND_EVENT, id, SoundEvent.createVariableRangeEvent(id));

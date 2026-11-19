@@ -184,5 +184,19 @@
   "subtitles.manyl_mod.valkyrie_campfire": "Valkyrie whispers by the fire",
   "subtitles.manyl_mod.valkyrie_repaired": "Valkyrie awakens",
   "subtitles.manyl_mod.valkyrie_bark": "Valkyrie barks playfully",
-  "subtitles.manyl_mod.valkyrie_moan": "Valkyrie moans softly"
+  "subtitles.manyl_mod.valkyrie_moan": "Valkyrie moans softly",
+  "subtitles.manyl_mod.valkyrie_op_enter": "Valkyrie whispers fondly",
+  "subtitles.manyl_mod.valkyrie_op_flirt": "Valkyrie flirts playfully",
+  "subtitles.manyl_mod.valkyrie_op_nya": "Valkyrie purrs cutely",
+  "subtitles.manyl_mod.valkyrie_op_maid": "Valkyrie greets her master",
+  "subtitles.manyl_mod.valkyrie_op_shy": "Valkyrie blushes shyly",
+  "subtitles.manyl_mod.valkyrie_op_heart": "Valkyrie sends a heart",
+
+  "dialogue.manyl_mod.valkyrie.op_look.0": "§d[Valkyrie]§r *blushes* Don't stare like that... I'm melting under your gaze ♥",
+  "dialogue.manyl_mod.valkyrie.op_look.1": "§d[Valkyrie]§r *smiles playfully* Like what you see, darling?~ ♥",
+  "dialogue.manyl_mod.valkyrie.op_look.2": "§d[Valkyrie]§r *looks away bashfully* My heart races whenever you watch me ♥",
+  "dialogue.manyl_mod.valkyrie.op_greet": "Mmm~ I was waiting for you to come closer... I'm all yours ♥",
+  "dialogue.manyl_mod.valkyrie.op_pat": "Purr~ Don't stop, your touch feels so warm ♥",
+  "dialogue.manyl_mod.valkyrie.op_hug": "Hold me even tighter... I only want the warmth of your arms ♥",
+  "dialogue.manyl_mod.valkyrie.op_kiss": "Mmm... ♥ Your kisses are so sweet, don't let go~"
 }
