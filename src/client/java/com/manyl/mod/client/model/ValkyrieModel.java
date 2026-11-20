@@ -1415,6 +1415,11 @@ public class ValkyrieModel extends EntityModel<GolemRenderState> {
     @Override
     public void setupAnim(GolemRenderState state) {
         this.root().getAllParts().forEach(ModelPart::resetPose);
+        if (state.opMode && state.opOutfit != 0) {
+            this.root().visible = false;
+            return;
+        }
+        this.root().visible = true;
 
         boolean swimsuitReady = state.adminSwimsuit
                 || (state.opMode && state.opOutfit != 0)

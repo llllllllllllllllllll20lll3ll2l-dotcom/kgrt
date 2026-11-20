@@ -53,5 +53,40 @@
   "valkyrie_op_nya": { "subtitle": "subtitles.manyl_mod.valkyrie_op_nya", "sounds": [{ "name": "manyl_mod:valkyrie_op_nya", "volume": 0.95 }] },
   "valkyrie_op_maid": { "subtitle": "subtitles.manyl_mod.valkyrie_op_maid", "sounds": [{ "name": "manyl_mod:valkyrie_op_maid", "volume": 0.95 }] },
   "valkyrie_op_shy": { "subtitle": "subtitles.manyl_mod.valkyrie_op_shy", "sounds": [{ "name": "manyl_mod:valkyrie_op_shy", "volume": 0.95 }] },
-  "valkyrie_op_heart": { "subtitle": "subtitles.manyl_mod.valkyrie_op_heart", "sounds": [{ "name": "manyl_mod:valkyrie_op_heart", "volume": 0.95 }] }
+  "valkyrie_op_heart": { "subtitle": "subtitles.manyl_mod.valkyrie_op_heart", "sounds": [{ "name": "manyl_mod:valkyrie_op_heart", "volume": 0.95 }] },
+  "valkyrie_op_bunny": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_op_flirt",
+    "sounds": [
+      { "name": "manyl_mod:valkyrie_op_flirt", "volume": 0.95, "pitch": 1.05 },
+      { "name": "manyl_mod:valkyrie_giggle", "volume": 0.90, "pitch": 1.04 }
+    ]
+  },
+  "valkyrie_op_succubus": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_op_enter",
+    "sounds": [
+      { "name": "manyl_mod:valkyrie_op_enter", "volume": 0.95, "pitch": 0.94 },
+      { "name": "manyl_mod:valkyrie_moan", "volume": 0.92, "pitch": 0.96 }
+    ]
+  },
+  "valkyrie_op_negligee": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_op_shy",
+    "sounds": [
+      { "name": "manyl_mod:valkyrie_op_shy", "volume": 0.95, "pitch": 1.02 },
+      { "name": "manyl_mod:valkyrie_love", "volume": 0.90, "pitch": 1.02 }
+    ]
+  },
+  "valkyrie_op_tease": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_op_flirt",
+    "sounds": [
+      { "name": "manyl_mod:valkyrie_op_flirt", "volume": 0.95, "pitch": 1.03 },
+      { "name": "manyl_mod:valkyrie_laugh", "volume": 0.90, "pitch": 1.04 }
+    ]
+  },
+  "valkyrie_op_kneel": {
+    "subtitle": "subtitles.manyl_mod.valkyrie_op_maid",
+    "sounds": [
+      { "name": "manyl_mod:valkyrie_op_maid", "volume": 0.95, "pitch": 0.98 },
+      { "name": "manyl_mod:valkyrie_moan", "volume": 0.90, "pitch": 1.0 }
+    ]
+  }
 }

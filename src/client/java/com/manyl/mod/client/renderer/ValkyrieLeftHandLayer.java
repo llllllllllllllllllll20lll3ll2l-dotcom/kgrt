@@ -19,7 +19,8 @@ public class ValkyrieLeftHandLayer extends RenderLayer<GolemRenderState, Valkyri
     @Override
     public void submit(PoseStack matrices, SubmitNodeCollector commandQueue, int light,
                        GolemRenderState state, float limbAngle, float limbDistance) {
-        if (state.offhandItem.isEmpty() || state.bathPhase >= 2 || state.interactionAnim >= 2) {
+        if (state.offhandItem.isEmpty() || state.bathPhase >= 2 || state.interactionAnim >= 2
+                || (state.opMode && state.opOutfit != 0)) {
             return;
         }
         matrices.pushPose();

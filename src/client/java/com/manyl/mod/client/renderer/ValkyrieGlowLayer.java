@@ -21,7 +21,7 @@ public class ValkyrieGlowLayer extends RenderLayer<GolemRenderState, ValkyrieMod
     @Override
     public void submit(PoseStack matrices, SubmitNodeCollector commandQueue, int light,
                        GolemRenderState state, float limbAngle, float limbDistance) {
-        if (state.isDisabled) {
+        if (state.isDisabled || (state.opMode && state.opOutfit != 0)) {
             return;
         }
         commandQueue.order(1).submitModel(

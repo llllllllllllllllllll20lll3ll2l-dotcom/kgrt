@@ -104,6 +104,11 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public static final int ANIM_OP_HEART = 23;
     public static final int ANIM_OP_MAID_BOW = 24;
     public static final int ANIM_OP_LOUNGE = 25;
+    public static final int ANIM_OP_KNEEL = 26;
+    public static final int ANIM_OP_STRETCH = 27;
+    public static final int ANIM_OP_TWIRL = 28;
+    public static final int ANIM_OP_TEASE = 29;
+    public static final int ANIM_OP_SHRUG_SHY = 30;
 
     public static final int OP_OUTFIT_NONE = 0;
     public static final int OP_OUTFIT_BIKINI = 1;
@@ -111,6 +116,9 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     public static final int OP_OUTFIT_CAT = 3;
     public static final int OP_OUTFIT_EVENING = 4;
     public static final int OP_OUTFIT_SWIMSUIT = 5;
+    public static final int OP_OUTFIT_BUNNY = 6;
+    public static final int OP_OUTFIT_SUCCUBUS = 7;
+    public static final int OP_OUTFIT_NEGLIGEE = 8;
 
     public static final int PHASE_NONE = 0;
     public static final int PHASE_LOOK_AROUND = 1;
@@ -233,7 +241,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
     }
 
     public void setOpOutfit(int outfit) {
-        entityData.set(DATA_OP_OUTFIT, Mth.clamp(outfit, OP_OUTFIT_NONE, OP_OUTFIT_SWIMSUIT));
+        entityData.set(DATA_OP_OUTFIT, Mth.clamp(outfit, OP_OUTFIT_NONE, OP_OUTFIT_NEGLIGEE));
         onInventoryChanged();
     }
 
@@ -538,7 +546,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 playVoice(ModSounds.VALKYRIE_LAUGH, 0.82F, 1.03F);
                 spawnHeartBurst(isOpMode() ? 10 : 6);
                 String key = isOpMode()
-                        ? "dialogue.manyl_mod.valkyrie.op_pat"
+                        ? "dialogue.manyl_mod.valkyrie.op_pat." + random.nextInt(3)
                         : (getRomanceStage() >= STAGE_CRUSH
                         ? "dialogue.manyl_mod.valkyrie.anim.pat.warm"
                         : "dialogue.manyl_mod.valkyrie.anim.pat.early");
@@ -560,7 +568,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 playVoice(ModSounds.VALKYRIE_LOVE, 0.85F, 1.0F);
                 spawnHeartBurst(isOpMode() ? 14 : 10);
                 String key = isOpMode()
-                        ? "dialogue.manyl_mod.valkyrie.op_hug"
+                        ? "dialogue.manyl_mod.valkyrie.op_hug." + random.nextInt(3)
                         : (getRomanceStage() >= STAGE_BELOVED
                         ? "dialogue.manyl_mod.valkyrie.anim.hug.beloved"
                         : "dialogue.manyl_mod.valkyrie.anim.hug.friend");
@@ -581,7 +589,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 playVoice(ModSounds.VALKYRIE_LOVE, 0.86F, 1.04F);
                 spawnHeartBurst(isOpMode() ? 18 : 14);
                 String key = isOpMode()
-                        ? "dialogue.manyl_mod.valkyrie.op_kiss"
+                        ? "dialogue.manyl_mod.valkyrie.op_kiss." + random.nextInt(3)
                         : (getRomanceStage() >= STAGE_BELOVED
                         ? "dialogue.manyl_mod.valkyrie.anim.kiss.beloved"
                         : "dialogue.manyl_mod.valkyrie.anim.kiss.crush");
@@ -1013,6 +1021,11 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             case ANIM_OP_HEART -> 75;
             case ANIM_OP_MAID_BOW -> 85;
             case ANIM_OP_LOUNGE -> 12000;
+            case ANIM_OP_KNEEL -> 12000;
+            case ANIM_OP_STRETCH -> 85;
+            case ANIM_OP_TWIRL -> 75;
+            case ANIM_OP_TEASE -> 85;
+            case ANIM_OP_SHRUG_SHY -> 80;
             default -> 0;
         };
 
@@ -1023,7 +1036,7 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 getNavigation().stop();
             }
             if (anim != ANIM_DANCE && anim != ANIM_ADMIN_SIT && anim != ANIM_LIE && anim != ANIM_OP_LOUNGE
-                    && anim != ANIM_OP_SEDUCTIVE_DANCE
+                    && anim != ANIM_OP_SEDUCTIVE_DANCE && anim != ANIM_OP_TWIRL
                     && !(anim == ANIM_WEDDING && t >= 72 && t <= 112)) {
                 faceEntity(owner);
             }
@@ -1167,9 +1180,15 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                     sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.75D, getZ(), 4, 0.28D, 0.20D, 0.28D, 0.02D);
                 }
             }
-            case ANIM_OP_LOUNGE -> {
+            case ANIM_OP_LOUNGE, ANIM_OP_KNEEL -> {
                 if (t % 30 == 0) {
-                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 0.85D, getZ(), 2, 0.3D, 0.18D, 0.3D, 0.01D);
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 0.95D, getZ(), 2, 0.3D, 0.18D, 0.3D, 0.01D);
+                }
+            }
+            case ANIM_OP_STRETCH, ANIM_OP_TWIRL, ANIM_OP_TEASE, ANIM_OP_SHRUG_SHY -> {
+                if (t == 18 || t == 38 || t == 58) {
+                    sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.80D, getZ(), 4, 0.28D, 0.20D, 0.28D, 0.02D);
+                    sl.sendParticles(ModParticles.CORE_HEART, getX(), getY() + 1.55D, getZ(), 3, 0.22D, 0.18D, 0.22D, 0.02D);
                 }
             }
         }
@@ -1379,20 +1398,29 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
             if (isPlayerLookingAtMe(sp) && now - lastOpLookTick >= 180L) {
                 lastOpLookTick = now;
                 getLookControl().setLookAt(sp, 30.0F, 30.0F);
-                spawnHeartBurst(6);
-                SoundEvent voice = (getOpOutfit() == OP_OUTFIT_CAT || isOpCatEars())
-                        ? ModSounds.VALKYRIE_OP_NYA
-                        : (random.nextBoolean() ? ModSounds.VALKYRIE_OP_SHY : ModSounds.VALKYRIE_LAUGH);
-                playVoice(voice, 0.80F, 1.03F);
-                triggerTalkTicks(38);
-                sp.displayClientMessage(Component.translatable("dialogue.manyl_mod.valkyrie.op_look." + random.nextInt(3)), false);
-            } else if (distSq <= 4.84D && now - lastOpApproachTick >= 240L) {
+                spawnHeartBurst(7);
+                SoundEvent voice = switch (getOpOutfit()) {
+                    case OP_OUTFIT_CAT -> ModSounds.VALKYRIE_OP_NYA;
+                    case OP_OUTFIT_MAID -> ModSounds.VALKYRIE_OP_MAID;
+                    case OP_OUTFIT_BUNNY -> ModSounds.VALKYRIE_OP_BUNNY;
+                    case OP_OUTFIT_SUCCUBUS -> ModSounds.VALKYRIE_OP_SUCCUBUS;
+                    case OP_OUTFIT_NEGLIGEE -> ModSounds.VALKYRIE_OP_NEGLIGEE;
+                    default -> isOpCatEars() ? ModSounds.VALKYRIE_OP_NYA
+                            : (random.nextBoolean() ? ModSounds.VALKYRIE_OP_SHY : ModSounds.VALKYRIE_OP_FLIRT);
+                };
+                playVoice(voice, 0.82F, 1.02F);
+                triggerTalkTicks(40);
+                sp.displayClientMessage(Component.translatable("dialogue.manyl_mod.valkyrie.op_look." + random.nextInt(8)), false);
+            } else if (distSq <= 4.84D && now - lastOpApproachTick >= 220L) {
                 lastOpApproachTick = now;
                 getLookControl().setLookAt(sp, 30.0F, 30.0F);
-                sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 4, 0.25D, 0.18D, 0.25D, 0.02D);
-                if (getOpOutfit() == OP_OUTFIT_CAT || isOpCatEars()) {
-                    playVoice(ModSounds.VALKYRIE_OP_NYA, 0.72F, 1.04F);
-                }
+                sl.sendParticles(ParticleTypes.HEART, getX(), getY() + 1.85D, getZ(), 5, 0.25D, 0.18D, 0.25D, 0.02D);
+                SoundEvent voice = (getOpOutfit() == OP_OUTFIT_CAT || isOpCatEars())
+                        ? ModSounds.VALKYRIE_OP_NYA
+                        : (getOpOutfit() == OP_OUTFIT_SUCCUBUS ? ModSounds.VALKYRIE_OP_SUCCUBUS : ModSounds.VALKYRIE_OP_TEASE);
+                playVoice(voice, 0.76F, 1.03F);
+                triggerTalkTicks(34);
+                sp.displayClientMessage(Component.translatable("dialogue.manyl_mod.valkyrie.op_approach." + random.nextInt(6)), false);
             }
         }
     }
@@ -1503,6 +1531,42 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 spawnHeartBurst(12);
                 return "§d[Воительница]§r *осталась в классическом купальнике с усиленным румянцем и сердечками ♥*";
             }
+            case "bunny" -> {
+                setOpMode(true);
+                setOpOutfit(OP_OUTFIT_BUNNY);
+                setOpAura(true);
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+                startInteractionAnim(ANIM_OP_TEASE, caller);
+                playVoice(ModSounds.VALKYRIE_OP_BUNNY, 0.92F, 1.02F);
+                triggerTalkTicks(48);
+                spawnHeartBurst(16);
+                return "§d[Воительница]§r *надела глянцевый алый бани-костюм, длинные ушки зайки и пушистый хвостик~ ♥* «Угадай, что сделает твой зайчик?»";
+            }
+            case "succubus" -> {
+                setOpMode(true);
+                setOpOutfit(OP_OUTFIT_SUCCUBUS);
+                setOpAura(true);
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+                startInteractionAnim(ANIM_OP_FLIRT, caller);
+                playVoice(ModSounds.VALKYRIE_OP_SUCCUBUS, 0.92F, 0.98F);
+                triggerTalkTicks(52);
+                spawnHeartBurst(18);
+                return "§d[Воительница]§r *расправила крылья суккуба, рожки и соблазнительный корсет~ 😈♥* «Теперь твоя душа принадлежит только мне...»";
+            }
+            case "negligee" -> {
+                setOpMode(true);
+                setOpOutfit(OP_OUTFIT_NEGLIGEE);
+                setOpAura(true);
+                setBathPhase(PHASE_NONE);
+                setBathTicks(0);
+                startInteractionAnim(ANIM_OP_SHRUG_SHY, caller);
+                playVoice(ModSounds.VALKYRIE_OP_NEGLIGEE, 0.90F, 1.01F);
+                triggerTalkTicks(50);
+                spawnHeartBurst(16);
+                return "§d[Воительница]§r *переоделась в полупрозрачное розовое неглиже и кружевное бельё~ ♥* «Т-только не смотри так пристально...»";
+            }
             case "armor" -> {
                 setOpMode(true);
                 boolean wasUnarmored = isInSwimsuit();
@@ -1580,6 +1644,46 @@ public class ValkyrieGolemEntity extends WarriorGolemEntity {
                 playVoice(ModSounds.VALKYRIE_OP_SHY, 0.86F, 1.0F);
                 spawnHeartBurst(10);
                 return "§d[Воительница]§r *грациозно расположилась на боку и смотрит на тебя~ ♥*";
+            }
+            case "kneel" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_KNEEL, caller);
+                playVoice(ModSounds.VALKYRIE_OP_KNEEL, 0.92F, 1.0F);
+                triggerTalkTicks(50);
+                spawnHeartBurst(16);
+                return "§d[Воительница]§r *опустилась на колени и преданно смотрит снизу вверх~ ♥* «Что прикажешь, мой Господин?»";
+            }
+            case "stretch" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_STRETCH, caller);
+                playVoice(ModSounds.VALKYRIE_MOAN, 0.88F, 1.02F);
+                triggerTalkTicks(46);
+                spawnHeartBurst(14);
+                return "§d[Воительница]§r *сладко потянулась и соблазнительно прогнула спинку~ ♥* «Ммм~»";
+            }
+            case "twirl" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_TWIRL, caller);
+                playVoice(ModSounds.VALKYRIE_LAUGH, 0.90F, 1.05F);
+                triggerTalkTicks(42);
+                spawnHeartBurst(14);
+                return "§d[Воительница]§r *игриво покружилась на месте и кокетливо подмигнула~ ♪♥*";
+            }
+            case "tease" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_TEASE, caller);
+                playVoice(ModSounds.VALKYRIE_OP_TEASE, 0.92F, 1.02F);
+                triggerTalkTicks(48);
+                spawnHeartBurst(15);
+                return "§d[Воительница]§r *наклонилась чуть ближе с озорной улыбкой~ ♥* «Нравится то, что видишь?»";
+            }
+            case "shy" -> {
+                setOpMode(true);
+                startInteractionAnim(ANIM_OP_SHRUG_SHY, caller);
+                playVoice(ModSounds.VALKYRIE_OP_SHY, 0.90F, 1.02F);
+                triggerTalkTicks(46);
+                spawnHeartBurst(14);
+                return "§d[Воительница]§r *смущённо прикрыла щёчки и отвела взгляд~ ♥* «Н-не дразни меня так!»";
             }
             case "stop" -> {
                 setInteractionAnim(ANIM_NONE);

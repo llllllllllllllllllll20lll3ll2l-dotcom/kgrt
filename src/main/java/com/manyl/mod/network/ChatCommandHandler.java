@@ -221,8 +221,8 @@ public final class ChatCommandHandler {
     private static void sendOpAdminHelp(ServerPlayer player) {
         player.displayClientMessage(Component.literal("§d§l=== Секретный режим Воительницы (!@ADMIN_OP) ==="), false);
         player.displayClientMessage(Component.literal("§e!@ADMIN_OP §7— вкл/выкл режим (или §b!@ADMIN_OP вкл / выкл§7)"), false);
-        player.displayClientMessage(Component.literal("§d[Наряды] §bбикини §7| §bгорничная §7| §bкошка §7| §bвечерний §7| §bкупальник §7| §bброня §7| §bушки"), false);
-        player.displayClientMessage(Component.literal("§d[Позы] §bфлирт §7| §bня §7| §bтанец §7| §bобъятия §7| §bсердечко §7| §bпоклон §7| §bотдых §7| §bстоп"), false);
+        player.displayClientMessage(Component.literal("§d[Наряды] §bбикини §7| §bгорничная §7| §bкошка §7| §bвечерний §7| §bзайчик §7| §bсуккуб §7| §bнеглиже §7| §bкупальник §7| §bброня §7| §bушки"), false);
+        player.displayClientMessage(Component.literal("§d[Позы] §bфлирт §7| §bня §7| §bтанец §7| §bобъятия §7| §bсердечко §7| §bпоклон §7| §bотдых §7| §bколени §7| §bпотягушки §7| §bкручение §7| §bдразнить §7| §bсмущение §7| §bстоп"), false);
         player.displayClientMessage(Component.literal("§d[Эффекты] §bэффекты §7(постоянный румянец, аура сердечек и реакции на взгляд)"), false);
     }
 
@@ -234,6 +234,9 @@ public final class ChatCommandHandler {
             case "горничная", "горничной", "maid" -> "maid";
             case "кошка", "кошечка", "неко", "cat", "neko" -> "cat";
             case "вечерний", "корсет", "вечер", "evening", "corset" -> "evening";
+            case "зайчик", "заяц", "кролик", "бани", "bunny" -> "bunny";
+            case "суккуб", "демон", "succubus", "demon" -> "succubus";
+            case "неглиже", "бельё", "белье", "кружево", "negligee", "lingerie" -> "negligee";
             case "купальник", "swimsuit" -> "swimsuit";
             case "броня", "броню", "armor" -> "armor";
             case "ушки", "уши", "ears" -> "ears";
@@ -244,6 +247,11 @@ public final class ChatCommandHandler {
             case "сердечко", "сердце", "heart" -> "heart";
             case "поклон", "реверанс", "слушаюсь", "serve" -> "serve";
             case "отдых", "лечь", "поза", "lounge", "pose" -> "lounge";
+            case "колени", "на_коленях", "на коленях", "kneel" -> "kneel";
+            case "потягушки", "потянуться", "прогиб", "stretch", "arch" -> "stretch";
+            case "кручение", "покружиться", "поворот", "twirl", "spin" -> "twirl";
+            case "дразнить", "кокетство", "подмигнуть", "tease", "wink" -> "tease";
+            case "смущение", "стеснение", "покраснеть", "shy" -> "shy";
             case "стоп", "сброс", "stop", "reset" -> "stop";
             case "эффекты", "аура", "румянец", "aura", "effects" -> "aura";
             default -> null;

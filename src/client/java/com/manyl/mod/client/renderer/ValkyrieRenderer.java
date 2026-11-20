@@ -20,6 +20,7 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
     public ValkyrieRenderer(EntityRendererProvider.Context context) {
         super(context, new ValkyrieModel(context.bakeLayer(ValkyrieModel.LAYER_LOCATION)), 0.50F);
         this.itemModelResolver = context.getItemModelResolver();
+        this.addLayer(new ValkyrieSmoothMeshLayer(this));
         this.addLayer(new ValkyrieGlowLayer(this));
         this.addLayer(new ValkyrieHeldItemLayer(this));
         this.addLayer(new ValkyrieLeftHandLayer(this));
@@ -98,6 +99,9 @@ public class ValkyrieRenderer extends MobRenderer<BaseGolemEntity, GolemRenderSt
 
     @Override
     protected void scale(GolemRenderState state, PoseStack poseStack) {
+        if (state.opMode && state.opOutfit != ValkyrieGolemEntity.OP_OUTFIT_NONE) {
+            return;
+        }
         float s = 1.0F / 31.68F;
         poseStack.scale(s, s, s);
     }
