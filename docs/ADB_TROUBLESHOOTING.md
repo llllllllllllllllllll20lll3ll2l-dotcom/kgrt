@@ -92,12 +92,37 @@ adb devices
 
 ## Шаг 7. ADB не находится (`'adb' не является командой`)
 
+Ошибка из PowerShell: `Имя "adb" не распознано как имя командлета...` — значит ADB не установлен или не в PATH.
+
+### Быстрый способ (через PowerShell, 1 минута)
+
+1. Скачайте Platform Tools: https://developer.android.com/tools/releases/platform-tools
+2. Распакуйте ZIP в `C:\platform-tools` (должно получиться `C:\platform-tools\adb.exe`)
+3. В PowerShell выполните **одну команду**:
+```powershell
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\platform-tools", "User")
+```
+4. **Полностью закройте PowerShell** и откройте заново (обязательно!)
+5. Проверьте:
+```powershell
+adb version
+adb devices
+```
+
+### Способ через интерфейс Windows
+
 1. Распакуйте Platform Tools в `C:\platform-tools`
 2. Win+R → `sysdm.cpl` → Дополнительно → Переменные среды → Path → Изменить → Добавить `C:\platform-tools` → OK
-3. Закройте и откройте командную строку заново
+3. Закройте и откройте PowerShell заново
 4. Проверьте: `adb version`
 
-Или просто положите `adb.exe` рядом с `run_bot.py` — бот найдёт его сам.
+### Проверка без PATH (мгновенно)
+
+Если не хотите настраивать PATH, можно вызвать по полному пути:
+```powershell
+C:\platform-tools\adb.exe devices
+```
+Или положите `adb.exe` + `AdbWinApi.dll` + `AdbWinUsbApi.dll` рядом с `run_bot.py` — бот найдёт их сам.
 
 ## Шаг 8. Альтернатива без USB — Wi-Fi ADB
 
