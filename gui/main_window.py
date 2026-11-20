@@ -30,6 +30,11 @@ class BotApp(tk.Tk):
         self.trainer.load()
         self.brain = self.trainer.brain
         self.running = False
+        self._preview_lock = threading.Lock()
+        self._pending_frame = None      # кадр для превью (BGR), обновляется ботом
+        self._preview_busy = False
+        self._capture_mode = "—"
+        self._fps = 0.0
         self._build_ui()
 
     def _build_ui(self):
@@ -137,19 +142,29 @@ class BotApp(tk.Tk):
             self.running = False
             self.btn_start.config(text="▶️ Запустить бота")
             self.log("Бот остановлен")
+            try:
+                self.adb.close()
+            except Exception:
+                pass
         else:
             self.running = True
             self.btn_start.config(text="⏹️ Остановить бота")
             self.log(f"Бот запущен. Тактика: {TACTICS[self.brain.tactic]['name']}")
+            # Непрерывный поток кадров: один процесс на весь бой, без запуска adb за кадр
+            if self.adb.start_stream():
+                self.log("Захват экрана: непрерывный поток (быстрый режим)")
+            else:
+                self.log("Захват экрана: по одному кадру (поток не запустился)")
             threading.Thread(target=self.bot_loop, daemon=True).start()
+            threading.Thread(target=self.preview_loop, daemon=True).start()
 
-    def _show_frame(self, png_bytes):
-        """Показывает живой кадр телефона в превью."""
+    def _show_frame(self, frame):
+        """Показывает живой кадр телефона в превью. Принимает BGR-массив (numpy)."""
+        if frame is None:
+            return
         try:
             from PIL import Image, ImageTk
-            import io
-            img = Image.open(io.BytesIO(png_bytes))
-            # Масштабируем под канвас
+            img = Image.fromarray(frame[:, :, ::-1])  # BGR -> RGB без копии-конвертера
             cw = self.preview.winfo_width() or 600
             ch = self.preview.winfo_height() or 420
             img.thumbnail((cw, ch))
@@ -158,6 +173,20 @@ class BotApp(tk.Tk):
             self.preview.create_image(cw//2, ch//2, image=self._tk_img, anchor=tk.CENTER)
         except Exception:
             pass
+
+    def preview_loop(self):
+        """Отдельный поток для картинки: экран обновляется, не тормозя решения бота."""
+        while self.running:
+            with self._preview_lock:
+                frame = self._pending_frame
+                self._pending_frame = None
+            if frame is None:
+                time.sleep(0.03)
+                continue
+            try:
+                self.after(0, lambda f=frame: self._show_frame(f))
+            except Exception:
+                pass
 
     def _slot_for_decision(self, state, decision):
         """Индекс слота руки для карты из решения AI. None — карты нет в руке."""
@@ -181,20 +210,62 @@ class BotApp(tk.Tk):
         return None
 
     def bot_loop(self):
+        """Цикл бота: захват кадра -> анализ -> решение -> клик.
+        Задержки минимальные: raw-захват, готовый shell для кликов, без sleep между кадрами."""
+        # Пауза между решениями: игра не принимает новую карту каждые 50 мс
+        DECIDE_EVERY = 0.10      # сек, как часто принимаем решения
+        CARD_TAP_GAP = 0.09      # сек между кликом по карте и по арене
+        PLACE_COOLDOWN = 0.80    # сек после постановки карты: не спамим кликами
+        IDLE_PAUSE = 0.02        # сек, если кадр не пришёл
+        last_decide = 0.0
+        last_place = 0.0
+        def _mode():
+            if getattr(self.adb, "_stream", None) is not None:
+                return "поток"
+            return "raw" if getattr(self.adb, "_raw_ok", False) else "png"
+        self._capture_mode = _mode()
+        frames = 0
+        fps_t = time.perf_counter()
         while self.running:
             try:
-                png = self.adb.screencap()
-                state = self.vision.analyze(png)
-                if state.frame_ok:
-                    if png:
-                        self.after(0, lambda p=png: self._show_frame(p))
+                frame = self.adb.screencap_frame()
+                if frame is None:
+                    self.log("Кадр не получен (проверьте ADB)")
+                    time.sleep(IDLE_PAUSE)
+                    continue
+
+                # Кадр сразу в превью, анализ — независимо
+                with self._preview_lock:
+                    self._pending_frame = frame
+
+                state = self.vision.analyze_frame(frame)
+                if not state.frame_ok:
+                    time.sleep(IDLE_PAUSE)
+                    continue
+
+                frames += 1
+                now = time.perf_counter()
+                if now - fps_t >= 1.0:
+                    self._fps = frames / (now - fps_t)
+                    frames = 0
+                    fps_t = now
+
+                # Статус в интерфейсе — не чаще 5 раз в секунду
+                if now - last_decide >= DECIDE_EVERY:
+                    last_decide = now
+                    # После постановки карты выжидаем: рука меняется, эликсир тратится
+                    if now - last_place < PLACE_COOLDOWN:
+                        time.sleep(0.01)
+                        continue
                     def _ru(cid):
                         card = db.get(cid) if cid and cid != "unknown" else None
                         return card["name_ru"] if card else "?"
                     hand_ru = " | ".join(_ru(c) for c in state.hand) or "—"
-                    self.after(0, lambda hr=hand_ru: self.status_var.set(
-                        f"Эликсир {state.elixir:.1f} • Время {state.time_left}с • Рука: {hr}"))
-                    # AI-решение: какую карту ставим и куда
+                    txt = (f"Эликсир {state.elixir:.1f} • Время {state.time_left}с • "
+                           f"Рука: {hand_ru} • {self._fps:.0f} кадр/с "
+                           f"(захват {self.adb.last_capture_ms:.0f} мс, {_mode()})")
+                    self.after(0, lambda t=txt: self.status_var.set(t))
+
                     d = self.brain.decide(state)
                     slot = self._slot_for_decision(state, d)
                     if d.card_id and slot is not None:
@@ -203,20 +274,27 @@ class BotApp(tk.Tk):
                         x2, y2 = self.vision.arena_xy(d.position, w, h)
                         self.log(f"Решение: {d.card_name} → {d.position} ({d.reason})")
                         self.log(f"  Клик: слот {slot} ({x1},{y1}) → арена ({x2},{y2})")
+                        # Оба клика через один shell: без запуска adb.exe
                         self.adb.tap(x1, y1)
-                        time.sleep(0.45)
+                        time.sleep(CARD_TAP_GAP)
                         self.adb.tap(x2, y2)
-                        time.sleep(0.25)
+                        last_place = time.perf_counter()
                     elif d.card_id:
                         self.log(f"Пропуск: {d.card_name} нет в руке "
                                  f"(рука: {', '.join(state.hand)})")
                     else:
                         self.log(f"Ждём: {d.reason}")
-                else:
-                    self.log("Кадр не получен (проверьте ADB)")
+
+                # Небольшая пауза, чтобы не грузить телефон на 100%
+                time.sleep(0.005)
             except Exception as e:
                 self.log(f"Ошибка цикла: {e}")
-            time.sleep(1.5)
+                time.sleep(0.1)
+        # корректно закрываем shell при остановке
+        try:
+            self.adb.close()
+        except Exception:
+            pass
 
     # ---------- Вкладка КАРТЫ ----------
     def _build_cards_tab(self):

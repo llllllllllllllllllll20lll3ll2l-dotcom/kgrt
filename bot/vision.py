@@ -43,6 +43,12 @@ class Vision:
         img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
         if img is None:
             return GameState(frame_ok=False)
+        return self.analyze_frame(img)
+
+    def analyze_frame(self, img) -> GameState:
+        """Анализ уже готового кадра (BGR). Быстрее analyze() — без декодирования PNG."""
+        if img is None or getattr(img, "size", 0) == 0:
+            return GameState(frame_ok=False)
         h, w = img.shape[:2]
         state = GameState(frame_ok=True, raw_frame=img)
 

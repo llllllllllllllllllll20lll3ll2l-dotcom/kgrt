@@ -54,6 +54,8 @@ python tools/calibrate.py
 
 Проверить распознавание без телефона: `python tools/selftest.py`
 
+Замерить скорость на своём телефоне: `python tools/benchmark.py`
+
 ## Структура проекта
 
 ```
@@ -77,7 +79,8 @@ kgrt/
 │   └── trained_weights.json# обученные веса (после обучения)
 ├── tools/
 │   ├── calibrate.py        # проверка координат и распознавания руки
-│   └── selftest.py         # автотест распознавания (без телефона)
+│   ├── selftest.py         # автотест распознавания (без телефона)
+│   └── benchmark.py        # замер скорости захвата и анализа
 └── docs/
     ├── CARDS_GUIDE.md      # все карты: как выглядят и играют
     ├── TACTICS_GUIDE.md    # тактики

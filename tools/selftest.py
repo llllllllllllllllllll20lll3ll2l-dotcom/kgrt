@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 
 from bot import screen_layout as L
+from bot.adb_controller import ADBController, _FrameStream
 from bot.card_recognizer import TEMPLATES_DIR
 from bot.ai_brain import AIBrain, TACTICS
 from bot.card_recognizer import CardRecognizer
@@ -105,6 +106,55 @@ def main():
             if cost is not None and cost > elixir:
                 failures.append(f"{tactic}@{elixir}: {d.card_id} стоит {cost}")
         print(f"  эликсир {elixir}: ок")
+
+    # 5. Скорость распознавания руки (важно: цикл бота не должен тормозить)
+    import time
+    frame = make_fake_hand(hand)
+    vision.hand_slots_detail(frame)  # прогрев
+    t0 = time.perf_counter()
+    for _ in range(5):
+        vision.hand_slots_detail(frame)
+    ms = (time.perf_counter() - t0) / 5 * 1000
+    print(f"\nРаспознавание руки: {ms:.0f} мс на кадр")
+    if ms > 250:
+        failures.append(f"распознавание слишком медленное: {ms:.0f} мс")
+
+    # 6. Разбор сырого кадра screencap и потока кадров (без телефона)
+    import io
+    import struct
+    W, H = 720, 1604
+    px = np.zeros((H, W, 4), dtype=np.uint8)
+    px[..., 0] = 200
+    for header in (12, 16):
+        raw = struct.pack("<III", W, H, 1) + (b"\0" * (header - 12)) + px.tobytes()
+        decoded = ADBController.decode_raw(raw)
+        if decoded is None or decoded.shape != (H, W, 3):
+            failures.append(f"decode_raw с заголовком {header} байт не сработал")
+        else:
+            print(f"raw-кадр ({header} байт заголовка): {decoded.shape} ок")
+
+    def make_stream(n, header):
+        buf = bytearray()
+        for i in range(n):
+            p = px.copy()
+            p[..., 0] = i
+            buf += struct.pack("<III", W, H, 1)
+            if header == 16:
+                buf += struct.pack("<I", 1)
+            buf += p.tobytes()
+        return bytes(buf)
+
+    class _FakeProc:
+        def __init__(self, data):
+            self.stdout = io.BytesIO(data)
+
+    for header in (12, 16):
+        stream = _FrameStream(_FakeProc(make_stream(3, header)))
+        got = [stream.read_frame() for _ in range(3)]
+        if any(f is None for f in got):
+            failures.append(f"поток кадров (заголовок {header}) читается не полностью")
+        else:
+            print(f"поток кадров ({header} байт заголовка): 3/3 ок")
 
     print()
     if failures:
