@@ -43,7 +43,7 @@ class AIBrain:
 
         # 1. Защита: если есть угроза — ставим контр
         if threats and cfg["defense_first"]:
-            d = self._defense_decision(threats, elixir)
+            d = self._defense_decision(threats, elixir, state)
             if d:
                 return d
 
@@ -59,14 +59,32 @@ class AIBrain:
         else:
             return self._balanced(state, elixir, threats)
 
-    def _affordable(self, elixir: float) -> List[str]:
-        return [cid for cid in self.hand_ids if self.deck_by_id[cid].elixir <= elixir]
+    def _affordable(self, elixir: float, state: Optional[GameState] = None) -> List[str]:
+        """Карты колоды, которые сейчас можно поставить.
+        Если рука распознана — берём только карты из руки (иначе клик промахнётся)."""
+        candidates = self.hand_ids
+        if state is not None and getattr(state, "hand", None):
+            known = [cid for cid in state.hand if cid and cid != "unknown"]
+            if known:
+                # В руке иконка эволюции может отличаться от id в колоде
+                in_hand = []
+                for cid in self.hand_ids:
+                    variants = {cid}
+                    if cid.endswith("_evo"):
+                        variants.add(cid[:-4])
+                    else:
+                        variants.add(cid + "_evo")
+                    if variants & set(known):
+                        in_hand.append(cid)
+                if in_hand:
+                    candidates = in_hand
+        return [cid for cid in candidates if self.deck_by_id[cid].elixir <= elixir]
 
-    def _defense_decision(self, threats, elixir) -> Optional[Decision]:
+    def _defense_decision(self, threats, elixir, state=None) -> Optional[Decision]:
         # Берём самую опасную угрозу
         threat = max(threats, key=lambda t: t.get("danger", 1))
         counters = COUNTERS.get(threat.get("card_id", ""), [])
-        affordable = self._affordable(elixir)
+        affordable = self._affordable(elixir, state)
         for cid in counters:
             if cid in affordable:
                 c = self.deck_by_id[cid]
@@ -79,7 +97,7 @@ class AIBrain:
 
     def _aggressive(self, state, elixir) -> Decision:
         # Ставим танк за мостом или поддержку
-        affordable = self._affordable(elixir)
+        affordable = self._affordable(elixir, state)
         # Приоритет: Гигантский миньон -> Ведьма -> Дровосек
         for cid in ["giant_minion", "witch_evo", "lumberjack", "princess"]:
             if cid in affordable:
@@ -91,12 +109,12 @@ class AIBrain:
 
     def _defensive(self, state, elixir, threats) -> Decision:
         if threats:
-            d = self._defense_decision(threats, elixir)
+            d = self._defense_decision(threats, elixir, state)
             if d:
                 return d
         if elixir >= 9:
             # Контратака выжившими
-            affordable = self._affordable(elixir)
+            affordable = self._affordable(elixir, state)
             for cid in ["giant_minion", "witch_evo"]:
                 if cid in affordable:
                     c = self.deck_by_id[cid]
@@ -106,7 +124,7 @@ class AIBrain:
 
     def _cycle(self, state, elixir) -> Decision:
         # Дешёвые карты + чип Принцессой
-        affordable = self._affordable(elixir)
+        affordable = self._affordable(elixir, state)
         # Принцесса для чип-урона по башне
         if "princess" in affordable and elixir >= 6:
             return Decision("princess", "Принцесса", "center",
@@ -120,11 +138,11 @@ class AIBrain:
 
     def _counter(self, state, elixir, threats) -> Decision:
         if threats:
-            d = self._defense_decision(threats, elixir)
+            d = self._defense_decision(threats, elixir, state)
             if d:
                 return d
         if elixir >= 8:
-            affordable = self._affordable(elixir)
+            affordable = self._affordable(elixir, state)
             for cid in ["witch_evo", "giant_minion"]:
                 if cid in affordable:
                     c = self.deck_by_id[cid]
@@ -134,11 +152,11 @@ class AIBrain:
 
     def _balanced(self, state, elixir, threats) -> Decision:
         if threats:
-            d = self._defense_decision(threats, elixir)
+            d = self._defense_decision(threats, elixir, state)
             if d:
                 return d
         if elixir >= 8:
-            affordable = self._affordable(elixir)
+            affordable = self._affordable(elixir, state)
             for cid in ["giant_minion", "witch_evo", "princess"]:
                 if cid in affordable:
                     c = self.deck_by_id[cid]
@@ -146,7 +164,7 @@ class AIBrain:
                     return Decision(cid, c.name_ru, f"{side}_mid",
                                     f"Сбалансированная атака: {c.name_ru}", 0.8)
         if elixir >= 5:
-            affordable = self._affordable(elixir)
+            affordable = self._affordable(elixir, state)
             for cid in ["lumberjack", "bats", "skeletons_evo"]:
                 if cid in affordable:
                     c = self.deck_by_id[cid]

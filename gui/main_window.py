@@ -159,6 +159,27 @@ class BotApp(tk.Tk):
         except Exception:
             pass
 
+    def _slot_for_decision(self, state, decision):
+        """Индекс слота руки для карты из решения AI. None — карты нет в руке."""
+        if not decision or not decision.card_id:
+            return None
+        card_id = decision.card_id
+        # Основной путь: карта найдена распознаванием руки
+        for i, cid in enumerate(state.hand):
+            if cid == card_id:
+                return i
+        # Эволюции: в руке иконка может быть обычной или эволюционной
+        variants = {card_id}
+        if card_id.endswith("_evo"):
+            variants.add(card_id[:-4])
+        else:
+            variants.add(card_id + "_evo")
+        for i, cid in enumerate(state.hand):
+            if cid in variants:
+                return i
+        # Если это Бревно — оно всегда последняя (4-я) карта в колоде
+        return None
+
     def bot_loop(self):
         while self.running:
             try:
@@ -167,22 +188,28 @@ class BotApp(tk.Tk):
                 if state.frame_ok:
                     if png:
                         self.after(0, lambda p=png: self._show_frame(p))
-                    self.after(0, lambda: self.status_var.set(
-                        f"Эликсир {state.elixir:.1f} • Время {state.time_left}с • Рука: {state.hand}"))
-                    # AI-решение
+                    def _ru(cid):
+                        card = db.get(cid) if cid and cid != "unknown" else None
+                        return card["name_ru"] if card else "?"
+                    hand_ru = " | ".join(_ru(c) for c in state.hand) or "—"
+                    self.after(0, lambda hr=hand_ru: self.status_var.set(
+                        f"Эликсир {state.elixir:.1f} • Время {state.time_left}с • Рука: {hr}"))
+                    # AI-решение: какую карту ставим и куда
                     d = self.brain.decide(state)
-                    if d.card_id:
-                        self.log(f"Решение: {d.card_name} → {d.position} ({d.reason})")
-                        # Клик по слоту + арене
+                    slot = self._slot_for_decision(state, d)
+                    if d.card_id and slot is not None:
                         w, h = self.adb.get_screen_size()
-                        # Находим слот (упрощённо — первый доступный)
-                        slot = 0
                         x1, y1 = self.vision.card_slot_xy(slot, w, h)
-                        self.adb.tap(x1, y1)
-                        time.sleep(0.3)
                         x2, y2 = self.vision.arena_xy(d.position, w, h)
-                        self.adb.tap(x2, y2)
+                        self.log(f"Решение: {d.card_name} → {d.position} ({d.reason})")
                         self.log(f"  Клик: слот {slot} ({x1},{y1}) → арена ({x2},{y2})")
+                        self.adb.tap(x1, y1)
+                        time.sleep(0.45)
+                        self.adb.tap(x2, y2)
+                        time.sleep(0.25)
+                    elif d.card_id:
+                        self.log(f"Пропуск: {d.card_name} нет в руке "
+                                 f"(рука: {', '.join(state.hand)})")
                     else:
                         self.log(f"Ждём: {d.reason}")
                 else:

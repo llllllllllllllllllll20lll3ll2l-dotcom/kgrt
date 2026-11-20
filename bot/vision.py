@@ -4,7 +4,10 @@
 import cv2
 import numpy as np
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
+
+from . import screen_layout as L
+from .card_recognizer import CardRecognizer
 
 @dataclass
 class GameState:
@@ -13,6 +16,7 @@ class GameState:
     time_left: int = 180         # секунды
     overtime: bool = False
     hand: List[str] = field(default_factory=list)   # id карт в руке (до 4)
+    hand_scores: List[float] = field(default_factory=list)  # уверенность распознавания
     next_card: Optional[str] = None
     enemy_towers: Dict[str, int] = field(default_factory=dict)  # left, right, king
     my_towers: Dict[str, int] = field(default_factory=dict)
@@ -25,17 +29,12 @@ class Vision:
 
     # Зоны экрана (x1, y1, x2, y2) в относительных координатах
     # Под 720x1604 (OPPO) и большинство телефонов 19:9 / 20:9
-    ZONES = {
-        "elixir_bar": (0.08, 0.925, 0.92, 0.965),
-        "timer": (0.40, 0.015, 0.60, 0.075),
-        "hand": (0.05, 0.80, 0.95, 0.925),
-        "enemy_towers": (0.05, 0.05, 0.95, 0.35),
-        "my_towers": (0.05, 0.55, 0.95, 0.80),
-        "arena": (0.05, 0.10, 0.95, 0.80),
-    }
+    ZONES = L.ZONES
 
     def __init__(self):
         self.last_state = GameState()
+        self.recognizer = CardRecognizer()
+        self._last_hand_scores: List[float] = []
 
     def analyze(self, png_bytes: Optional[bytes]) -> GameState:
         if not png_bytes:
@@ -50,6 +49,7 @@ class Vision:
         state.elixir = self._detect_elixir(img, w, h)
         state.time_left, state.overtime = self._detect_timer(img, w, h)
         state.hand = self._detect_hand(img, w, h)
+        state.hand_scores = list(getattr(self, "_last_hand_scores", []))
         state.enemy_towers, state.my_towers = self._detect_towers(img, w, h)
         state.threats = self._detect_threats(img, w, h)
         self.last_state = state
@@ -85,17 +85,10 @@ class Vision:
         idx = np.where(filled_cols)[0]
         left, right = int(idx[0]), int(idx[-1])
         bar_width = max(1, mask.shape[1])
-        # Эликсир пропорционален ширине заполнения от левого края бара
-        # Левый край бара ~ 5% ширины ROI, правый ~ 95%
-        fill_ratio = (right - left) / bar_width
-        # Калибровка: при полном баре fill_ratio ~0.85 -> 10 эликсира
-        elixir = fill_ratio * 10 / 0.85
-        # Альтернативная оценка по доле заполненных столбцов
+        # Доля заполненных столбцов от всей ширины бара = доля эликсира.
+        # На реальном кадре 720x1604 полный бар даёт frac ~0.874 -> 10 эликсира.
         frac = float(np.mean(filled_cols))
-        elixir2 = frac * 10
-        # Берём среднее двух оценок для стабильности
-        elixir = (elixir + elixir2) / 2
-        return round(min(10.0, max(0.0, elixir)), 1)
+        return round(min(10.0, max(0.0, frac * 10 / 0.874)), 1)
 
     def _detect_timer(self, img, w, h) -> tuple:
         """Таймер сверху. OCR если доступен, иначе эвристика."""
@@ -124,23 +117,37 @@ class Vision:
         return 180, False
 
     def _detect_hand(self, img, w, h) -> List[str]:
-        """Рука карт: 4 слота внизу. Пока возвращаем заглушку — для точного
-        распознавания нужны шаблоны карт (см. tools/calibrate.py).
-        Здесь: определяем, сколько слотов подсвечено (доступно по эликсиру)."""
-        roi = self._crop(img, self.ZONES["hand"])
-        # Эвристика: тёмные слоты = недоступны, светлые = доступны
-        # Делим на 4 части
-        if roi.size == 0:
-            return []
-        hh, ww = roi.shape[:2]
-        hand = []
+        """Рука карт: 4 слота внизу. Каждый слот сравнивается с иконками-шаблонами
+        из data/templates. Возвращает список из 4 card_id (None -> "unknown")."""
+        hand: List[str] = []
+        scores: List[float] = []
         for i in range(4):
-            part = roi[:, int(ww*i/4):int(ww*(i+1)/4)]
-            gray = cv2.cvtColor(part, cv2.COLOR_BGR2GRAY)
-            bright = float(np.mean(gray))
-            # Яркий слот = карта доступна
-            hand.append(f"slot_{i}_{'ok' if bright > 90 else 'dim'}")
+            x1, y1, x2, y2 = L.hand_slot_box(i, w, h)
+            slot_img = img[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
+            card_id, score, _margin = self.recognizer.recognize(slot_img)
+            hand.append(card_id or "unknown")
+            scores.append(score)
+        self._last_hand_scores = scores
         return hand
+
+    def hand_slots_detail(self, img) -> List[Dict]:
+        """Подробно по каждому слоту: bbox, точка клика, карта, уверенность.
+        Используется для калибровки и отладки (tools/calibrate.py)."""
+        h, w = img.shape[:2]
+        out = []
+        for i in range(4):
+            x1, y1, x2, y2 = L.hand_slot_box(i, w, h)
+            slot_img = img[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
+            card_id, score, margin = self.recognizer.recognize(slot_img)
+            out.append({
+                "slot": i,
+                "bbox": (x1, y1, x2, y2),
+                "tap": L.hand_slot_tap(i, w, h),
+                "card_id": card_id,
+                "score": score,
+                "margin": margin,
+            })
+        return out
 
     def _detect_towers(self, img, w, h):
         """Башни: ищем HP-полосы. Упрощённо — возвращаем значения по умолчанию,
@@ -157,19 +164,20 @@ class Vision:
         return []
 
     def card_slot_xy(self, slot: int, screen_w: int, screen_h: int):
-        """Координаты центра слота карты (для тапа)."""
-        # Рука: 4 слота по ширине
-        x = int(screen_w * (0.15 + slot * 0.22))
-        y = int(screen_h * 0.86)
-        return x, y
+        """Координаты центра слота карты в руке (для тапа).
+        Замерено на 720x1604: центры карт x = 0.310 / 0.485 / 0.665 / 0.865, y = 0.872.
+        Клик по (0.15 + slot*0.22) попадал в зону «След.» — карта не выбиралась."""
+        return L.hand_slot_tap(slot, screen_w, screen_h)
 
     def arena_xy(self, side: str, screen_w: int, screen_h: int):
-        """Координаты точки на арене: left/right/center, defense/attack."""
-        positions = {
-            "left_def": (0.30, 0.62), "right_def": (0.70, 0.62),
-            "left_mid": (0.30, 0.50), "right_mid": (0.70, 0.50),
-            "left_atk": (0.30, 0.38), "right_atk": (0.70, 0.38),
-            "center": (0.50, 0.50), "king": (0.50, 0.30),
-        }
-        x, y = positions.get(side, (0.5, 0.5))
-        return int(screen_w * x), int(screen_h * y)
+        """Координаты точки установки карты на арене (доли экрана из screen_layout)."""
+        return L.arena_point(side, screen_w, screen_h)
+
+    def slot_for_card(self, state: GameState, card_id: str) -> Optional[int]:
+        """В каком слоте руки лежит нужная карта. None — карты нет в руке."""
+        if not card_id or not state.hand:
+            return None
+        for i, cid in enumerate(state.hand):
+            if cid == card_id:
+                return i
+        return None
