@@ -143,13 +143,30 @@ class BotApp(tk.Tk):
             self.log(f"Бот запущен. Тактика: {TACTICS[self.brain.tactic]['name']}")
             threading.Thread(target=self.bot_loop, daemon=True).start()
 
+    def _show_frame(self, png_bytes):
+        """Показывает живой кадр телефона в превью."""
+        try:
+            from PIL import Image, ImageTk
+            import io
+            img = Image.open(io.BytesIO(png_bytes))
+            # Масштабируем под канвас
+            cw = self.preview.winfo_width() or 600
+            ch = self.preview.winfo_height() or 420
+            img.thumbnail((cw, ch))
+            self._tk_img = ImageTk.PhotoImage(img)
+            self.preview.delete("all")
+            self.preview.create_image(cw//2, ch//2, image=self._tk_img, anchor=tk.CENTER)
+        except Exception:
+            pass
+
     def bot_loop(self):
         while self.running:
             try:
                 png = self.adb.screencap()
                 state = self.vision.analyze(png)
                 if state.frame_ok:
-                    # Показываем кадр (упрощённо — текст)
+                    if png:
+                        self.after(0, lambda p=png: self._show_frame(p))
                     self.after(0, lambda: self.status_var.set(
                         f"Эликсир {state.elixir:.1f} • Время {state.time_left}с • Рука: {state.hand}"))
                     # AI-решение
