@@ -22,6 +22,9 @@ pip install -r requirements.txt
 2. Настройки → Система → Для разработчиков → Отладка по USB (вкл)
 3. Подключите USB, на телефоне нажмите «Разрешить отладку по USB»
 
+> **Не появляется запрос на телефоне / бот не видит устройство?**
+> См. подробное руководство: [ADB_TROUBLESHOOTING.md](ADB_TROUBLESHOOTING.md) — там разбор для Xiaomi, Samsung, Realme, Huawei, драйверы, Wi-Fi ADB и чек-лист.
+
 ## 5. Запуск
 ```bat
 python run_bot.py
