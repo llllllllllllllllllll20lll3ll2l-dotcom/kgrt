@@ -24,10 +24,11 @@ class Vision:
     """Анализатор экрана. Координаты — относительные (0..1) от размера экрана."""
 
     # Зоны экрана (x1, y1, x2, y2) в относительных координатах
+    # Под 720x1604 (OPPO) и большинство телефонов 19:9 / 20:9
     ZONES = {
-        "elixir_bar": (0.05, 0.92, 0.95, 0.97),
-        "timer": (0.42, 0.02, 0.58, 0.08),
-        "hand": (0.05, 0.80, 0.95, 0.92),
+        "elixir_bar": (0.08, 0.925, 0.92, 0.965),
+        "timer": (0.40, 0.015, 0.60, 0.075),
+        "hand": (0.05, 0.80, 0.95, 0.925),
         "enemy_towers": (0.05, 0.05, 0.95, 0.35),
         "my_towers": (0.05, 0.55, 0.95, 0.80),
         "arena": (0.05, 0.10, 0.95, 0.80),
@@ -60,18 +61,41 @@ class Vision:
         return img[int(h*y1):int(h*y2), int(w*x1):int(w*x2)]
 
     def _detect_elixir(self, img, w, h) -> float:
-        """Эликсир — фиолетовая полоса внизу. Считаем фиолетовые пиксели."""
+        """Эликсир — розово-фиолетовая полоса внизу, заполняется слева направо.
+        Метод: по столбцам считаем, где есть эликсир, и меряем ширину заполнения.
+        Устойчив к разным оттенкам (OPPO 720x1604 и др.)."""
         roi = self._crop(img, self.ZONES["elixir_bar"])
         if roi.size == 0:
             return 0.0
         hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-        # Фиолетовый диапазон эликсира
-        lower = np.array([130, 80, 80])
-        upper = np.array([165, 255, 255])
-        mask = cv2.inRange(hsv, lower, upper)
-        ratio = cv2.countNonZero(mask) / max(1, mask.size)
-        # Полоса заполняется слева направо; ratio ~ elixir/10
-        return round(min(10.0, max(0.0, ratio * 10 * 1.6)), 1)
+        # Широкий диапазон: фиолетовый + розовый эликсир
+        lower1 = np.array([120, 40, 40])
+        upper1 = np.array([175, 255, 255])
+        mask = cv2.inRange(hsv, lower1, upper1)
+        # Закрываем мелкие дыры
+        kernel = np.ones((3, 3), np.uint8)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+        # По столбцам: заполненный столбец = много фиолетовых пикселей
+        col_h = mask.shape[0]
+        col_counts = np.sum(mask > 0, axis=0)  # (width,)
+        filled_cols = col_counts > (col_h * 0.35)
+        if not np.any(filled_cols):
+            return 0.0
+        # Находим левую и правую границы заполнения
+        idx = np.where(filled_cols)[0]
+        left, right = int(idx[0]), int(idx[-1])
+        bar_width = max(1, mask.shape[1])
+        # Эликсир пропорционален ширине заполнения от левого края бара
+        # Левый край бара ~ 5% ширины ROI, правый ~ 95%
+        fill_ratio = (right - left) / bar_width
+        # Калибровка: при полном баре fill_ratio ~0.85 -> 10 эликсира
+        elixir = fill_ratio * 10 / 0.85
+        # Альтернативная оценка по доле заполненных столбцов
+        frac = float(np.mean(filled_cols))
+        elixir2 = frac * 10
+        # Берём среднее двух оценок для стабильности
+        elixir = (elixir + elixir2) / 2
+        return round(min(10.0, max(0.0, elixir)), 1)
 
     def _detect_timer(self, img, w, h) -> tuple:
         """Таймер сверху. OCR если доступен, иначе эвристика."""
@@ -79,6 +103,9 @@ class Vision:
         try:
             import pytesseract
             gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            # Увеличиваем и бинаризуем для лучшего OCR
+            gray = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+            _, gray = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
             text = pytesseract.image_to_string(gray, config="--psm 7 -c tessedit_char_whitelist=0123456789:")
             text = "".join(ch for ch in text if ch.isdigit())
             if len(text) >= 2:
