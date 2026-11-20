@@ -49,7 +49,10 @@ python run_bot.py
 ```bat
 python tools/calibrate.py
 ```
-Откроет `calibration_frame.png` — сверьте координаты слотов.
+Скрипт покажет, какие карты бот видит в руке (с уверенностью), и сохранит
+`calibration_marked.png` — зелёные рамки = карта распознана, красные = нет.
+
+Проверить распознавание без телефона: `python tools/selftest.py`
 
 ## Структура проекта
 
@@ -60,6 +63,8 @@ kgrt/
 ├── bot/
 │   ├── adb_controller.py   # ADB: screencap + tap
 │   ├── vision.py           # анализ экрана (эликсир, таймер, рука)
+│   ├── card_recognizer.py  # распознавание карт в руке по иконкам
+│   ├── screen_layout.py    # геометрия экрана (слоты руки, точки арены)
 │   ├── ai_brain.py         # мозг: 5 тактик + контр-таблица
 │   ├── trainer.py          # обучение: симуляция + hill climbing
 │   ├── cards_db.py         # база карт
@@ -68,13 +73,16 @@ kgrt/
 │   └── main_window.py      # интерфейс (Tkinter)
 ├── data/
 │   ├── cards.json          # все 156 карт
+│   ├── templates/          # иконки карт вашей колоды (для распознавания)
 │   └── trained_weights.json# обученные веса (после обучения)
 ├── tools/
-│   └── calibrate.py        # калибровка координат
+│   ├── calibrate.py        # проверка координат и распознавания руки
+│   └── selftest.py         # автотест распознавания (без телефона)
 └── docs/
     ├── CARDS_GUIDE.md      # все карты: как выглядят и играют
     ├── TACTICS_GUIDE.md    # тактики
     ├── TRAINING_GUIDE.md   # как работает обучение
+    ├── VISION_SETUP.md     # распознавание карт и координаты кликов
     └── SETUP_WINDOWS.md    # установка на Windows
 ```
 
@@ -88,5 +96,6 @@ kgrt/
 
 - [Все карты](docs/CARDS_GUIDE.md) — как выглядят и действуют все карты
 - [Тактики](docs/TACTICS_GUIDE.md) — 5 тактик боя
+- [Зрение и клики](docs/VISION_SETUP.md) — как бот узнаёт карты и куда нажимает
 - [Обучение](docs/TRAINING_GUIDE.md) — как обучается бот
 - [Установка на Windows](docs/SETUP_WINDOWS.md) — пошаговая настройка
