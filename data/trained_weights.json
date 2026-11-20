@@ -1,0 +1,78 @@
+{
+  "tactic": "balanced",
+  "weights": {
+    "defense": 1.3,
+    "attack": 1.16,
+    "cycle": 1.0,
+    "elixir_save": 0.5,
+    "counter_push": 1.15
+  },
+  "best_score": 45.0,
+  "history": [
+    {
+      "iter": 1,
+      "score": 20.0,
+      "best": 20.0,
+      "improved": true,
+      "weights": {
+        "defense": 1.3,
+        "attack": 1.0,
+        "cycle": 1.0,
+        "elixir_save": 0.5,
+        "counter_push": 1.0
+      }
+    },
+    {
+      "iter": 2,
+      "score": -30.0,
+      "best": 20.0,
+      "improved": false,
+      "weights": {
+        "defense": 1.28,
+        "attack": 1.15,
+        "cycle": 1.0,
+        "elixir_save": 0.5,
+        "counter_push": 1.0
+      }
+    },
+    {
+      "iter": 3,
+      "score": 14.0,
+      "best": 20.0,
+      "improved": false,
+      "weights": {
+        "defense": 1.47,
+        "attack": 1.09,
+        "cycle": 1.0,
+        "elixir_save": 0.5,
+        "counter_push": 1.0
+      }
+    },
+    {
+      "iter": 4,
+      "score": -5.0,
+      "best": 20.0,
+      "improved": false,
+      "weights": {
+        "defense": 1.3,
+        "attack": 1.0,
+        "cycle": 1.0,
+        "elixir_save": 0.43,
+        "counter_push": 1.0
+      }
+    },
+    {
+      "iter": 5,
+      "score": 45.0,
+      "best": 45.0,
+      "improved": true,
+      "weights": {
+        "defense": 1.3,
+        "attack": 1.16,
+        "cycle": 1.0,
+        "elixir_save": 0.5,
+        "counter_push": 1.15
+      }
+    }
+  ]
+}
