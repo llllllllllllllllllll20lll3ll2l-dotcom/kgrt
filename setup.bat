@@ -6,6 +6,10 @@ echo   Clash Royale Bot KGRT - автоматическая установка
 echo ==================================================
 echo.
 
+:: Папка установки ADB (без прав администратора)
+set "ADB_DIR=%USERPROFILE%\platform-tools"
+set "ADB_ZIP=%USERPROFILE%\platform-tools.zip"
+
 :: 1. Проверка Python
 echo [1/5] Проверка Python...
 python --version >nul 2>&1
@@ -20,31 +24,35 @@ echo.
 
 :: 2. Установка ADB (Platform Tools)
 echo [2/5] Проверка ADB...
-if exist "C:\platform-tools\adb.exe" (
-    echo ADB уже установлен: C:\platform-tools\adb.exe
+if exist "%ADB_DIR%\adb.exe" (
+    echo ADB уже установлен: %ADB_DIR%\adb.exe
+) else if exist "C:\platform-tools\adb.exe" (
+    echo ADB найден: C:\platform-tools\adb.exe
+    set "ADB_DIR=C:\platform-tools"
 ) else (
-    echo Скачивание Platform Tools...
-    powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip' -OutFile 'C:\platform-tools.zip'; Expand-Archive 'C:\platform-tools.zip' -DestinationPath 'C:\' -Force; Remove-Item 'C:\platform-tools.zip' -Force"
-    if exist "C:\platform-tools\adb.exe" (
-        echo ADB установлен!
+    echo Скачивание Platform Tools в %USERPROFILE%...
+    powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip' -OutFile '%ADB_ZIP%'; Expand-Archive '%ADB_ZIP%' -DestinationPath '%USERPROFILE%\' -Force; Remove-Item '%ADB_ZIP%' -Force"
+    if exist "%ADB_DIR%\adb.exe" (
+        echo ADB установлен: %ADB_DIR%\adb.exe
     ) else (
         echo [ОШИБКА] Не удалось скачать ADB. Проверьте интернет.
+        echo Попробуйте вручную: https://developer.android.com/tools/releases/platform-tools
         pause
         exit /b 1
     )
 )
 :: Добавить в PATH (для будущих терминалов)
-setx Path "%Path%;C:\platform-tools" >nul 2>&1
+setx Path "%Path%;%ADB_DIR%" >nul 2>&1
 :: Добавить в PATH для текущего сеанса
-set "Path=%Path%;C:\platform-tools"
+set "Path=%Path%;%ADB_DIR%"
 echo.
 
 :: 3. Проверка ADB
 echo [3/5] Проверка ADB...
-adb version
+"%ADB_DIR%\adb.exe" version
 echo.
 echo Подключённые устройства:
-adb devices
+"%ADB_DIR%\adb.exe" devices
 echo Если список пустой - подключите телефон и включите Отладку по USB!
 echo.
 
